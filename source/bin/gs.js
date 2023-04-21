@@ -304,9 +304,24 @@ var gs;
 var gs;
 (function (gs) {
     var EntityManager = /** @class */ (function () {
-        function EntityManager() {
+        function EntityManager(componentManagers) {
+            var e_4, _a;
             this.entities = new Map();
             this.entityIdAllocator = new gs.EntityIdAllocator();
+            this.componentManagers = new Map();
+            try {
+                for (var componentManagers_1 = __values(componentManagers), componentManagers_1_1 = componentManagers_1.next(); !componentManagers_1_1.done; componentManagers_1_1 = componentManagers_1.next()) {
+                    var manager = componentManagers_1_1.value;
+                    this.componentManagers.set(manager.componentType, manager);
+                }
+            }
+            catch (e_4_1) { e_4 = { error: e_4_1 }; }
+            finally {
+                try {
+                    if (componentManagers_1_1 && !componentManagers_1_1.done && (_a = componentManagers_1.return)) _a.call(componentManagers_1);
+                }
+                finally { if (e_4) throw e_4.error; }
+            }
         }
         /**
          * 创建实体
@@ -314,8 +329,7 @@ var gs;
          */
         EntityManager.prototype.createEntity = function () {
             var entityId = this.entityIdAllocator.allocate();
-            var componentManagers = new Map();
-            return new gs.Entity(entityId, componentManagers);
+            return new gs.Entity(entityId, this.componentManagers);
         };
         /**
          * 删除实体
@@ -338,7 +352,7 @@ var gs;
          * @returns 具有指定组件的实体数组
          */
         EntityManager.prototype.getEntitiesWithComponent = function (componentClass) {
-            var e_4, _a;
+            var e_5, _a;
             var entitiesWithComponent = [];
             try {
                 for (var _b = __values(this.getEntities()), _c = _b.next(); !_c.done; _c = _b.next()) {
@@ -348,12 +362,12 @@ var gs;
                     }
                 }
             }
-            catch (e_4_1) { e_4 = { error: e_4_1 }; }
+            catch (e_5_1) { e_5 = { error: e_5_1 }; }
             finally {
                 try {
                     if (_c && !_c.done && (_a = _b.return)) _a.call(_b);
                 }
-                finally { if (e_4) throw e_4.error; }
+                finally { if (e_5) throw e_5.error; }
             }
             return entitiesWithComponent;
         };
@@ -429,7 +443,7 @@ var gs;
          * @param event
          */
         EventEmitter.prototype.emit = function (type, data) {
-            var e_5, _a;
+            var e_6, _a;
             var event = this.eventPool.acquire();
             event.type = type;
             event.data = data;
@@ -441,12 +455,12 @@ var gs;
                         listener(event);
                     }
                 }
-                catch (e_5_1) { e_5 = { error: e_5_1 }; }
+                catch (e_6_1) { e_6 = { error: e_6_1 }; }
                 finally {
                     try {
                         if (listeners_1_1 && !listeners_1_1.done && (_a = listeners_1.return)) _a.call(listeners_1);
                     }
-                    finally { if (e_5) throw e_5.error; }
+                    finally { if (e_6) throw e_6.error; }
                 }
             }
             this.eventPool.release(event);
@@ -549,7 +563,7 @@ var gs;
          */
         SystemManager.prototype.update = function (deltaTime) {
             var _this = this;
-            var e_6, _a;
+            var e_7, _a;
             var entities = this.entityManager.getEntities();
             var _loop_2 = function (system) {
                 var filteredEntities = entities.filter(function (entity) { return system.entityFilter(entity); });
@@ -561,7 +575,7 @@ var gs;
                     };
                     worker.postMessage(message);
                     worker.onmessage = function (event) {
-                        var e_7, _a;
+                        var e_8, _a;
                         var updatedEntities = event.data.entities;
                         try {
                             for (var updatedEntities_1 = __values(updatedEntities), updatedEntities_1_1 = updatedEntities_1.next(); !updatedEntities_1_1.done; updatedEntities_1_1 = updatedEntities_1.next()) {
@@ -572,12 +586,12 @@ var gs;
                                 }
                             }
                         }
-                        catch (e_7_1) { e_7 = { error: e_7_1 }; }
+                        catch (e_8_1) { e_8 = { error: e_8_1 }; }
                         finally {
                             try {
                                 if (updatedEntities_1_1 && !updatedEntities_1_1.done && (_a = updatedEntities_1.return)) _a.call(updatedEntities_1);
                             }
-                            finally { if (e_7) throw e_7.error; }
+                            finally { if (e_8) throw e_8.error; }
                         }
                     };
                 }
@@ -592,44 +606,15 @@ var gs;
                     _loop_2(system);
                 }
             }
-            catch (e_6_1) { e_6 = { error: e_6_1 }; }
+            catch (e_7_1) { e_7 = { error: e_7_1 }; }
             finally {
                 try {
                     if (_c && !_c.done && (_a = _b.return)) _a.call(_b);
                 }
-                finally { if (e_6) throw e_6.error; }
+                finally { if (e_7) throw e_7.error; }
             }
         };
         return SystemManager;
     }());
     gs.SystemManager = SystemManager;
-})(gs || (gs = {}));
-var gs;
-(function (gs) {
-    var TransformComponent = /** @class */ (function (_super) {
-        __extends(TransformComponent, _super);
-        function TransformComponent() {
-            var _this = _super !== null && _super.apply(this, arguments) || this;
-            _this.x = 0;
-            _this.y = 0;
-            _this.rotation = 0;
-            _this.scaleX = 1;
-            _this.scaleY = 1;
-            return _this;
-        }
-        TransformComponent.prototype.do = function () {
-            var entityManager = new gs.EntityManager();
-            var transformManager = new gs.ComponentManager(TransformComponent);
-            gs.Component.registerComponent(TransformComponent, transformManager);
-            var entity = entityManager.createEntity();
-            var transform = transformManager.create(entity.getId());
-            transform.x = 10;
-            transform.y = 20;
-            // 获取实体的TransformComponent数据
-            var entityTransform = transformManager.get(entity.getId());
-            console.log(entityTransform.x, entityTransform.y); // 输出: 10, 20
-        };
-        return TransformComponent;
-    }(gs.Component));
-    gs.TransformComponent = TransformComponent;
 })(gs || (gs = {}));

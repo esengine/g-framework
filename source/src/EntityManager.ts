@@ -2,10 +2,16 @@ module gs {
     export class EntityManager {
         private entities: Map<number, Entity>;
         private entityIdAllocator: EntityIdAllocator;
+        private componentManagers: Map<new (entityId: number) => Component, ComponentManager<any>>;
 
-        constructor() {
+        constructor(componentManagers: Array<ComponentManager<any>>) {
             this.entities = new Map();
             this.entityIdAllocator = new EntityIdAllocator();
+            this.componentManagers = new Map();
+
+            for (const manager of componentManagers) {
+                this.componentManagers.set(manager.componentType, manager);
+            }
         }
 
         /**
@@ -14,8 +20,7 @@ module gs {
          */
         public createEntity(): Entity {
             const entityId = this.entityIdAllocator.allocate();
-            const componentManagers = new Map<new () => Component, ComponentManager<any>>();
-            return new Entity(entityId, componentManagers);
+            return new Entity(entityId, this.componentManagers);
         }
 
         /**

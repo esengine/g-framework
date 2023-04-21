@@ -6,7 +6,7 @@ module gs {
         private data: T[] = [];
         private entityToDataIndex: Map<number, number> = new Map();
         private freeDataIndices: number[] = [];
-        private componentType: new (entityId: number) => T;
+        public componentType: new (entityId: number) => T;
 
         constructor(componentType: new (entityId: number) => T) {
             this.componentType = componentType;

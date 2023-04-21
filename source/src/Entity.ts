@@ -3,7 +3,7 @@ module gs {
         private id: number;
         private componentManagers: Map<Function, ComponentManager<any>>;
 
-        constructor(id: number, componentManagers: Map<new () => Component, ComponentManager<any>>) {
+        constructor(id: number, componentManagers: Map<new (entityId: number) => Component, ComponentManager<any>>) {
             this.id = id;
             this.componentManagers = componentManagers;
         }

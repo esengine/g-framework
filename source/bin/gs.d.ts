@@ -10,7 +10,7 @@ declare module gs {
          * @param componentClass
          * @param manager
          */
-        static registerComponent<T extends Component>(componentClass: new () => T, manager: ComponentManager<T>): void;
+        static registerComponent<T extends Component>(componentClass: new (...args: any[]) => T, manager: ComponentManager<T>): void;
     }
 }
 declare module gs {
@@ -21,7 +21,7 @@ declare module gs {
         private data;
         private entityToDataIndex;
         private freeDataIndices;
-        private componentType;
+        componentType: new (entityId: number) => T;
         constructor(componentType: new (entityId: number) => T);
         create(entityId: number): T;
         /**
@@ -53,7 +53,7 @@ declare module gs {
     class Entity {
         private id;
         private componentManagers;
-        constructor(id: number, componentManagers: Map<new () => Component, ComponentManager<any>>);
+        constructor(id: number, componentManagers: Map<new (entityId: number) => Component, ComponentManager<any>>);
         getId(): number;
         /**
          * 添加组件
@@ -102,7 +102,8 @@ declare module gs {
     class EntityManager {
         private entities;
         private entityIdAllocator;
-        constructor();
+        private componentManagers;
+        constructor(componentManagers: Array<ComponentManager<any>>);
         /**
          * 创建实体
          * @returns
@@ -232,15 +233,5 @@ declare module gs {
          * @param deltaTime
          */
         update(deltaTime: number): void;
-    }
-}
-declare module gs {
-    class TransformComponent extends Component {
-        x: number;
-        y: number;
-        rotation: number;
-        scaleX: number;
-        scaleY: number;
-        do(): void;
     }
 }

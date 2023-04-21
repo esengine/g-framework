@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>性能测试</title>
+    <style>
+        #myChart {
+            width: 800px;
+            height: 400px;
+        }
+
+        .zero-value {
+            color: #999;
+            font-size: 0.8rem;
+        }
+    </style>
+    <script src="../source/bin/gs.js"></script>
+    <script src="performanceTest.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body>
+    <canvas id="myChart"></canvas>
+    <script>
+        const data = {
+            create: {
+                label: "创建实体",
+                time: elapsedTime,
+                color: "rgba(54, 162, 235, 0.2)",
+                borderColor: "rgba(54, 162, 235, 1)",
+            },
+            update: {
+                label: "更新系统",
+                time: updateElapsedTime,
+                color: "rgba(255, 206, 86, 0.2)",
+                borderColor: "rgba(255, 206, 86, 1)",
+            },
+            createDelete: {
+                label: "创建/删除实体",
+                time: createDeleteElapsedTime,
+                color: "rgba(255, 99, 132, 0.2)",
+                borderColor: "rgba(255, 99, 132, 1)",
+            },
+            filter: {
+                label: "过滤实体",
+                time: filterElapsedTime,
+                color: "rgba(75, 192, 192, 0.2)",
+                borderColor: "rgba(75, 192, 192, 1)",
+            },
+            componentChanges: {
+                label: "组件更改",
+                time: componentChangesElapsedTime,
+                color: "rgba(153, 102, 255, 0.2)",
+                borderColor: "rgba(153, 102, 255, 1)",
+            },
+        };
+
+        const createDataset = (data) => ({
+            label: data.label,
+            data: [data.time || 0],
+            backgroundColor: data.time === 0 ? "#999" : data.color,
+            borderColor: data.time === 0 ? "#999" : data.borderColor,
+            borderWidth: 1,
+        });
+
+        const datasets = Object.values(data)
+            .sort((a, b) => a.time - b.time)
+            .map((d) => createDataset(d));
+
+        const chartData = {
+            labels: ["性能测试"],
+            datasets: datasets,
+        };
+
+        const ctx = document.getElementById("myChart").getContext("2d");
+        const chart = new Chart(ctx, {
+            type: "bar",
+            data: chartData,
+            options: {
+                animation: false,
+                scales: {
+                    yAxes: [
+                        {
+                            type: 'logarithmic',
+                            ticks: {
+                                callback: function (value, index, values) {
+                                    if (value === 0) {
+                                        return '0'; // 返回一个带有0标记的文本
+                                    }
+                                    return value;
+                                },
+                                min: 1, // 设置最小刻度为1，避免出现负数刻度的情况
+                            },
+                            beginAtZero: true, // 从0开始显示刻度
+                        },
+                    ],
+                },
+            },
+        });
+        document.addEventListener("DOMContentLoaded", function () {
+            const updateButton = document.getElementById("updateChart");
+            const chartTypeSelect = document.getElementById("chartType");
+
+            chartTypeSelect.innerHTML = Object.values(data)
+                .sort((a, b) => a.time - b.time)
+                .map((d) => `<option value="${d.label}">${d.label}</option>`)
+                .join("");
+
+            updateButton.addEventListener("click", function () {
+                const chartType = chartTypeSelect.value;
+                const selectedData = data[chartType];
+                chart.data.datasets[0].label = selectedData.label;
+                chart.data.datasets[0].data[0] = selectedData.time || 0;
+                chart.data.datasets[0].backgroundColor = selectedData.time === 0 ? "#999" : selectedData.color;
+                chart.data.datasets[0].borderColor = selectedData.time === 0 ? "#999" : selectedData.borderColor;
+                chart.update();
+            });
+        });
+    </script>
+</body>
+
+</html>
