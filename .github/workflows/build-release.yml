@@ -39,6 +39,19 @@ jobs:
       - name: Increment Version
         id: increment_version
         run: echo ::set-output name=tag::$(echo ${{ steps.current_tag.outputs.result }} | awk -F. '{$NF = $NF + 1;} 1' | sed 's/ /./g')
+      - name: Get Latest Commit
+        id: latest_commit
+        uses: actions/github-script@v4
+        with:
+          script: |
+            const { data: commit } = await github.repos.getCommit({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: context.sha,
+            });
+            return commit.commit.message;
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Create Release
         id: create_release
         uses: actions/create-release@v1.0.1
@@ -49,7 +62,8 @@ jobs:
           release_name: Release ${{ steps.increment_version.outputs.tag }}
           body: |
             # Release ${{ steps.increment_version.outputs.tag }}
-            $(git log -1 --pretty=%B)
+            最近的提交记录: ${{ steps.latest_commit.outputs.result }} # 添加最近的提交记录
+            这是一个包含 bin 文件夹内容的 release。
           draft: false
           prerelease: false
       - name: Upload Release Asset
