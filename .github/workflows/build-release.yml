@@ -49,7 +49,7 @@ jobs:
           release_name: Release ${{ steps.increment_version.outputs.tag }}
           body: |
             # Release ${{ steps.increment_version.outputs.tag }}
-            这是一个包含 bin 文件夹内容的 release。 # 描述信息
+            $(git log -1 --pretty=%B)
           draft: false
           prerelease: false
       - name: Upload Release Asset
