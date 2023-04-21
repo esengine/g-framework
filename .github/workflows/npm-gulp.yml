@@ -24,5 +24,6 @@ jobs:
 
     - name: Build
       run: |
+        cd source
         npm install
         gulp build
