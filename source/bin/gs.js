@@ -177,6 +177,7 @@ var gs;
         function Entity(id, componentManagers) {
             this.id = id;
             this.componentManagers = componentManagers;
+            this.tags = new Set();
         }
         Entity.prototype.getId = function () {
             return this.id;
@@ -225,6 +226,28 @@ var gs;
         Entity.prototype.hasComponent = function (componentType) {
             var manager = this.componentManagers.get(componentType);
             return manager ? manager.has(this.id) : false;
+        };
+        /**
+         * 添加标签
+         * @param tag
+         */
+        Entity.prototype.addTag = function (tag) {
+            this.tags.add(tag);
+        };
+        /**
+         * 移除标签
+         * @param tag
+         */
+        Entity.prototype.removeTag = function (tag) {
+            this.tags.delete(tag);
+        };
+        /**
+         * 检查是否具有指定标签
+         * @param tag
+         * @returns
+         */
+        Entity.prototype.hasTag = function (tag) {
+            return this.tags.has(tag);
         };
         /**
          * 序列化
@@ -378,6 +401,31 @@ var gs;
         EntityManager.prototype.getEntities = function () {
             return Array.from(this.entities.values());
         };
+        /**
+        * 获取具有特定标签的所有实体
+        * @param tag 要检查的标签
+        * @returns 具有指定标签的实体数组
+        */
+        EntityManager.prototype.getEntitiesWithTag = function (tag) {
+            var e_6, _a;
+            var entitiesWithTag = [];
+            try {
+                for (var _b = __values(this.getEntities()), _c = _b.next(); !_c.done; _c = _b.next()) {
+                    var entity = _c.value;
+                    if (entity.hasTag(tag)) {
+                        entitiesWithTag.push(entity);
+                    }
+                }
+            }
+            catch (e_6_1) { e_6 = { error: e_6_1 }; }
+            finally {
+                try {
+                    if (_c && !_c.done && (_a = _b.return)) _a.call(_b);
+                }
+                finally { if (e_6) throw e_6.error; }
+            }
+            return entitiesWithTag;
+        };
         return EntityManager;
     }());
     gs.EntityManager = EntityManager;
@@ -443,7 +491,7 @@ var gs;
          * @param event
          */
         EventEmitter.prototype.emit = function (type, data) {
-            var e_6, _a;
+            var e_7, _a;
             var event = this.eventPool.acquire();
             event.type = type;
             event.data = data;
@@ -455,12 +503,12 @@ var gs;
                         listener(event);
                     }
                 }
-                catch (e_6_1) { e_6 = { error: e_6_1 }; }
+                catch (e_7_1) { e_7 = { error: e_7_1 }; }
                 finally {
                     try {
                         if (listeners_1_1 && !listeners_1_1.done && (_a = listeners_1.return)) _a.call(listeners_1);
                     }
-                    finally { if (e_6) throw e_6.error; }
+                    finally { if (e_7) throw e_7.error; }
                 }
             }
             this.eventPool.release(event);
@@ -563,7 +611,7 @@ var gs;
          */
         SystemManager.prototype.update = function (deltaTime) {
             var _this = this;
-            var e_7, _a;
+            var e_8, _a;
             var entities = this.entityManager.getEntities();
             var _loop_2 = function (system) {
                 var filteredEntities = entities.filter(function (entity) { return system.entityFilter(entity); });
@@ -575,7 +623,7 @@ var gs;
                     };
                     worker.postMessage(message);
                     worker.onmessage = function (event) {
-                        var e_8, _a;
+                        var e_9, _a;
                         var updatedEntities = event.data.entities;
                         try {
                             for (var updatedEntities_1 = __values(updatedEntities), updatedEntities_1_1 = updatedEntities_1.next(); !updatedEntities_1_1.done; updatedEntities_1_1 = updatedEntities_1.next()) {
@@ -586,12 +634,12 @@ var gs;
                                 }
                             }
                         }
-                        catch (e_8_1) { e_8 = { error: e_8_1 }; }
+                        catch (e_9_1) { e_9 = { error: e_9_1 }; }
                         finally {
                             try {
                                 if (updatedEntities_1_1 && !updatedEntities_1_1.done && (_a = updatedEntities_1.return)) _a.call(updatedEntities_1);
                             }
-                            finally { if (e_8) throw e_8.error; }
+                            finally { if (e_9) throw e_9.error; }
                         }
                     };
                 }
@@ -606,12 +654,12 @@ var gs;
                     _loop_2(system);
                 }
             }
-            catch (e_7_1) { e_7 = { error: e_7_1 }; }
+            catch (e_8_1) { e_8 = { error: e_8_1 }; }
             finally {
                 try {
                     if (_c && !_c.done && (_a = _b.return)) _a.call(_b);
                 }
-                finally { if (e_7) throw e_7.error; }
+                finally { if (e_8) throw e_8.error; }
             }
         };
         return SystemManager;

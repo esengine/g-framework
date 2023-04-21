@@ -53,6 +53,7 @@ declare module gs {
     class Entity {
         private id;
         private componentManagers;
+        private tags;
         constructor(id: number, componentManagers: Map<new (entityId: number) => Component, ComponentManager<any>>);
         getId(): number;
         /**
@@ -79,6 +80,22 @@ declare module gs {
          * @returns
          */
         hasComponent<T extends Component>(componentType: new (entityId: number) => T): boolean;
+        /**
+         * 添加标签
+         * @param tag
+         */
+        addTag(tag: string): void;
+        /**
+         * 移除标签
+         * @param tag
+         */
+        removeTag(tag: string): void;
+        /**
+         * 检查是否具有指定标签
+         * @param tag
+         * @returns
+         */
+        hasTag(tag: string): boolean;
         /**
          * 序列化
          * @returns
@@ -131,6 +148,12 @@ declare module gs {
          * @returns
          */
         getEntities(): Entity[];
+        /**
+        * 获取具有特定标签的所有实体
+        * @param tag 要检查的标签
+        * @returns 具有指定标签的实体数组
+        */
+        getEntitiesWithTag(tag: string): Entity[];
     }
 }
 declare module gs {

@@ -2,10 +2,12 @@ module gs {
     export class Entity {
         private id: number;
         private componentManagers: Map<Function, ComponentManager<any>>;
+        private tags: Set<string>;
 
         constructor(id: number, componentManagers: Map<new (entityId: number) => Component, ComponentManager<any>>) {
             this.id = id;
             this.componentManagers = componentManagers;
+            this.tags = new Set();
         }
 
         public getId(): number {
@@ -59,6 +61,31 @@ module gs {
         public hasComponent<T extends Component>(componentType: new (entityId: number) => T): boolean {
             const manager = this.componentManagers.get(componentType);
             return manager ? manager.has(this.id) : false;
+        }
+
+        /**
+         * 添加标签
+         * @param tag 
+         */
+        addTag(tag: string): void {
+            this.tags.add(tag);
+        }
+
+        /**
+         * 移除标签
+         * @param tag 
+         */
+        removeTag(tag: string): void {
+            this.tags.delete(tag);
+        }
+
+        /**
+         * 检查是否具有指定标签
+         * @param tag 
+         * @returns 
+         */
+        hasTag(tag: string): boolean {
+            return this.tags.has(tag);
         }
 
         /**

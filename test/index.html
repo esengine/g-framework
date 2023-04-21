@@ -5,11 +5,6 @@
     <meta charset="UTF-8" />
     <title>性能测试</title>
     <style>
-        #myChart {
-            width: 800px;
-            height: 400px;
-        }
-
         .zero-value {
             color: #999;
             font-size: 0.8rem;
@@ -78,44 +73,21 @@
             type: "bar",
             data: chartData,
             options: {
-                animation: false,
                 scales: {
-                    yAxes: [
-                        {
-                            type: 'logarithmic',
-                            ticks: {
-                                callback: function (value, index, values) {
-                                    if (value === 0) {
-                                        return '0'; // 返回一个带有0标记的文本
-                                    }
-                                    return value;
-                                },
-                                min: 1, // 设置最小刻度为1，避免出现负数刻度的情况
+                    y: {
+                        type: 'logarithmic',
+                        ticks: {
+                            callback: function (value, index, values) {
+                                if (value === 0) {
+                                    return '0'; // 返回一个带有0标记的文本
+                                }
+                                return value;
                             },
-                            beginAtZero: true, // 从0开始显示刻度
+                            min: 0, // 设置最小刻度为0
                         },
-                    ],
+                    },
                 },
             },
-        });
-        document.addEventListener("DOMContentLoaded", function () {
-            const updateButton = document.getElementById("updateChart");
-            const chartTypeSelect = document.getElementById("chartType");
-
-            chartTypeSelect.innerHTML = Object.values(data)
-                .sort((a, b) => a.time - b.time)
-                .map((d) => `<option value="${d.label}">${d.label}</option>`)
-                .join("");
-
-            updateButton.addEventListener("click", function () {
-                const chartType = chartTypeSelect.value;
-                const selectedData = data[chartType];
-                chart.data.datasets[0].label = selectedData.label;
-                chart.data.datasets[0].data[0] = selectedData.time || 0;
-                chart.data.datasets[0].backgroundColor = selectedData.time === 0 ? "#999" : selectedData.color;
-                chart.data.datasets[0].borderColor = selectedData.time === 0 ? "#999" : selectedData.borderColor;
-                chart.update();
-            });
         });
     </script>
 </body>

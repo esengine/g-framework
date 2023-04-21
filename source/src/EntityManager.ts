@@ -64,5 +64,22 @@ module gs {
         getEntities(): Entity[] {
             return Array.from(this.entities.values());
         }
+
+        /**
+        * 获取具有特定标签的所有实体
+        * @param tag 要检查的标签
+        * @returns 具有指定标签的实体数组
+        */
+        getEntitiesWithTag(tag: string): Entity[] {
+            const entitiesWithTag: Entity[] = [];
+
+            for (const entity of this.getEntities()) {
+                if (entity.hasTag(tag)) {
+                    entitiesWithTag.push(entity);
+                }
+            }
+
+            return entitiesWithTag;
+        }
     }
 }
