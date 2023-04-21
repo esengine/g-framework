@@ -9,7 +9,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
+      - name: Use Node.js 10.20.1
+        uses: actions/setup-node@v3
+        with:
+          node-version: 10.20.1
+      - name: Build
+        run: |
+          cd source
+          npm install
+          gulp build
       - name: Install zip
         run: sudo apt-get install -y zip
       - name: Create zip
