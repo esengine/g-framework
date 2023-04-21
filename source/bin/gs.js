@@ -193,6 +193,31 @@ var gs;
             return this.entities.has(entityId) ? this.entities.get(entityId) : null;
         };
         /**
+         * 获取具有特定组件的所有实体
+         * @param componentClass 要检查的组件类
+         * @returns 具有指定组件的实体数组
+         */
+        EntityManager.prototype.getEntitiesWithComponent = function (componentClass) {
+            var e_3, _a;
+            var entitiesWithComponent = [];
+            try {
+                for (var _b = __values(this.getEntities()), _c = _b.next(); !_c.done; _c = _b.next()) {
+                    var entity = _c.value;
+                    if (entity.hasComponent(componentClass)) {
+                        entitiesWithComponent.push(entity);
+                    }
+                }
+            }
+            catch (e_3_1) { e_3 = { error: e_3_1 }; }
+            finally {
+                try {
+                    if (_c && !_c.done && (_a = _b.return)) _a.call(_b);
+                }
+                finally { if (e_3) throw e_3.error; }
+            }
+            return entitiesWithComponent;
+        };
+        /**
          * 获取所有实体
          * @returns
          */
@@ -252,7 +277,7 @@ var gs;
          */
         SystemManager.prototype.update = function (deltaTime) {
             var _this = this;
-            var e_3, _a;
+            var e_4, _a;
             var entities = this.entityManager.getEntities();
             var _loop_1 = function (system) {
                 var filteredEntities = entities.filter(function (entity) { return system.entityFilter(entity); });
@@ -264,7 +289,7 @@ var gs;
                     };
                     worker.postMessage(message);
                     worker.onmessage = function (event) {
-                        var e_4, _a;
+                        var e_5, _a;
                         var updatedEntities = event.data.entities;
                         try {
                             for (var updatedEntities_1 = __values(updatedEntities), updatedEntities_1_1 = updatedEntities_1.next(); !updatedEntities_1_1.done; updatedEntities_1_1 = updatedEntities_1.next()) {
@@ -275,12 +300,12 @@ var gs;
                                 }
                             }
                         }
-                        catch (e_4_1) { e_4 = { error: e_4_1 }; }
+                        catch (e_5_1) { e_5 = { error: e_5_1 }; }
                         finally {
                             try {
                                 if (updatedEntities_1_1 && !updatedEntities_1_1.done && (_a = updatedEntities_1.return)) _a.call(updatedEntities_1);
                             }
-                            finally { if (e_4) throw e_4.error; }
+                            finally { if (e_5) throw e_5.error; }
                         }
                     };
                 }
@@ -295,12 +320,12 @@ var gs;
                     _loop_1(system);
                 }
             }
-            catch (e_3_1) { e_3 = { error: e_3_1 }; }
+            catch (e_4_1) { e_4 = { error: e_4_1 }; }
             finally {
                 try {
                     if (_c && !_c.done && (_a = _b.return)) _a.call(_b);
                 }
-                finally { if (e_3) throw e_3.error; }
+                finally { if (e_4) throw e_4.error; }
             }
         };
         return SystemManager;

@@ -32,7 +32,7 @@ declare module gs {
          * @param componentType
          * @returns
          */
-        hasComponent(componentType: Function): boolean;
+        hasComponent<T extends Component>(componentType: new () => T): boolean;
         /**
          * 序列化
          * @returns
@@ -73,6 +73,12 @@ declare module gs {
          * @returns 实体
          */
         getEntity(entityId: number): Entity | null;
+        /**
+         * 获取具有特定组件的所有实体
+         * @param componentClass 要检查的组件类
+         * @returns 具有指定组件的实体数组
+         */
+        getEntitiesWithComponent<T extends Component>(componentClass: new (...args: any[]) => T): Entity[];
         /**
          * 获取所有实体
          * @returns

@@ -36,6 +36,23 @@ module gs {
         }
 
         /**
+         * 获取具有特定组件的所有实体
+         * @param componentClass 要检查的组件类
+         * @returns 具有指定组件的实体数组
+         */
+        getEntitiesWithComponent<T extends Component>(componentClass: new (...args: any[]) => T): Entity[] {
+            const entitiesWithComponent: Entity[] = [];
+
+            for (const entity of this.getEntities()) {
+                if (entity.hasComponent(componentClass)) {
+                    entitiesWithComponent.push(entity);
+                }
+            }
+
+            return entitiesWithComponent;
+        }
+
+        /**
          * 获取所有实体
          * @returns 
          */

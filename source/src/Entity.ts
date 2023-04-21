@@ -43,7 +43,7 @@ module gs {
          * @param componentType 
          * @returns 
          */
-        hasComponent(componentType: Function): boolean {
+        public hasComponent<T extends Component>(componentType: new () => T): boolean {
             return this.components.has(componentType.name);
         }
 
