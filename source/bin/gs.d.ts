@@ -87,6 +87,62 @@ declare module gs {
     }
 }
 declare module gs {
+    interface EventListener {
+        (event: Event): void;
+    }
+    class Event {
+        type: string;
+        data: any;
+        constructor(type: string, data?: any);
+    }
+    class EventEmitter {
+        private listeners;
+        private eventPool;
+        constructor();
+        /**
+         * 用于订阅特定事件类型的侦听器。当事件类型不存在时，将创建一个新的侦听器数组
+         * @param eventType
+         * @param listener
+         */
+        on(eventType: string, listener: EventListener): void;
+        /**
+         * 用于订阅特定事件类型的侦听器。当事件类型不存在时，将创建一个新的侦听器数组。该方法只会在回调函数被执行后，移除监听器
+         * @param eventType
+         * @param callback
+         */
+        once(eventType: string, callback: (event: Event) => void): void;
+        /**
+         * 用于取消订阅特定事件类型的侦听器。如果找到侦听器，则将其从数组中移除
+         * @param eventType
+         * @param listener
+         */
+        off(eventType: string, listener: EventListener): void;
+        /**
+         * 用于触发事件。该方法将遍历所有订阅给定事件类型的侦听器，并调用它们
+         * @param event
+         */
+        emit(type: string, data: any): void;
+    }
+}
+declare module gs {
+    class ObjectPool<T> {
+        private createFn;
+        private resetFn;
+        private pool;
+        constructor(createFn: () => T, resetFn: (obj: T) => void);
+        acquire(): T;
+        release(obj: T): void;
+    }
+}
+declare module gs {
+    class EventPool extends ObjectPool<Event> {
+        constructor();
+    }
+}
+declare module gs {
+    const GlobalEventEmitter: EventEmitter;
+}
+declare module gs {
     /**
      * 系统基类
      */

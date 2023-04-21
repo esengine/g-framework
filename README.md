@@ -61,5 +61,8 @@ function gameLoop(deltaTime: number): void {
 requestAnimationFrame(gameLoop);
 ```
 
+## 模块使用
+- [G-Framework 事件系统 - GlobalEventEmitter](docs/emitter.md)
+
 # 许可证
 G-Framework 使用 MIT 许可证 进行许可。

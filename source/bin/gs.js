@@ -25,6 +25,16 @@ var __read = (this && this.__read) || function (o, n) {
     }
     return ar;
 };
+var __extends = (this && this.__extends) || (function () {
+    var extendStatics = Object.setPrototypeOf ||
+        ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+        function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+    return function (d, b) {
+        extendStatics(d, b);
+        function __() { this.constructor = d; }
+        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+    };
+})();
 var gs;
 (function (gs) {
     // 基本的组件类，用于派生其他组件
@@ -230,6 +240,138 @@ var gs;
 })(gs || (gs = {}));
 var gs;
 (function (gs) {
+    var Event = /** @class */ (function () {
+        function Event(type, data) {
+            this.type = type;
+            this.data = data;
+        }
+        return Event;
+    }());
+    gs.Event = Event;
+    var EventEmitter = /** @class */ (function () {
+        function EventEmitter() {
+            this.listeners = new Map();
+            this.eventPool = new gs.EventPool();
+        }
+        /**
+         * 用于订阅特定事件类型的侦听器。当事件类型不存在时，将创建一个新的侦听器数组
+         * @param eventType
+         * @param listener
+         */
+        EventEmitter.prototype.on = function (eventType, listener) {
+            if (!this.listeners.has(eventType)) {
+                this.listeners.set(eventType, []);
+            }
+            var eventListeners = this.listeners.get(eventType);
+            if (eventListeners)
+                eventListeners.push(listener);
+        };
+        /**
+         * 用于订阅特定事件类型的侦听器。当事件类型不存在时，将创建一个新的侦听器数组。该方法只会在回调函数被执行后，移除监听器
+         * @param eventType
+         * @param callback
+         */
+        EventEmitter.prototype.once = function (eventType, callback) {
+            var _this = this;
+            var wrappedCallback = function (event) {
+                // 在回调函数被执行后，移除监听器
+                _this.off(eventType, wrappedCallback);
+                callback(event);
+            };
+            this.on(eventType, wrappedCallback);
+        };
+        /**
+         * 用于取消订阅特定事件类型的侦听器。如果找到侦听器，则将其从数组中移除
+         * @param eventType
+         * @param listener
+         */
+        EventEmitter.prototype.off = function (eventType, listener) {
+            var eventListeners = this.listeners.get(eventType);
+            if (eventListeners) {
+                var index = eventListeners.indexOf(listener);
+                if (index > -1) {
+                    eventListeners.splice(index, 1);
+                }
+            }
+        };
+        /**
+         * 用于触发事件。该方法将遍历所有订阅给定事件类型的侦听器，并调用它们
+         * @param event
+         */
+        EventEmitter.prototype.emit = function (type, data) {
+            var e_4, _a;
+            var event = this.eventPool.acquire();
+            event.type = type;
+            event.data = data;
+            var listeners = this.listeners[type];
+            if (listeners) {
+                try {
+                    for (var listeners_1 = __values(listeners), listeners_1_1 = listeners_1.next(); !listeners_1_1.done; listeners_1_1 = listeners_1.next()) {
+                        var listener = listeners_1_1.value;
+                        listener(event);
+                    }
+                }
+                catch (e_4_1) { e_4 = { error: e_4_1 }; }
+                finally {
+                    try {
+                        if (listeners_1_1 && !listeners_1_1.done && (_a = listeners_1.return)) _a.call(listeners_1);
+                    }
+                    finally { if (e_4) throw e_4.error; }
+                }
+            }
+            this.eventPool.release(event);
+        };
+        return EventEmitter;
+    }());
+    gs.EventEmitter = EventEmitter;
+})(gs || (gs = {}));
+var gs;
+(function (gs) {
+    var ObjectPool = /** @class */ (function () {
+        function ObjectPool(createFn, resetFn) {
+            this.createFn = createFn;
+            this.resetFn = resetFn;
+            this.pool = [];
+        }
+        ObjectPool.prototype.acquire = function () {
+            if (this.pool.length > 0) {
+                var obj = this.pool.pop();
+                this.resetFn(obj);
+                return obj;
+            }
+            else {
+                return this.createFn();
+            }
+        };
+        ObjectPool.prototype.release = function (obj) {
+            this.pool.push(obj);
+        };
+        return ObjectPool;
+    }());
+    gs.ObjectPool = ObjectPool;
+})(gs || (gs = {}));
+///<reference path="ObjectPool.ts" />
+var gs;
+///<reference path="ObjectPool.ts" />
+(function (gs) {
+    var EventPool = /** @class */ (function (_super) {
+        __extends(EventPool, _super);
+        function EventPool() {
+            return _super.call(this, function () { return new gs.Event("", null); }, function (event) {
+                event.type = "";
+                event.data = null;
+            }) || this;
+        }
+        return EventPool;
+    }(gs.ObjectPool));
+    gs.EventPool = EventPool;
+})(gs || (gs = {}));
+var gs;
+(function (gs) {
+    gs.GlobalEventEmitter = new gs.EventEmitter();
+})(gs || (gs = {}));
+var gs;
+(function (gs) {
     /**
      * 系统基类
      */
@@ -277,7 +419,7 @@ var gs;
          */
         SystemManager.prototype.update = function (deltaTime) {
             var _this = this;
-            var e_4, _a;
+            var e_5, _a;
             var entities = this.entityManager.getEntities();
             var _loop_1 = function (system) {
                 var filteredEntities = entities.filter(function (entity) { return system.entityFilter(entity); });
@@ -289,7 +431,7 @@ var gs;
                     };
                     worker.postMessage(message);
                     worker.onmessage = function (event) {
-                        var e_5, _a;
+                        var e_6, _a;
                         var updatedEntities = event.data.entities;
                         try {
                             for (var updatedEntities_1 = __values(updatedEntities), updatedEntities_1_1 = updatedEntities_1.next(); !updatedEntities_1_1.done; updatedEntities_1_1 = updatedEntities_1.next()) {
@@ -300,12 +442,12 @@ var gs;
                                 }
                             }
                         }
-                        catch (e_5_1) { e_5 = { error: e_5_1 }; }
+                        catch (e_6_1) { e_6 = { error: e_6_1 }; }
                         finally {
                             try {
                                 if (updatedEntities_1_1 && !updatedEntities_1_1.done && (_a = updatedEntities_1.return)) _a.call(updatedEntities_1);
                             }
-                            finally { if (e_5) throw e_5.error; }
+                            finally { if (e_6) throw e_6.error; }
                         }
                     };
                 }
@@ -320,12 +462,12 @@ var gs;
                     _loop_1(system);
                 }
             }
-            catch (e_4_1) { e_4 = { error: e_4_1 }; }
+            catch (e_5_1) { e_5 = { error: e_5_1 }; }
             finally {
                 try {
                     if (_c && !_c.done && (_a = _b.return)) _a.call(_b);
                 }
-                finally { if (e_4) throw e_4.error; }
+                finally { if (e_5) throw e_5.error; }
             }
         };
         return SystemManager;

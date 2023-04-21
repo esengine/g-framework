@@ -9,6 +9,7 @@ module gs {
                     data[key] = value;
                 }
             }
+
             return data;
         }
 
