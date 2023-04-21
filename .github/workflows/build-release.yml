@@ -54,6 +54,8 @@ jobs:
           prerelease: false
       - name: Upload Release Asset
         uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           asset_path: ./bin.zip
           asset_name: bin.zip
