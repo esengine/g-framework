@@ -1,31 +1,28 @@
 module gs {
     export class Entity {
-        public id: number;
-        private components: Map<string, Component>;
+        private id: number;
+        private componentManagers: Map<Function, ComponentManager<any>>;
 
-        constructor(id: number) {
+        constructor(id: number, componentManagers: Map<new () => Component, ComponentManager<any>>) {
             this.id = id;
-            this.components = new Map();
+            this.componentManagers = componentManagers;
+        }
+
+        public getId(): number {
+            return this.id;
         }
 
         /**
          * 添加组件
-         * @param component 
-         * @returns 
-         */
-        addComponent(component: Component): this {
-            this.components.set(component.constructor.name, component);
-            return this;
-        }
-
-        /**
-         * 移除组件
          * @param componentType 
          * @returns 
          */
-        removeComponent(componentType: Function): this {
-            this.components.delete(componentType.name);
-            return this;
+        public addComponent<T extends Component>(componentType: new (entityId: number) => T): T {
+            const manager = this.componentManagers.get(componentType);
+            if (!manager) {
+                throw new Error(`组件类型为 ${componentType.name} 的组件管理器未找到.`);
+            }
+            return manager.create(this.id);
         }
 
         /**
@@ -33,9 +30,25 @@ module gs {
          * @param componentType 
          * @returns 
          */
-        getComponent<T extends Component>(componentType: new () => T): T | null {
-            const componentName = componentType.name;
-            return this.components.has(componentName) ? this.components.get(componentName) as T : null;
+        public getComponent<T extends Component>(componentType: new (entityId: number) => T): T | null {
+            const manager = this.componentManagers.get(componentType);
+            if (!manager) {
+                return null;
+            }
+            return manager.get(this.id);
+        }
+
+        /**
+         * 移除组件
+         * @param componentType 
+         * @returns 
+         */
+        public removeComponent<T extends Component>(componentType: new (entityId: number) => T): void {
+            const manager = this.componentManagers.get(componentType);
+            if (!manager) {
+                return;
+            }
+            manager.remove(this.id);
         }
 
         /**
@@ -43,8 +56,9 @@ module gs {
          * @param componentType 
          * @returns 
          */
-        public hasComponent<T extends Component>(componentType: new () => T): boolean {
-            return this.components.has(componentType.name);
+        public hasComponent<T extends Component>(componentType: new (entityId: number) => T): boolean {
+            const manager = this.componentManagers.get(componentType);
+            return manager ? manager.has(this.id) : false;
         }
 
         /**
@@ -52,15 +66,19 @@ module gs {
          * @returns 
          */
         serialize(): any {
-            const serializedComponents = {};
-            for (const [key, component] of this.components) {
-                serializedComponents[key] = component.serialize();
+            const serializedEntity: any = {
+                id: this.id,
+                components: {},
+            };
+
+            for (const [componentType, manager] of this.componentManagers) {
+                const component = manager.get(this.id) as Component;
+                if (component) {
+                    serializedEntity.components[componentType.name] = component.serialize();
+                }
             }
 
-            return {
-                id: this.id,
-                components: serializedComponents,
-            };
+            return serializedEntity;
         }
 
         /**
@@ -68,10 +86,15 @@ module gs {
          * @param data 
          */
         deserialize(data: any): void {
-            this.id = data.id;
-            for (const key in data.components) {
-                if (this.components.has(key)) {
-                    this.components.get(key).deserialize(data.components[key]);
+            for (const componentName in data.components) {
+                for (const [componentType, manager] of this.componentManagers) {
+                    if (componentType.name === componentName) {
+                        const component = manager.get(this.id) as Component;
+                        if (component) {
+                            component.deserialize(data.components[componentName]);
+                        }
+                        break;
+                    }
                 }
             }
         }

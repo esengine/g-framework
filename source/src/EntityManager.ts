@@ -1,21 +1,21 @@
 module gs {
     export class EntityManager {
         private entities: Map<number, Entity>;
-        private idAllocator: EntityIdAllocator;
+        private entityIdAllocator: EntityIdAllocator;
 
         constructor() {
             this.entities = new Map();
-            this.idAllocator = new EntityIdAllocator();
+            this.entityIdAllocator = new EntityIdAllocator();
         }
 
         /**
          * 创建实体
          * @returns
          */
-        createEntity(): Entity {
-            const newEntity = new Entity(this.idAllocator.generateId());
-            this.entities.set(newEntity.id, newEntity);
-            return newEntity;
+        public createEntity(): Entity {
+            const entityId = this.entityIdAllocator.allocate();
+            const componentManagers = new Map<new () => Component, ComponentManager<any>>();
+            return new Entity(entityId, componentManagers);
         }
 
         /**

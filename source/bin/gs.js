@@ -37,7 +37,9 @@ var __extends = (this && this.__extends) || (function () {
 })();
 var gs;
 (function (gs) {
-    // 基本的组件类，用于派生其他组件
+    /**
+     * 组件
+     */
     var Component = /** @class */ (function () {
         function Component() {
         }
@@ -69,34 +71,127 @@ var gs;
                 }
             }
         };
+        /**
+         * 注册组件
+         * @param componentClass
+         * @param manager
+         */
+        Component.registerComponent = function (componentClass, manager) {
+            var componentInstance = new componentClass();
+            var keys = Object.keys(componentInstance);
+            var _loop_1 = function (i) {
+                var key = keys[i];
+                var descriptor = Object.getOwnPropertyDescriptor(componentClass.prototype, key);
+                if (descriptor && typeof descriptor.get === 'function' && typeof descriptor.set === 'function') {
+                    var dataIndex_1 = manager.allocateDataIndex();
+                    Object.defineProperty(componentClass.prototype, key, {
+                        get: function () {
+                            return manager.get(this.entityId)[dataIndex_1];
+                        },
+                        set: function (value) {
+                            manager.get(this.entityId)[dataIndex_1] = value;
+                        },
+                        enumerable: true,
+                        configurable: true,
+                    });
+                }
+            };
+            for (var i = 0; i < keys.length; i++) {
+                _loop_1(i);
+            }
+        };
         return Component;
     }());
     gs.Component = Component;
 })(gs || (gs = {}));
 var gs;
 (function (gs) {
-    var Entity = /** @class */ (function () {
-        function Entity(id) {
-            this.id = id;
-            this.components = new Map();
+    /**
+     * 组件管理器
+     */
+    var ComponentManager = /** @class */ (function () {
+        function ComponentManager(componentType) {
+            this.data = [];
+            this.entityToDataIndex = new Map();
+            this.freeDataIndices = [];
+            this.componentType = componentType;
         }
-        /**
-         * 添加组件
-         * @param component
-         * @returns
-         */
-        Entity.prototype.addComponent = function (component) {
-            this.components.set(component.constructor.name, component);
-            return this;
+        ComponentManager.prototype.create = function (entityId) {
+            var index = this.allocateDataIndex();
+            var component = new this.componentType(entityId);
+            this.data[index] = component;
+            this.entityToDataIndex.set(entityId, index);
+            return component;
         };
         /**
-         * 移除组件
+         * 获取组件数据
+         * @param entityId 实体ID
+         * @returns 组件数据
+         */
+        ComponentManager.prototype.get = function (entityId) {
+            var dataIndex = this.entityToDataIndex.get(entityId);
+            if (dataIndex === undefined) {
+                return null;
+            }
+            return this.data[dataIndex];
+        };
+        /**
+         *
+         * @param entityId
+         * @returns
+         */
+        ComponentManager.prototype.has = function (entityId) {
+            return this.entityToDataIndex.has(entityId);
+        };
+        /**
+         *
+         * @param entityId
+         * @returns
+         */
+        ComponentManager.prototype.remove = function (entityId) {
+            var dataIndex = this.entityToDataIndex.get(entityId);
+            if (dataIndex === undefined) {
+                return;
+            }
+            this.entityToDataIndex.delete(entityId);
+            this.data[dataIndex] = null;
+            this.freeDataIndices.push(dataIndex);
+        };
+        /**
+         * 分配数据索引
+         * @returns
+         */
+        ComponentManager.prototype.allocateDataIndex = function () {
+            if (this.freeDataIndices.length > 0) {
+                return this.freeDataIndices.pop();
+            }
+            return this.data.length;
+        };
+        return ComponentManager;
+    }());
+    gs.ComponentManager = ComponentManager;
+})(gs || (gs = {}));
+var gs;
+(function (gs) {
+    var Entity = /** @class */ (function () {
+        function Entity(id, componentManagers) {
+            this.id = id;
+            this.componentManagers = componentManagers;
+        }
+        Entity.prototype.getId = function () {
+            return this.id;
+        };
+        /**
+         * 添加组件
          * @param componentType
          * @returns
          */
-        Entity.prototype.removeComponent = function (componentType) {
-            this.components.delete(componentType.name);
-            return this;
+        Entity.prototype.addComponent = function (componentType) {
+            var manager = this.componentManagers.get(componentType);
+            if (!manager) {
+                throw new Error("\u7EC4\u4EF6\u7C7B\u578B\u4E3A " + componentType.name + " \u7684\u7EC4\u4EF6\u7BA1\u7406\u5668\u672A\u627E\u5230.");
+            }
+            return manager.create(this.id);
         };
         /**
          * 获取组件
@@ -104,8 +199,23 @@ var gs;
          * @returns
          */
         Entity.prototype.getComponent = function (componentType) {
-            var componentName = componentType.name;
-            return this.components.has(componentName) ? this.components.get(componentName) : null;
+            var manager = this.componentManagers.get(componentType);
+            if (!manager) {
+                return null;
+            }
+            return manager.get(this.id);
+        };
+        /**
+         * 移除组件
+         * @param componentType
+         * @returns
+         */
+        Entity.prototype.removeComponent = function (componentType) {
+            var manager = this.componentManagers.get(componentType);
+            if (!manager) {
+                return;
+            }
+            manager.remove(this.id);
         };
         /**
          * 是否有组件
@@ -113,7 +223,8 @@ var gs;
          * @returns
          */
         Entity.prototype.hasComponent = function (componentType) {
-            return this.components.has(componentType.name);
+            var manager = this.componentManagers.get(componentType);
+            return manager ? manager.has(this.id) : false;
         };
         /**
          * 序列化
@@ -121,11 +232,17 @@ var gs;
          */
         Entity.prototype.serialize = function () {
             var e_2, _a;
-            var serializedComponents = {};
+            var serializedEntity = {
+                id: this.id,
+                components: {},
+            };
             try {
-                for (var _b = __values(this.components), _c = _b.next(); !_c.done; _c = _b.next()) {
-                    var _d = __read(_c.value, 2), key = _d[0], component = _d[1];
-                    serializedComponents[key] = component.serialize();
+                for (var _b = __values(this.componentManagers), _c = _b.next(); !_c.done; _c = _b.next()) {
+                    var _d = __read(_c.value, 2), componentType = _d[0], manager = _d[1];
+                    var component = manager.get(this.id);
+                    if (component) {
+                        serializedEntity.components[componentType.name] = component.serialize();
+                    }
                 }
             }
             catch (e_2_1) { e_2 = { error: e_2_1 }; }
@@ -135,20 +252,33 @@ var gs;
                 }
                 finally { if (e_2) throw e_2.error; }
             }
-            return {
-                id: this.id,
-                components: serializedComponents,
-            };
+            return serializedEntity;
         };
         /**
          * 反序列化
          * @param data
          */
         Entity.prototype.deserialize = function (data) {
-            this.id = data.id;
-            for (var key in data.components) {
-                if (this.components.has(key)) {
-                    this.components.get(key).deserialize(data.components[key]);
+            var e_3, _a;
+            for (var componentName in data.components) {
+                try {
+                    for (var _b = __values(this.componentManagers), _c = _b.next(); !_c.done; _c = _b.next()) {
+                        var _d = __read(_c.value, 2), componentType = _d[0], manager = _d[1];
+                        if (componentType.name === componentName) {
+                            var component = manager.get(this.id);
+                            if (component) {
+                                component.deserialize(data.components[componentName]);
+                            }
+                            break;
+                        }
+                    }
+                }
+                catch (e_3_1) { e_3 = { error: e_3_1 }; }
+                finally {
+                    try {
+                        if (_c && !_c.done && (_a = _b.return)) _a.call(_b);
+                    }
+                    finally { if (e_3) throw e_3.error; }
                 }
             }
         };
@@ -162,7 +292,7 @@ var gs;
         function EntityIdAllocator() {
             this.nextId = 0;
         }
-        EntityIdAllocator.prototype.generateId = function () {
+        EntityIdAllocator.prototype.allocate = function () {
             var newId = this.nextId;
             this.nextId += 1;
             return newId;
@@ -176,16 +306,16 @@ var gs;
     var EntityManager = /** @class */ (function () {
         function EntityManager() {
             this.entities = new Map();
-            this.idAllocator = new gs.EntityIdAllocator();
+            this.entityIdAllocator = new gs.EntityIdAllocator();
         }
         /**
          * 创建实体
          * @returns
          */
         EntityManager.prototype.createEntity = function () {
-            var newEntity = new gs.Entity(this.idAllocator.generateId());
-            this.entities.set(newEntity.id, newEntity);
-            return newEntity;
+            var entityId = this.entityIdAllocator.allocate();
+            var componentManagers = new Map();
+            return new gs.Entity(entityId, componentManagers);
         };
         /**
          * 删除实体
@@ -208,7 +338,7 @@ var gs;
          * @returns 具有指定组件的实体数组
          */
         EntityManager.prototype.getEntitiesWithComponent = function (componentClass) {
-            var e_3, _a;
+            var e_4, _a;
             var entitiesWithComponent = [];
             try {
                 for (var _b = __values(this.getEntities()), _c = _b.next(); !_c.done; _c = _b.next()) {
@@ -218,12 +348,12 @@ var gs;
                     }
                 }
             }
-            catch (e_3_1) { e_3 = { error: e_3_1 }; }
+            catch (e_4_1) { e_4 = { error: e_4_1 }; }
             finally {
                 try {
                     if (_c && !_c.done && (_a = _b.return)) _a.call(_b);
                 }
-                finally { if (e_3) throw e_3.error; }
+                finally { if (e_4) throw e_4.error; }
             }
             return entitiesWithComponent;
         };
@@ -299,7 +429,7 @@ var gs;
          * @param event
          */
         EventEmitter.prototype.emit = function (type, data) {
-            var e_4, _a;
+            var e_5, _a;
             var event = this.eventPool.acquire();
             event.type = type;
             event.data = data;
@@ -311,12 +441,12 @@ var gs;
                         listener(event);
                     }
                 }
-                catch (e_4_1) { e_4 = { error: e_4_1 }; }
+                catch (e_5_1) { e_5 = { error: e_5_1 }; }
                 finally {
                     try {
                         if (listeners_1_1 && !listeners_1_1.done && (_a = listeners_1.return)) _a.call(listeners_1);
                     }
-                    finally { if (e_4) throw e_4.error; }
+                    finally { if (e_5) throw e_5.error; }
                 }
             }
             this.eventPool.release(event);
@@ -419,9 +549,9 @@ var gs;
          */
         SystemManager.prototype.update = function (deltaTime) {
             var _this = this;
-            var e_5, _a;
+            var e_6, _a;
             var entities = this.entityManager.getEntities();
-            var _loop_1 = function (system) {
+            var _loop_2 = function (system) {
                 var filteredEntities = entities.filter(function (entity) { return system.entityFilter(entity); });
                 var worker = this_1.systemWorkers.get(system);
                 if (worker) {
@@ -431,7 +561,7 @@ var gs;
                     };
                     worker.postMessage(message);
                     worker.onmessage = function (event) {
-                        var e_6, _a;
+                        var e_7, _a;
                         var updatedEntities = event.data.entities;
                         try {
                             for (var updatedEntities_1 = __values(updatedEntities), updatedEntities_1_1 = updatedEntities_1.next(); !updatedEntities_1_1.done; updatedEntities_1_1 = updatedEntities_1.next()) {
@@ -442,12 +572,12 @@ var gs;
                                 }
                             }
                         }
-                        catch (e_6_1) { e_6 = { error: e_6_1 }; }
+                        catch (e_7_1) { e_7 = { error: e_7_1 }; }
                         finally {
                             try {
                                 if (updatedEntities_1_1 && !updatedEntities_1_1.done && (_a = updatedEntities_1.return)) _a.call(updatedEntities_1);
                             }
-                            finally { if (e_6) throw e_6.error; }
+                            finally { if (e_7) throw e_7.error; }
                         }
                     };
                 }
@@ -459,18 +589,47 @@ var gs;
             try {
                 for (var _b = __values(this.systems), _c = _b.next(); !_c.done; _c = _b.next()) {
                     var system = _c.value;
-                    _loop_1(system);
+                    _loop_2(system);
                 }
             }
-            catch (e_5_1) { e_5 = { error: e_5_1 }; }
+            catch (e_6_1) { e_6 = { error: e_6_1 }; }
             finally {
                 try {
                     if (_c && !_c.done && (_a = _b.return)) _a.call(_b);
                 }
-                finally { if (e_5) throw e_5.error; }
+                finally { if (e_6) throw e_6.error; }
             }
         };
         return SystemManager;
     }());
     gs.SystemManager = SystemManager;
+})(gs || (gs = {}));
+var gs;
+(function (gs) {
+    var TransformComponent = /** @class */ (function (_super) {
+        __extends(TransformComponent, _super);
+        function TransformComponent() {
+            var _this = _super !== null && _super.apply(this, arguments) || this;
+            _this.x = 0;
+            _this.y = 0;
+            _this.rotation = 0;
+            _this.scaleX = 1;
+            _this.scaleY = 1;
+            return _this;
+        }
+        TransformComponent.prototype.do = function () {
+            var entityManager = new gs.EntityManager();
+            var transformManager = new gs.ComponentManager(TransformComponent);
+            gs.Component.registerComponent(TransformComponent, transformManager);
+            var entity = entityManager.createEntity();
+            var transform = transformManager.create(entity.getId());
+            transform.x = 10;
+            transform.y = 20;
+            // 获取实体的TransformComponent数据
+            var entityTransform = transformManager.get(entity.getId());
+            console.log(entityTransform.x, entityTransform.y); // 输出: 10, 20
+        };
+        return TransformComponent;
+    }(gs.Component));
+    gs.TransformComponent = TransformComponent;
 })(gs || (gs = {}));

@@ -6,7 +6,7 @@ module gs {
             this.nextId = 0;
         }
 
-        generateId(): number {
+        allocate(): number {
             const newId = this.nextId;
             this.nextId += 1;
             return newId;

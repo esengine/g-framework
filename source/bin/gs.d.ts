@@ -1,38 +1,84 @@
 declare module gs {
+    /**
+     * 组件
+     */
     abstract class Component {
         serialize(): any;
         deserialize(data: any): void;
+        /**
+         * 注册组件
+         * @param componentClass
+         * @param manager
+         */
+        static registerComponent<T extends Component>(componentClass: new () => T, manager: ComponentManager<T>): void;
+    }
+}
+declare module gs {
+    /**
+     * 组件管理器
+     */
+    class ComponentManager<T extends Component> {
+        private data;
+        private entityToDataIndex;
+        private freeDataIndices;
+        private componentType;
+        constructor(componentType: new (entityId: number) => T);
+        create(entityId: number): T;
+        /**
+         * 获取组件数据
+         * @param entityId 实体ID
+         * @returns 组件数据
+         */
+        get(entityId: number): T | null;
+        /**
+         *
+         * @param entityId
+         * @returns
+         */
+        has(entityId: number): boolean;
+        /**
+         *
+         * @param entityId
+         * @returns
+         */
+        remove(entityId: number): void;
+        /**
+         * 分配数据索引
+         * @returns
+         */
+        allocateDataIndex(): number;
     }
 }
 declare module gs {
     class Entity {
-        id: number;
-        private components;
-        constructor(id: number);
+        private id;
+        private componentManagers;
+        constructor(id: number, componentManagers: Map<new () => Component, ComponentManager<any>>);
+        getId(): number;
         /**
          * 添加组件
-         * @param component
-         * @returns
-         */
-        addComponent(component: Component): this;
-        /**
-         * 移除组件
          * @param componentType
          * @returns
          */
-        removeComponent(componentType: Function): this;
+        addComponent<T extends Component>(componentType: new (entityId: number) => T): T;
         /**
          * 获取组件
          * @param componentType
          * @returns
          */
-        getComponent<T extends Component>(componentType: new () => T): T | null;
+        getComponent<T extends Component>(componentType: new (entityId: number) => T): T | null;
+        /**
+         * 移除组件
+         * @param componentType
+         * @returns
+         */
+        removeComponent<T extends Component>(componentType: new (entityId: number) => T): void;
         /**
          * 是否有组件
          * @param componentType
          * @returns
          */
-        hasComponent<T extends Component>(componentType: new () => T): boolean;
+        hasComponent<T extends Component>(componentType: new (entityId: number) => T): boolean;
         /**
          * 序列化
          * @returns
@@ -49,13 +95,13 @@ declare module gs {
     class EntityIdAllocator {
         private nextId;
         constructor();
-        generateId(): number;
+        allocate(): number;
     }
 }
 declare module gs {
     class EntityManager {
         private entities;
-        private idAllocator;
+        private entityIdAllocator;
         constructor();
         /**
          * 创建实体
@@ -186,5 +232,15 @@ declare module gs {
          * @param deltaTime
          */
         update(deltaTime: number): void;
+    }
+}
+declare module gs {
+    class TransformComponent extends Component {
+        x: number;
+        y: number;
+        rotation: number;
+        scaleX: number;
+        scaleY: number;
+        do(): void;
     }
 }

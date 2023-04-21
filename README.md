@@ -9,56 +9,86 @@ G-Framework 是一个基于 TypeScript 编写的实体组件系统（ECS）框�
 - 易用性，降低上手难度
 - 可扩展性，方便添加自定义模块
 
-# 快速入门
-下面是一个简单的使用 G-Framework 的示例：
+# G-Framework ECS 框架入门
 
-```ts
-import { Entity, Component, System, EntityManager } from 'gs';
+## 实体
+实体是游戏中的基本对象，每个实体由一个唯一的 ID 标识，并包含一组组件。你可以通过 G-Framework 的 Entity 类来创建和管理实体。
 
-// 创建一个 Transform 组件
-class TransformComponent extends Component {
-  x: number;
-  y: number;
-  rotation: number;
+```typescript
+// 创建实体管理器
+const entityManager = new gs.EntityManager();
 
-  constructor(x: number, y: number, rotation: number) {
-    super();
-    this.x = x;
-    this.y = y;
-    this.rotation = rotation;
-  }
-}
-
-// 创建一个移动系统
-class MovementSystem extends System {
-  update(deltaTime: number): void {
-    const entities = this.entityManager.getEntitiesWithComponent(TransformComponent);
-    for (const entity of entities) {
-      const transform = entity.getComponent(TransformComponent);
-      transform.x += 10 * deltaTime;
-      transform.y += 5 * deltaTime;
-    }
-  }
-}
-
-// 创建一个实体管理器实例
-const entityManager = new EntityManager();
-
-// 创建一个实体并添加 Transform 组件
+// 创建实体
 const entity = entityManager.createEntity();
-entity.addComponent(new TransformComponent(0, 0, 0));
+```
 
-// 创建一个移动系统并添加到实体管理器
-const movementSystem = new MovementSystem(entityManager);
-entityManager.addSystem(movementSystem);
+## 组件
+组件是实体的数据属性，用于描述实体的状态和行为。每个组件都是一个类，继承自 G-Framework 的 Component 类。
 
-// 每帧更新实体管理器
-function gameLoop(deltaTime: number): void {
-  entityManager.update(deltaTime);
-  requestAnimationFrame(gameLoop);
+```typescript
+// 创建组件
+class PositionComponent extends gs.Component {
+    public x: number = 0;
+    public y: number = 0;
 }
 
-requestAnimationFrame(gameLoop);
+class VelocityComponent extends gs.Component {
+    public x: number = 0;
+    public y: number = 0;
+}
+```
+创建组件后，你需要注册它们到相应的组件管理器中，以便将其附加到实体上。
+
+```typescript
+// 创建组件管理器
+const positionManager = new gs.ComponentManager(PositionComponent);
+const velocityManager = new gs.ComponentManager(VelocityComponent);
+
+// 注册组件到管理器中
+gs.Component.registerComponent(PositionComponent, positionManager);
+gs.Component.registerComponent(VelocityComponent, velocityManager);
+```
+现在，你可以将组件附加到实体上：
+
+```typescript
+// 为实体添加组件
+entity.addComponent(PositionComponent);
+entity.addComponent(VelocityComponent);
+```
+
+## 系统
+系统是用于处理实体和组件的逻辑的核心部分，通过继承 G-Framework 的 System 类创建系统。
+
+```typescript
+// 创建系统
+class MoveSystem extends gs.System {
+    entityFilter(entity: gs.Entity): boolean {
+        return entity.hasComponent(PositionComponent) && entity.hasComponent(VelocityComponent);
+    }
+
+    update(deltaTime: number, entities: gs.Entity[]): void {
+        for (const entity of entities) {
+            const position = entity.getComponent(PositionComponent);
+            const velocity = entity.getComponent(VelocityComponent);
+
+            position.x += velocity.x * deltaTime;
+            position.y += velocity.y * deltaTime;
+        }
+    }
+}
+
+// 注册系统到系统管理器中
+const systemManager = new gs.SystemManager(entityManager);
+const moveSystem = new MoveSystem(entityManager, 0);
+systemManager.registerSystem(moveSystem);
+```
+
+在每个游戏循环中，你可以调用 SystemManager 的 update() 方法来更新所有系统：
+
+```typescript
+function gameLoop(deltaTime: number) {
+    systemManager.update(deltaTime);
+}
 ```
 
 ## 模块使用
