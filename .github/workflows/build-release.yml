@@ -9,9 +9,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v2
       - name: Check Changes
         run: |
+          set -e
           last_commit=$(git log -1 --format="%H")
           changed_files=$(git diff --name-only $last_commit HEAD)
           echo "Changed files: $changed_files"
