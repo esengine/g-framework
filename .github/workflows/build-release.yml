@@ -10,6 +10,16 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
+      - name: Check Changes
+        run: |
+          changed_files=$(git diff --name-only HEAD^ HEAD)
+          echo "Changed files: $changed_files"
+          if echo "$changed_files" | grep -qE '^source/src/.*\.(js|ts)$'; then
+            echo "Changes in source/src detected. Proceeding with build and release."
+          else
+            echo "No changes in source/src detected. Skipping build and release."
+            exit 0
+          fi
       - name: Use Node.js 10.20.1
         uses: actions/setup-node@v3
         with:
