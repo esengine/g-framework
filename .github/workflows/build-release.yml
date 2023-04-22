@@ -11,6 +11,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2
       - name: Check Changes
+        id: check_changes
         run: |
           set -e
           last_commit=$(git log -1 --format="%H")
@@ -20,22 +21,27 @@ jobs:
             echo "Changes in source/src detected. Proceeding with build and release."
           else
             echo "No changes in source/src detected. Skipping build and release."
-            exit 0
+            echo ::set-output name=skip::true
           fi
       - name: Use Node.js 10.20.1
+        if: ${{ !steps.check_changes.outputs.skip }}
         uses: actions/setup-node@v3
         with:
           node-version: 10.20.1
       - name: Build
+        if: ${{ !steps.check_changes.outputs.skip }}
         run: |
           cd source
           npm install
           gulp build
       - name: Install zip
+        if: ${{ !steps.check_changes.outputs.skip }}
         run: sudo apt-get install -y zip
       - name: Create zip
+        if: ${{ !steps.check_changes.outputs.skip }}
         run: zip -r bin.zip source/bin/
       - name: Get Current Tag
+        if: ${{ !steps.check_changes.outputs.skip }}
         id: current_tag
         uses: actions/github-script@v4
         with:
@@ -49,9 +55,11 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Increment Version
+        if: ${{ !steps.check_changes.outputs.skip }}
         id: increment_version
         run: echo ::set-output name=tag::$(echo ${{ steps.current_tag.outputs.result }} | awk -F. '{$NF = $NF + 1;} 1' | sed 's/ /./g')
       - name: Get Latest Commit
+        if: ${{ !steps.check_changes.outputs.skip }}
         id: latest_commit
         uses: actions/github-script@v4
         with:
@@ -65,6 +73,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Create Release
+        if: ${{ !steps.check_changes.outputs.skip }}
         id: create_release
         uses: actions/create-release@v1.0.1
         env:
@@ -79,6 +88,7 @@ jobs:
           draft: false
           prerelease: false
       - name: Upload Release Asset
+        if: ${{ !steps.check_changes.outputs.skip }}
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
