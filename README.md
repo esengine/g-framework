@@ -106,3 +106,4 @@ function gameLoop(deltaTime: number) {
 - [GlobalEventEmitter](docs/emitter.md)
 - [TimeManager](docs/time-manager.md)
 - [StateMachine](docs/state-machine.md)
+- [InputAdapter](docs/custom-input-adapter.md)

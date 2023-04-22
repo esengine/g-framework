@@ -410,6 +410,65 @@ var gs;
 })(gs || (gs = {}));
 var gs;
 (function (gs) {
+    var InputAdapter = /** @class */ (function () {
+        function InputAdapter(inputManager) {
+            this.inputManager = inputManager;
+        }
+        return InputAdapter;
+    }());
+    gs.InputAdapter = InputAdapter;
+})(gs || (gs = {}));
+var gs;
+(function (gs) {
+    /**
+     * 输入缓冲区
+     */
+    var InputBuffer = /** @class */ (function () {
+        function InputBuffer() {
+            this.buffer = [];
+        }
+        InputBuffer.prototype.addEvent = function (event) {
+            this.buffer.push(event);
+        };
+        InputBuffer.prototype.getEvents = function () {
+            return this.buffer;
+        };
+        InputBuffer.prototype.clear = function () {
+            this.buffer = [];
+        };
+        return InputBuffer;
+    }());
+    gs.InputBuffer = InputBuffer;
+})(gs || (gs = {}));
+var gs;
+(function (gs) {
+    var InputManager = /** @class */ (function () {
+        function InputManager() {
+            this.inputBuffer = new gs.InputBuffer();
+        }
+        InputManager.prototype.setAdapter = function (adapter) {
+            this.adapter = adapter;
+        };
+        InputManager.prototype.getInputBuffer = function () {
+            return this.inputBuffer;
+        };
+        return InputManager;
+    }());
+    gs.InputManager = InputManager;
+})(gs || (gs = {}));
+var gs;
+(function (gs) {
+    var InputType;
+    (function (InputType) {
+        InputType[InputType["KEY_DOWN"] = 0] = "KEY_DOWN";
+        InputType[InputType["KEY_UP"] = 1] = "KEY_UP";
+        InputType[InputType["MOUSE_DOWN"] = 2] = "MOUSE_DOWN";
+        InputType[InputType["MOUSE_UP"] = 3] = "MOUSE_UP";
+        InputType[InputType["MOUSE_MOVE"] = 4] = "MOUSE_MOVE";
+    })(InputType = gs.InputType || (gs.InputType = {}));
+})(gs || (gs = {}));
+var gs;
+(function (gs) {
     /**
      * 组件管理器
      */
@@ -483,6 +542,7 @@ var gs;
             this.entities = new Map();
             this.entityIdAllocator = new gs.EntityIdAllocator();
             this.componentManagers = new Map();
+            this.inputManager = new gs.InputManager();
             try {
                 for (var componentManagers_1 = __values(componentManagers), componentManagers_1_1 = componentManagers_1.next(); !componentManagers_1_1.done; componentManagers_1_1 = componentManagers_1.next()) {
                     var manager = componentManagers_1_1.value;
@@ -497,6 +557,9 @@ var gs;
                 finally { if (e_5) throw e_5.error; }
             }
         }
+        EntityManager.prototype.getInputManager = function () {
+            return this.inputManager;
+        };
         /**
          * 创建实体
          * @returns

@@ -174,6 +174,53 @@ declare module gs {
     const GlobalEventEmitter: EventEmitter;
 }
 declare module gs {
+    abstract class InputAdapter {
+        protected inputManager: InputManager;
+        constructor(inputManager: InputManager);
+        /**
+         * 需要实现此方法以适应使用的游戏引擎
+         * @param event
+         */
+        abstract handleInputEvent(event: any): void;
+    }
+}
+declare module gs {
+    /**
+     * 输入缓冲区
+     */
+    class InputBuffer {
+        private buffer;
+        constructor();
+        addEvent(event: InputEvent): void;
+        getEvents(): InputEvent[];
+        clear(): void;
+    }
+}
+declare module gs {
+    interface InputEvent {
+        type: InputType;
+        data: any;
+    }
+}
+declare module gs {
+    class InputManager {
+        private inputBuffer;
+        private adapter?;
+        constructor();
+        setAdapter(adapter: InputAdapter): void;
+        getInputBuffer(): InputBuffer;
+    }
+}
+declare module gs {
+    enum InputType {
+        KEY_DOWN = 0,
+        KEY_UP = 1,
+        MOUSE_DOWN = 2,
+        MOUSE_UP = 3,
+        MOUSE_MOVE = 4
+    }
+}
+declare module gs {
     /**
      * 组件管理器
      */
@@ -214,7 +261,9 @@ declare module gs {
         private entities;
         private entityIdAllocator;
         private componentManagers;
+        private inputManager;
         constructor(componentManagers: Array<ComponentManager<Component>>);
+        getInputManager(): InputManager;
         /**
          * 创建实体
          * @returns

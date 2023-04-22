@@ -3,15 +3,21 @@ module gs {
         private entities: Map<number, Entity>;
         private entityIdAllocator: EntityIdAllocator;
         private componentManagers: Map<new (entityId: number) => Component, ComponentManager<Component>>;
+        private inputManager: InputManager;
 
         constructor(componentManagers: Array<ComponentManager<Component>>) {
             this.entities = new Map();
             this.entityIdAllocator = new EntityIdAllocator();
             this.componentManagers = new Map();
+            this.inputManager = new InputManager();
 
             for (const manager of componentManagers) {
                 this.componentManagers.set(manager.componentType, manager);
             }
+        }
+
+        public getInputManager(): InputManager {
+            return this.inputManager;
         }
 
         /**
