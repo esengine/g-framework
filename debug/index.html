@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Viewer</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.7.7/dat.gui.min.js"></script>
+    <script src="../source/bin/gs.js"></script>
+    <script src="debugViewer.js" defer></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #222;
+            color: #fff;
+        }
+
+        .dg {
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        .dg .property-name {
+            color: #9cf;
+        }
+
+        .dg .c input[type="text"] {
+            color: #000;
+            background-color: #9cf;
+        }
+    </style>
+</head>
+
+<body>
+    <script>
+        // 在这里创建和测试您的 DebugViewer
+        window.addEventListener('load', () => {
+            // 实例化 DebugViewer
+            const debugViewer = new DebugViewer();
+            debugViewer.init();
+        });
+    </script>
+</body>
+
+</html>

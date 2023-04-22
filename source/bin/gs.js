@@ -72,18 +72,6 @@ var gs;
             }
         };
         /**
-         * 组件添加到实体时的逻辑
-         * @param entity
-         */
-        Component.prototype.onAttach = function (entity) {
-        };
-        /**
-         * 组件从实体移除时的逻辑
-         * @param entity
-         */
-        Component.prototype.onDetach = function (entity) {
-        };
-        /**
          * 注册组件
          * @param componentClass
          * @param manager
@@ -190,6 +178,7 @@ var gs;
             this.id = id;
             this.componentManagers = componentManagers;
             this.tags = new Set();
+            this.eventEmitter = new gs.EventEmitter();
         }
         Entity.prototype.getId = function () {
             return this.id;
@@ -205,7 +194,6 @@ var gs;
                 throw new Error("\u7EC4\u4EF6\u7C7B\u578B\u4E3A " + componentType.name + " \u7684\u7EC4\u4EF6\u7BA1\u7406\u5668\u672A\u627E\u5230.");
             }
             var component = manager.create(this.id);
-            component.onAttach(this);
             return component;
         };
         /**
@@ -232,7 +220,6 @@ var gs;
             }
             var component = this.getComponent(componentType);
             if (component) {
-                component.onDetach(this);
                 manager.remove(this.id);
             }
         };
@@ -332,6 +319,18 @@ var gs;
          * 实体销毁时的逻辑
          */
         Entity.prototype.onDestroy = function () {
+        };
+        Entity.prototype.on = function (eventType, listener) {
+            this.eventEmitter.on(eventType, listener);
+        };
+        Entity.prototype.once = function (eventType, callback) {
+            this.eventEmitter.once(eventType, callback);
+        };
+        Entity.prototype.off = function (eventType, listener) {
+            this.eventEmitter.off(eventType, listener);
+        };
+        Entity.prototype.emit = function (type, data) {
+            this.eventEmitter.emit(type, data);
         };
         return Entity;
     }());
@@ -601,10 +600,30 @@ var gs;
      */
     var System = /** @class */ (function () {
         function System(entityManager, priority, workerScript) {
+            this.paused = false;
+            this.enabled = true;
             this.entityManager = entityManager;
             this.priority = priority;
             this.workerScript = workerScript;
         }
+        System.prototype.pause = function () {
+            this.paused = true;
+        };
+        System.prototype.resume = function () {
+            this.paused = false;
+        };
+        System.prototype.isPaused = function () {
+            return this.paused;
+        };
+        System.prototype.enable = function () {
+            this.enabled = true;
+        };
+        System.prototype.disable = function () {
+            this.enabled = false;
+        };
+        System.prototype.isEnabled = function () {
+            return this.enabled;
+        };
         /**
          * 系统注册时的逻辑
          */
@@ -668,6 +687,9 @@ var gs;
             var e_8, _a;
             var entities = this.entityManager.getEntities();
             var _loop_2 = function (system) {
+                if (!system.isEnabled() || system.isPaused()) {
+                    return "continue";
+                }
                 var filteredEntities = entities.filter(function (entity) { return system.entityFilter(entity); });
                 var worker = this_1.systemWorkers.get(system);
                 if (worker) {

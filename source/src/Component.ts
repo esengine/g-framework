@@ -24,22 +24,6 @@ module gs {
         }
 
         /**
-         * 组件添加到实体时的逻辑
-         * @param entity 
-         */
-        onAttach(entity: Entity) {
-            
-        }
-    
-        /**
-         * 组件从实体移除时的逻辑
-         * @param entity 
-         */
-        onDetach(entity: Entity) {
-        
-        }
-
-        /**
          * 注册组件
          * @param componentClass 
          * @param manager 

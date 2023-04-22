@@ -6,16 +6,6 @@ declare module gs {
         serialize(): any;
         deserialize(data: any): void;
         /**
-         * 组件添加到实体时的逻辑
-         * @param entity
-         */
-        onAttach(entity: Entity): void;
-        /**
-         * 组件从实体移除时的逻辑
-         * @param entity
-         */
-        onDetach(entity: Entity): void;
-        /**
          * 注册组件
          * @param componentClass
          * @param manager
@@ -64,6 +54,7 @@ declare module gs {
         private id;
         private componentManagers;
         private tags;
+        private eventEmitter;
         constructor(id: number, componentManagers: Map<new (entityId: number) => Component, ComponentManager<any>>);
         getId(): number;
         /**
@@ -124,6 +115,10 @@ declare module gs {
          * 实体销毁时的逻辑
          */
         onDestroy(): void;
+        on(eventType: string, listener: EventListener): void;
+        once(eventType: string, callback: (event: Event) => void): void;
+        off(eventType: string, listener: EventListener): void;
+        emit(type: string, data: any): void;
     }
 }
 declare module gs {
@@ -138,7 +133,7 @@ declare module gs {
         private entities;
         private entityIdAllocator;
         private componentManagers;
-        constructor(componentManagers: Array<ComponentManager<any>>);
+        constructor(componentManagers: Array<ComponentManager<Component>>);
         /**
          * 创建实体
          * @returns
@@ -236,6 +231,14 @@ declare module gs {
      */
     abstract class System {
         protected entityManager: EntityManager;
+        protected paused: boolean;
+        pause(): void;
+        resume(): void;
+        isPaused(): boolean;
+        protected enabled: boolean;
+        enable(): void;
+        disable(): void;
+        isEnabled(): boolean;
         /**
          * 系统优先级，优先级越高，越先执行
          */

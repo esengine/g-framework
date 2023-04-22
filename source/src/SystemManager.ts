@@ -52,6 +52,10 @@ module gs {
         update(deltaTime: number): void {
             const entities = this.entityManager.getEntities();
             for (const system of this.systems) {
+                if (!system.isEnabled() || system.isPaused()) {
+                    continue;
+                }
+
                 const filteredEntities = entities.filter(entity => system.entityFilter(entity));
 
                 const worker = this.systemWorkers.get(system);

@@ -4,6 +4,33 @@ module gs {
      */
     export abstract class System {
         protected entityManager: EntityManager;
+        protected paused: boolean = false;
+        public pause(): void {
+            this.paused = true;
+        }
+
+        public resume(): void {
+            this.paused = false;
+        }
+
+        public isPaused(): boolean {
+            return this.paused;
+        }
+
+        protected enabled: boolean = true;
+
+        public enable(): void {
+            this.enabled = true;
+        }
+
+        public disable(): void {
+            this.enabled = false;
+        }
+
+        public isEnabled(): boolean {
+            return this.enabled;
+        }
+
         /** 
          * 系统优先级，优先级越高，越先执行
          */
@@ -35,7 +62,7 @@ module gs {
          */
         onRegister() {
         }
-    
+
         /**
          * 系统注销时的逻辑
          */

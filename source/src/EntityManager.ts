@@ -2,9 +2,9 @@ module gs {
     export class EntityManager {
         private entities: Map<number, Entity>;
         private entityIdAllocator: EntityIdAllocator;
-        private componentManagers: Map<new (entityId: number) => Component, ComponentManager<any>>;
+        private componentManagers: Map<new (entityId: number) => Component, ComponentManager<Component>>;
 
-        constructor(componentManagers: Array<ComponentManager<any>>) {
+        constructor(componentManagers: Array<ComponentManager<Component>>) {
             this.entities = new Map();
             this.entityIdAllocator = new EntityIdAllocator();
             this.componentManagers = new Map();

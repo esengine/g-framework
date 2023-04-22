@@ -3,11 +3,13 @@ module gs {
         private id: number;
         private componentManagers: Map<Function, ComponentManager<any>>;
         private tags: Set<string>;
+        private eventEmitter: EventEmitter;
 
         constructor(id: number, componentManagers: Map<new (entityId: number) => Component, ComponentManager<any>>) {
             this.id = id;
             this.componentManagers = componentManagers;
             this.tags = new Set();
+            this.eventEmitter = new EventEmitter();
         }
 
         public getId(): number {
@@ -25,7 +27,6 @@ module gs {
                 throw new Error(`组件类型为 ${componentType.name} 的组件管理器未找到.`);
             }
             const component = manager.create(this.id) as T;
-            component.onAttach(this);
             return component;
         }
 
@@ -54,7 +55,6 @@ module gs {
             }
             const component = this.getComponent(componentType);
             if (component) {
-                component.onDetach(this);
                 manager.remove(this.id);
             }
         }
@@ -137,11 +137,27 @@ module gs {
          */
         onCreate() {
         }
-    
+
         /**
          * 实体销毁时的逻辑
          */
         onDestroy() {
+        }
+
+        public on(eventType: string, listener: EventListener): void {
+            this.eventEmitter.on(eventType, listener);
+        }
+
+        public once(eventType: string, callback: (event: Event) => void): void {
+            this.eventEmitter.once(eventType, callback);
+        }
+
+        public off(eventType: string, listener: EventListener): void {
+            this.eventEmitter.off(eventType, listener);
+        }
+
+        public emit(type: string, data: any): void {
+            this.eventEmitter.emit(type, data);
         }
     }
 }
