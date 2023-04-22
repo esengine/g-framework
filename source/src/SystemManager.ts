@@ -59,7 +59,7 @@ module gs {
                         }
                     };
                 } else {
-                    system.update(deltaTime, filteredEntities);
+                    system.update(filteredEntities);
                 }
             }
         }

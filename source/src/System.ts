@@ -8,6 +8,9 @@ module gs {
          * 系统优先级，优先级越高，越先执行
          */
         public readonly priority: number;
+        /**
+         * 系统所在的worker脚本
+         */
         public readonly workerScript?: string;
 
         constructor(entityManager: EntityManager, priority: number, workerScript?: string) {
@@ -23,9 +26,8 @@ module gs {
         abstract entityFilter(entity: Entity): boolean;
         /**
          * 更新系统
-         * @param deltaTime 
          * @param entities 
          */
-        abstract update(deltaTime: number, entities: Entity[]): void;
+        abstract update(entities: Entity[]): void;
     }
 }

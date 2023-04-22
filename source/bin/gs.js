@@ -644,7 +644,7 @@ var gs;
                     };
                 }
                 else {
-                    system.update(deltaTime, filteredEntities);
+                    system.update(filteredEntities);
                 }
             };
             var this_1 = this;
@@ -665,4 +665,106 @@ var gs;
         return SystemManager;
     }());
     gs.SystemManager = SystemManager;
+})(gs || (gs = {}));
+var gs;
+(function (gs) {
+    /**
+     * 时间管理器
+     */
+    var TimeManager = /** @class */ (function () {
+        function TimeManager() {
+            this.deltaTime = 0;
+            this.timeScale = 1;
+            this.totalTime = 0;
+        }
+        TimeManager.getInstance = function () {
+            if (!TimeManager.instance) {
+                TimeManager.instance = new TimeManager();
+            }
+            return TimeManager.instance;
+        };
+        TimeManager.prototype.update = function (deltaTime) {
+            this.deltaTime = deltaTime * this.timeScale;
+            this.totalTime += this.deltaTime;
+        };
+        return TimeManager;
+    }());
+    gs.TimeManager = TimeManager;
+})(gs || (gs = {}));
+var gs;
+(function (gs) {
+    var StateMachine = /** @class */ (function () {
+        function StateMachine() {
+            this.currentState = null;
+            this.states = new Map();
+        }
+        StateMachine.prototype.addState = function (name, state) {
+            this.states.set(name, state);
+        };
+        StateMachine.prototype.changeState = function (name) {
+            if (!this.states.has(name)) {
+                console.warn("\u72B6\u6001 \"" + name + "\" \u4E0D\u5B58\u5728.");
+                return;
+            }
+            var newState = this.states.get(name);
+            if (this.currentState && this.currentState.exit) {
+                this.currentState.exit();
+            }
+            this.currentState = newState;
+            if (this.currentState.enter) {
+                this.currentState.enter();
+            }
+        };
+        StateMachine.prototype.update = function () {
+            if (this.currentState && this.currentState.update) {
+                this.currentState.update();
+            }
+        };
+        return StateMachine;
+    }());
+    gs.StateMachine = StateMachine;
+})(gs || (gs = {}));
+var gs;
+(function (gs) {
+    var StateMachineComponent = /** @class */ (function (_super) {
+        __extends(StateMachineComponent, _super);
+        function StateMachineComponent() {
+            var _this = _super.call(this) || this;
+            _this.stateMachine = new gs.StateMachine();
+            return _this;
+        }
+        return StateMachineComponent;
+    }(gs.Component));
+    gs.StateMachineComponent = StateMachineComponent;
+})(gs || (gs = {}));
+var gs;
+(function (gs) {
+    var StateMachineSystem = /** @class */ (function (_super) {
+        __extends(StateMachineSystem, _super);
+        function StateMachineSystem(entityManager) {
+            return _super.call(this, entityManager, 1) || this;
+        }
+        StateMachineSystem.prototype.entityFilter = function (entity) {
+            return entity.hasComponent(gs.StateMachineComponent);
+        };
+        StateMachineSystem.prototype.update = function (entities) {
+            var e_10, _a;
+            try {
+                for (var entities_1 = __values(entities), entities_1_1 = entities_1.next(); !entities_1_1.done; entities_1_1 = entities_1.next()) {
+                    var entity = entities_1_1.value;
+                    var stateMachineComponent = entity.getComponent(gs.StateMachineComponent);
+                    stateMachineComponent.stateMachine.update();
+                }
+            }
+            catch (e_10_1) { e_10 = { error: e_10_1 }; }
+            finally {
+                try {
+                    if (entities_1_1 && !entities_1_1.done && (_a = entities_1.return)) _a.call(entities_1);
+                }
+                finally { if (e_10) throw e_10.error; }
+            }
+        };
+        return StateMachineSystem;
+    }(gs.System));
+    gs.StateMachineSystem = StateMachineSystem;
 })(gs || (gs = {}));

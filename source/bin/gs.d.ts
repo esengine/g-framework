@@ -222,6 +222,9 @@ declare module gs {
          * 系统优先级，优先级越高，越先执行
          */
         readonly priority: number;
+        /**
+         * 系统所在的worker脚本
+         */
         readonly workerScript?: string;
         constructor(entityManager: EntityManager, priority: number, workerScript?: string);
         /**
@@ -231,10 +234,9 @@ declare module gs {
         abstract entityFilter(entity: Entity): boolean;
         /**
          * 更新系统
-         * @param deltaTime
          * @param entities
          */
-        abstract update(deltaTime: number, entities: Entity[]): void;
+        abstract update(entities: Entity[]): void;
     }
 }
 declare module gs {
@@ -256,5 +258,56 @@ declare module gs {
          * @param deltaTime
          */
         update(deltaTime: number): void;
+    }
+}
+declare module gs {
+    /**
+     * 时间管理器
+     */
+    class TimeManager {
+        private static instance;
+        /**
+         * 上一帧到这一帧的时间间隔
+         */
+        deltaTime: number;
+        /**
+         * 时间缩放
+         */
+        timeScale: number;
+        /**
+         * 游戏运行的总时间
+         */
+        totalTime: number;
+        private constructor();
+        static getInstance(): TimeManager;
+        update(deltaTime: number): void;
+    }
+}
+declare module gs {
+    interface State {
+        enter?(): void;
+        exit?(): void;
+        update?(): void;
+    }
+    class StateMachine {
+        private currentState;
+        private states;
+        constructor();
+        addState(name: string, state: State): void;
+        changeState(name: string): void;
+        update(): void;
+    }
+}
+declare module gs {
+    class StateMachineComponent extends Component {
+        stateMachine: StateMachine;
+        constructor();
+    }
+}
+declare module gs {
+    class StateMachineSystem extends System {
+        constructor(entityManager: EntityManager);
+        entityFilter(entity: Entity): boolean;
+        update(entities: Entity[]): void;
     }
 }
