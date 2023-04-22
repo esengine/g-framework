@@ -595,6 +595,51 @@ var gs;
 })(gs || (gs = {}));
 var gs;
 (function (gs) {
+    var Random = /** @class */ (function () {
+        function Random(seed) {
+            this.seed = seed;
+        }
+        /**
+         * 生成 [0, 1) 范围内的随机浮点数
+         * @returns
+         */
+        Random.prototype.next = function () {
+            this.seed = (this.seed * 9301 + 49297) % 233280;
+            return this.seed / 233280;
+        };
+        /**
+         * 生成 [min, max) 范围内的随机整数
+         * @param min
+         * @param max
+         * @returns
+         */
+        Random.prototype.nextInt = function (min, max) {
+            return min + Math.floor(this.next() * (max - min));
+        };
+        /**
+         * 生成 [min, max) 范围内的随机浮点数
+         * @param min
+         * @param max
+         * @returns
+         */
+        Random.prototype.nextFloat = function (min, max) {
+            return min + this.next() * (max - min);
+        };
+        /**
+         * 从数组中随机选择一个元素
+         * @param array
+         * @returns
+         */
+        Random.prototype.choose = function (array) {
+            var index = this.nextInt(0, array.length);
+            return array[index];
+        };
+        return Random;
+    }());
+    gs.Random = Random;
+})(gs || (gs = {}));
+var gs;
+(function (gs) {
     /**
      * 系统基类
      */

@@ -226,6 +226,37 @@ declare module gs {
     const GlobalEventEmitter: EventEmitter;
 }
 declare module gs {
+    class Random {
+        private seed;
+        constructor(seed: number);
+        /**
+         * 生成 [0, 1) 范围内的随机浮点数
+         * @returns
+         */
+        next(): number;
+        /**
+         * 生成 [min, max) 范围内的随机整数
+         * @param min
+         * @param max
+         * @returns
+         */
+        nextInt(min: number, max: number): number;
+        /**
+         * 生成 [min, max) 范围内的随机浮点数
+         * @param min
+         * @param max
+         * @returns
+         */
+        nextFloat(min: number, max: number): number;
+        /**
+         * 从数组中随机选择一个元素
+         * @param array
+         * @returns
+         */
+        choose<T>(array: T[]): T;
+    }
+}
+declare module gs {
     /**
      * 系统基类
      */
