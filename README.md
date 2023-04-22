@@ -103,7 +103,8 @@ function gameLoop(deltaTime: number) {
 
 ## 模块使用
 
-- [GlobalEventEmitter](docs/emitter.md)
-- [TimeManager](docs/time-manager.md)
-- [StateMachine](docs/state-machine.md)
-- [InputAdapter](docs/custom-input-adapter.md)
+- [事件总线](docs/emitter.md)
+- [时间管理器](docs/time-manager.md)
+- [状态机](docs/state-machine.md)
+- [输入适配器](docs/custom-input-adapter.md)
+- [网络适配器](docs/network-adapter.md)

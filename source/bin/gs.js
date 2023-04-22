@@ -543,6 +543,7 @@ var gs;
             this.entityIdAllocator = new gs.EntityIdAllocator();
             this.componentManagers = new Map();
             this.inputManager = new gs.InputManager();
+            this.networkManager = new gs.NetworkManager();
             try {
                 for (var componentManagers_1 = __values(componentManagers), componentManagers_1_1 = componentManagers_1.next(); !componentManagers_1_1.done; componentManagers_1_1 = componentManagers_1.next()) {
                     var manager = componentManagers_1_1.value;
@@ -559,6 +560,9 @@ var gs;
         }
         EntityManager.prototype.getInputManager = function () {
             return this.inputManager;
+        };
+        EntityManager.prototype.getNetworkManager = function () {
+            return this.networkManager;
         };
         /**
          * 创建实体
@@ -776,6 +780,30 @@ var gs;
         return TimeManager;
     }());
     gs.TimeManager = TimeManager;
+})(gs || (gs = {}));
+var gs;
+(function (gs) {
+    var NetworkManager = /** @class */ (function () {
+        function NetworkManager() {
+            this.networkAdapter = null;
+        }
+        /**
+         * 设置网络适配器
+         * @param adapter 用户实现的NetworkAdapter接口
+         */
+        NetworkManager.prototype.setNetworkAdapter = function (adapter) {
+            this.networkAdapter = adapter;
+        };
+        /**
+         * 获取网络适配器
+         * @returns
+         */
+        NetworkManager.prototype.getNetworkAdpater = function () {
+            return this.networkAdapter;
+        };
+        return NetworkManager;
+    }());
+    gs.NetworkManager = NetworkManager;
 })(gs || (gs = {}));
 var gs;
 (function (gs) {

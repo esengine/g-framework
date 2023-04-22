@@ -262,8 +262,10 @@ declare module gs {
         private entityIdAllocator;
         private componentManagers;
         private inputManager;
+        private networkManager;
         constructor(componentManagers: Array<ComponentManager<Component>>);
         getInputManager(): InputManager;
+        getNetworkManager(): NetworkManager;
         /**
          * 创建实体
          * @returns
@@ -346,6 +348,36 @@ declare module gs {
         private constructor();
         static getInstance(): TimeManager;
         update(deltaTime: number): void;
+    }
+}
+declare module gs {
+    interface NetworkAdapter {
+        /**
+         * 将输入数据发送到服务器
+         * @param frameNumber 客户端帧编号
+         * @param inputData 输入数据
+         */
+        sendInput(frameNumber: number, inputData: any): void;
+        /**
+         * 从服务器接收状态更新
+         * @param callback 处理服务器状态更新的回调函数
+         */
+        onServerUpdate(callback: (serverState: any) => void): void;
+    }
+}
+declare module gs {
+    class NetworkManager {
+        private networkAdapter;
+        /**
+         * 设置网络适配器
+         * @param adapter 用户实现的NetworkAdapter接口
+         */
+        setNetworkAdapter(adapter: NetworkAdapter): void;
+        /**
+         * 获取网络适配器
+         * @returns
+         */
+        getNetworkAdpater(): NetworkAdapter | null;
     }
 }
 declare module gs {

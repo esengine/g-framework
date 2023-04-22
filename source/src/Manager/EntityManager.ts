@@ -4,12 +4,14 @@ module gs {
         private entityIdAllocator: EntityIdAllocator;
         private componentManagers: Map<new (entityId: number) => Component, ComponentManager<Component>>;
         private inputManager: InputManager;
+        private networkManager: NetworkManager;
 
         constructor(componentManagers: Array<ComponentManager<Component>>) {
             this.entities = new Map();
             this.entityIdAllocator = new EntityIdAllocator();
             this.componentManagers = new Map();
             this.inputManager = new InputManager();
+            this.networkManager = new NetworkManager();
 
             for (const manager of componentManagers) {
                 this.componentManagers.set(manager.componentType, manager);
@@ -18,6 +20,10 @@ module gs {
 
         public getInputManager(): InputManager {
             return this.inputManager;
+        }
+
+        public getNetworkManager(): NetworkManager {
+            return this.networkManager;
         }
 
         /**
