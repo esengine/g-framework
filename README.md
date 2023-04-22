@@ -11,6 +11,9 @@ G-Framework 是一个基于 TypeScript 编写的实体组件系统（ECS）框�
 - 易用性，降低上手难度
 - 可扩展性，方便添加自定义模块
 
+## 交流群
+点击链接加入群聊【ecs游戏框架交流】：https://jq.qq.com/?_wv=1027&k=29w1Nud6
+
 # G-Framework ECS 框架入门
 
 ## 实体
