@@ -20,6 +20,16 @@ class MyInputAdapter extends gs.InputAdapter {
         // 将转换后的 InputEvent 添加到输入缓冲区中
         this.inputManager.getInputBuffer().addEvent(inputEvent);
     }
+
+    // 将游戏引擎的输入事件转换为 InputEvent
+    private convertEngineEventToInputEvent(event: any): InputEvent {
+        // 根据您使用的游戏引擎实现相应的转换逻辑
+        // ...
+        return {
+            type: InputType.KEY_DOWN, // 示例
+            data: event.data,
+        };
+    }
 }
 ```
 

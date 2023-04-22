@@ -198,7 +198,9 @@ declare module gs {
         private buffer;
         constructor();
         addEvent(event: InputEvent): void;
+        hasEvents(): boolean;
         getEvents(): InputEvent[];
+        consumeEvent(): InputEvent | null;
         clear(): void;
     }
 }

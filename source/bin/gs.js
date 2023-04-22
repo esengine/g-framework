@@ -430,8 +430,19 @@ var gs;
         InputBuffer.prototype.addEvent = function (event) {
             this.buffer.push(event);
         };
+        InputBuffer.prototype.hasEvents = function () {
+            return this.buffer.length > 0;
+        };
         InputBuffer.prototype.getEvents = function () {
             return this.buffer;
+        };
+        InputBuffer.prototype.consumeEvent = function () {
+            if (this.buffer.length === 0) {
+                return null;
+            }
+            var event = this.buffer[0];
+            this.buffer.shift();
+            return event;
         };
         InputBuffer.prototype.clear = function () {
             this.buffer = [];
