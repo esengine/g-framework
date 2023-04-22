@@ -97,5 +97,44 @@ module gs {
 
             return entitiesWithTag;
         }
+
+        /**
+         * 创建当前游戏状态的快照
+         * @returns 
+         */
+        public createStateSnapshot(): any {
+            const snapshot: any = {
+                entities: [],
+            };
+
+            for (const entity of this.getEntities()) {
+                snapshot.entities.push(entity.serialize());
+            }
+
+            return snapshot;
+        }
+
+        /**
+         * 使用给定的状态快照更新游戏状态
+         * @param stateSnapshot 
+         */
+        public updateStateFromSnapshot(stateSnapshot: any): void {
+            const newEntityMap: Map<number, Entity> = new Map();
+
+            for (const entityData of stateSnapshot.entities) {
+                const entityId = entityData.id;
+                let entity = this.getEntity(entityId);
+
+                if (!entity) {
+                    entity = new Entity(entityId, this.componentManagers);
+                    entity.onCreate();
+                }
+
+                entity.deserialize(entityData);
+                newEntityMap.set(entityId, entity);
+            }
+
+            this.entities = newEntityMap;
+        }
     }
 }

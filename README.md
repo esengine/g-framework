@@ -108,3 +108,4 @@ function gameLoop(deltaTime: number) {
 - [状态机](docs/state-machine.md)
 - [输入适配器](docs/custom-input-adapter.md)
 - [网络适配器](docs/network-adapter.md)
+- [状态快照](docs/state-snapshop.md)

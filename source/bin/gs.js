@@ -648,6 +648,59 @@ var gs;
             }
             return entitiesWithTag;
         };
+        /**
+         * 创建当前游戏状态的快照
+         * @returns
+         */
+        EntityManager.prototype.createStateSnapshot = function () {
+            var e_8, _a;
+            var snapshot = {
+                entities: [],
+            };
+            try {
+                for (var _b = __values(this.getEntities()), _c = _b.next(); !_c.done; _c = _b.next()) {
+                    var entity = _c.value;
+                    snapshot.entities.push(entity.serialize());
+                }
+            }
+            catch (e_8_1) { e_8 = { error: e_8_1 }; }
+            finally {
+                try {
+                    if (_c && !_c.done && (_a = _b.return)) _a.call(_b);
+                }
+                finally { if (e_8) throw e_8.error; }
+            }
+            return snapshot;
+        };
+        /**
+         * 使用给定的状态快照更新游戏状态
+         * @param stateSnapshot
+         */
+        EntityManager.prototype.updateStateFromSnapshot = function (stateSnapshot) {
+            var e_9, _a;
+            var newEntityMap = new Map();
+            try {
+                for (var _b = __values(stateSnapshot.entities), _c = _b.next(); !_c.done; _c = _b.next()) {
+                    var entityData = _c.value;
+                    var entityId = entityData.id;
+                    var entity = this.getEntity(entityId);
+                    if (!entity) {
+                        entity = new gs.Entity(entityId, this.componentManagers);
+                        entity.onCreate();
+                    }
+                    entity.deserialize(entityData);
+                    newEntityMap.set(entityId, entity);
+                }
+            }
+            catch (e_9_1) { e_9 = { error: e_9_1 }; }
+            finally {
+                try {
+                    if (_c && !_c.done && (_a = _b.return)) _a.call(_b);
+                }
+                finally { if (e_9) throw e_9.error; }
+            }
+            this.entities = newEntityMap;
+        };
         return EntityManager;
     }());
     gs.EntityManager = EntityManager;
@@ -698,7 +751,7 @@ var gs;
          */
         SystemManager.prototype.update = function (deltaTime) {
             var _this = this;
-            var e_8, _a;
+            var e_10, _a;
             var entities = this.entityManager.getEntities();
             var _loop_2 = function (system) {
                 if (!system.isEnabled() || system.isPaused()) {
@@ -713,7 +766,7 @@ var gs;
                     };
                     worker.postMessage(message);
                     worker.onmessage = function (event) {
-                        var e_9, _a;
+                        var e_11, _a;
                         var updatedEntities = event.data.entities;
                         try {
                             for (var updatedEntities_1 = __values(updatedEntities), updatedEntities_1_1 = updatedEntities_1.next(); !updatedEntities_1_1.done; updatedEntities_1_1 = updatedEntities_1.next()) {
@@ -724,12 +777,12 @@ var gs;
                                 }
                             }
                         }
-                        catch (e_9_1) { e_9 = { error: e_9_1 }; }
+                        catch (e_11_1) { e_11 = { error: e_11_1 }; }
                         finally {
                             try {
                                 if (updatedEntities_1_1 && !updatedEntities_1_1.done && (_a = updatedEntities_1.return)) _a.call(updatedEntities_1);
                             }
-                            finally { if (e_9) throw e_9.error; }
+                            finally { if (e_11) throw e_11.error; }
                         }
                     };
                 }
@@ -744,12 +797,12 @@ var gs;
                     _loop_2(system);
                 }
             }
-            catch (e_8_1) { e_8 = { error: e_8_1 }; }
+            catch (e_10_1) { e_10 = { error: e_10_1 }; }
             finally {
                 try {
                     if (_c && !_c.done && (_a = _b.return)) _a.call(_b);
                 }
-                finally { if (e_8) throw e_8.error; }
+                finally { if (e_10) throw e_10.error; }
             }
         };
         return SystemManager;
@@ -907,7 +960,7 @@ var gs;
             return entity.hasComponent(gs.StateMachineComponent);
         };
         StateMachineSystem.prototype.update = function (entities) {
-            var e_10, _a;
+            var e_12, _a;
             try {
                 for (var entities_1 = __values(entities), entities_1_1 = entities_1.next(); !entities_1_1.done; entities_1_1 = entities_1.next()) {
                     var entity = entities_1_1.value;
@@ -915,12 +968,12 @@ var gs;
                     stateMachineComponent.stateMachine.update();
                 }
             }
-            catch (e_10_1) { e_10 = { error: e_10_1 }; }
+            catch (e_12_1) { e_12 = { error: e_12_1 }; }
             finally {
                 try {
                     if (entities_1_1 && !entities_1_1.done && (_a = entities_1.return)) _a.call(entities_1);
                 }
-                finally { if (e_10) throw e_10.error; }
+                finally { if (e_12) throw e_12.error; }
             }
         };
         return StateMachineSystem;

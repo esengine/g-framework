@@ -299,6 +299,16 @@ declare module gs {
         * @returns 具有指定标签的实体数组
         */
         getEntitiesWithTag(tag: string): Entity[];
+        /**
+         * 创建当前游戏状态的快照
+         * @returns
+         */
+        createStateSnapshot(): any;
+        /**
+         * 使用给定的状态快照更新游戏状态
+         * @param stateSnapshot
+         */
+        updateStateFromSnapshot(stateSnapshot: any): void;
     }
 }
 declare module gs {
