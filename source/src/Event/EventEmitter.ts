@@ -1,18 +1,4 @@
 module gs {
-    export interface EventListener {
-        (event: Event): void;
-    }
-
-    export class Event {
-        type: string;
-        data: any;
-
-        constructor(type: string, data?: any) {
-            this.type = type;
-            this.data = data;
-        }
-    }
-
     export class EventEmitter {
         private listeners: Map<string, EventListener[]>;
         private eventPool: EventPool;

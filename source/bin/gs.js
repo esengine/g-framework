@@ -106,73 +106,6 @@ var gs;
 })(gs || (gs = {}));
 var gs;
 (function (gs) {
-    /**
-     * 组件管理器
-     */
-    var ComponentManager = /** @class */ (function () {
-        function ComponentManager(componentType) {
-            this.data = [];
-            this.entityToDataIndex = new Map();
-            this.freeDataIndices = [];
-            this.componentType = componentType;
-        }
-        ComponentManager.prototype.create = function (entityId) {
-            var index = this.allocateDataIndex();
-            var component = new this.componentType(entityId);
-            this.data[index] = component;
-            this.entityToDataIndex.set(entityId, index);
-            return component;
-        };
-        /**
-         * 获取组件数据
-         * @param entityId 实体ID
-         * @returns 组件数据
-         */
-        ComponentManager.prototype.get = function (entityId) {
-            var dataIndex = this.entityToDataIndex.get(entityId);
-            if (dataIndex === undefined) {
-                return null;
-            }
-            return this.data[dataIndex];
-        };
-        /**
-         *
-         * @param entityId
-         * @returns
-         */
-        ComponentManager.prototype.has = function (entityId) {
-            return this.entityToDataIndex.has(entityId);
-        };
-        /**
-         *
-         * @param entityId
-         * @returns
-         */
-        ComponentManager.prototype.remove = function (entityId) {
-            var dataIndex = this.entityToDataIndex.get(entityId);
-            if (dataIndex === undefined) {
-                return;
-            }
-            this.entityToDataIndex.delete(entityId);
-            this.data[dataIndex] = null;
-            this.freeDataIndices.push(dataIndex);
-        };
-        /**
-         * 分配数据索引
-         * @returns
-         */
-        ComponentManager.prototype.allocateDataIndex = function () {
-            if (this.freeDataIndices.length > 0) {
-                return this.freeDataIndices.pop();
-            }
-            return this.data.length;
-        };
-        return ComponentManager;
-    }());
-    gs.ComponentManager = ComponentManager;
-})(gs || (gs = {}));
-var gs;
-(function (gs) {
     var Entity = /** @class */ (function () {
         function Entity(id, componentManagers) {
             this.id = id;
@@ -338,128 +271,48 @@ var gs;
 })(gs || (gs = {}));
 var gs;
 (function (gs) {
-    var EntityIdAllocator = /** @class */ (function () {
-        function EntityIdAllocator() {
-            this.nextId = 0;
+    /**
+     * 系统基类
+     */
+    var System = /** @class */ (function () {
+        function System(entityManager, priority, workerScript) {
+            this.paused = false;
+            this.enabled = true;
+            this.entityManager = entityManager;
+            this.priority = priority;
+            this.workerScript = workerScript;
         }
-        EntityIdAllocator.prototype.allocate = function () {
-            var newId = this.nextId;
-            this.nextId += 1;
-            return newId;
+        System.prototype.pause = function () {
+            this.paused = true;
         };
-        return EntityIdAllocator;
+        System.prototype.resume = function () {
+            this.paused = false;
+        };
+        System.prototype.isPaused = function () {
+            return this.paused;
+        };
+        System.prototype.enable = function () {
+            this.enabled = true;
+        };
+        System.prototype.disable = function () {
+            this.enabled = false;
+        };
+        System.prototype.isEnabled = function () {
+            return this.enabled;
+        };
+        /**
+         * 系统注册时的逻辑
+         */
+        System.prototype.onRegister = function () {
+        };
+        /**
+         * 系统注销时的逻辑
+         */
+        System.prototype.onUnregister = function () {
+        };
+        return System;
     }());
-    gs.EntityIdAllocator = EntityIdAllocator;
-})(gs || (gs = {}));
-var gs;
-(function (gs) {
-    var EntityManager = /** @class */ (function () {
-        function EntityManager(componentManagers) {
-            var e_4, _a;
-            this.entities = new Map();
-            this.entityIdAllocator = new gs.EntityIdAllocator();
-            this.componentManagers = new Map();
-            try {
-                for (var componentManagers_1 = __values(componentManagers), componentManagers_1_1 = componentManagers_1.next(); !componentManagers_1_1.done; componentManagers_1_1 = componentManagers_1.next()) {
-                    var manager = componentManagers_1_1.value;
-                    this.componentManagers.set(manager.componentType, manager);
-                }
-            }
-            catch (e_4_1) { e_4 = { error: e_4_1 }; }
-            finally {
-                try {
-                    if (componentManagers_1_1 && !componentManagers_1_1.done && (_a = componentManagers_1.return)) _a.call(componentManagers_1);
-                }
-                finally { if (e_4) throw e_4.error; }
-            }
-        }
-        /**
-         * 创建实体
-         * @returns
-         */
-        EntityManager.prototype.createEntity = function () {
-            var entityId = this.entityIdAllocator.allocate();
-            var entity = new gs.Entity(entityId, this.componentManagers);
-            entity.onCreate();
-            return entity;
-        };
-        /**
-         * 删除实体
-         * @param entityId
-         */
-        EntityManager.prototype.deleteEntity = function (entityId) {
-            var entity = this.getEntity(entityId);
-            entity.onDestroy();
-            this.entities.delete(entityId);
-        };
-        /**
-         * 获取实体
-         * @param entityId 实体id
-         * @returns 实体
-         */
-        EntityManager.prototype.getEntity = function (entityId) {
-            return this.entities.has(entityId) ? this.entities.get(entityId) : null;
-        };
-        /**
-         * 获取具有特定组件的所有实体
-         * @param componentClass 要检查的组件类
-         * @returns 具有指定组件的实体数组
-         */
-        EntityManager.prototype.getEntitiesWithComponent = function (componentClass) {
-            var e_5, _a;
-            var entitiesWithComponent = [];
-            try {
-                for (var _b = __values(this.getEntities()), _c = _b.next(); !_c.done; _c = _b.next()) {
-                    var entity = _c.value;
-                    if (entity.hasComponent(componentClass)) {
-                        entitiesWithComponent.push(entity);
-                    }
-                }
-            }
-            catch (e_5_1) { e_5 = { error: e_5_1 }; }
-            finally {
-                try {
-                    if (_c && !_c.done && (_a = _b.return)) _a.call(_b);
-                }
-                finally { if (e_5) throw e_5.error; }
-            }
-            return entitiesWithComponent;
-        };
-        /**
-         * 获取所有实体
-         * @returns
-         */
-        EntityManager.prototype.getEntities = function () {
-            return Array.from(this.entities.values());
-        };
-        /**
-        * 获取具有特定标签的所有实体
-        * @param tag 要检查的标签
-        * @returns 具有指定标签的实体数组
-        */
-        EntityManager.prototype.getEntitiesWithTag = function (tag) {
-            var e_6, _a;
-            var entitiesWithTag = [];
-            try {
-                for (var _b = __values(this.getEntities()), _c = _b.next(); !_c.done; _c = _b.next()) {
-                    var entity = _c.value;
-                    if (entity.hasTag(tag)) {
-                        entitiesWithTag.push(entity);
-                    }
-                }
-            }
-            catch (e_6_1) { e_6 = { error: e_6_1 }; }
-            finally {
-                try {
-                    if (_c && !_c.done && (_a = _b.return)) _a.call(_b);
-                }
-                finally { if (e_6) throw e_6.error; }
-            }
-            return entitiesWithTag;
-        };
-        return EntityManager;
-    }());
-    gs.EntityManager = EntityManager;
+    gs.System = System;
 })(gs || (gs = {}));
 var gs;
 (function (gs) {
@@ -471,6 +324,9 @@ var gs;
         return Event;
     }());
     gs.Event = Event;
+})(gs || (gs = {}));
+var gs;
+(function (gs) {
     var EventEmitter = /** @class */ (function () {
         function EventEmitter() {
             this.listeners = new Map();
@@ -522,7 +378,7 @@ var gs;
          * @param event
          */
         EventEmitter.prototype.emit = function (type, data) {
-            var e_7, _a;
+            var e_4, _a;
             var event = this.eventPool.acquire();
             event.type = type;
             event.data = data;
@@ -534,12 +390,12 @@ var gs;
                         listener(event);
                     }
                 }
-                catch (e_7_1) { e_7 = { error: e_7_1 }; }
+                catch (e_4_1) { e_4 = { error: e_4_1 }; }
                 finally {
                     try {
                         if (listeners_1_1 && !listeners_1_1.done && (_a = listeners_1.return)) _a.call(listeners_1);
                     }
-                    finally { if (e_7) throw e_7.error; }
+                    finally { if (e_4) throw e_4.error; }
                 }
             }
             this.eventPool.release(event);
@@ -550,138 +406,184 @@ var gs;
 })(gs || (gs = {}));
 var gs;
 (function (gs) {
-    var ObjectPool = /** @class */ (function () {
-        function ObjectPool(createFn, resetFn) {
-            this.createFn = createFn;
-            this.resetFn = resetFn;
-            this.pool = [];
-        }
-        ObjectPool.prototype.acquire = function () {
-            if (this.pool.length > 0) {
-                var obj = this.pool.pop();
-                this.resetFn(obj);
-                return obj;
-            }
-            else {
-                return this.createFn();
-            }
-        };
-        ObjectPool.prototype.release = function (obj) {
-            this.pool.push(obj);
-        };
-        return ObjectPool;
-    }());
-    gs.ObjectPool = ObjectPool;
-})(gs || (gs = {}));
-///<reference path="ObjectPool.ts" />
-var gs;
-///<reference path="ObjectPool.ts" />
-(function (gs) {
-    var EventPool = /** @class */ (function (_super) {
-        __extends(EventPool, _super);
-        function EventPool() {
-            return _super.call(this, function () { return new gs.Event("", null); }, function (event) {
-                event.type = "";
-                event.data = null;
-            }) || this;
-        }
-        return EventPool;
-    }(gs.ObjectPool));
-    gs.EventPool = EventPool;
-})(gs || (gs = {}));
-var gs;
-(function (gs) {
     gs.GlobalEventEmitter = new gs.EventEmitter();
 })(gs || (gs = {}));
 var gs;
 (function (gs) {
-    var Random = /** @class */ (function () {
-        function Random(seed) {
-            this.seed = seed;
+    /**
+     * 组件管理器
+     */
+    var ComponentManager = /** @class */ (function () {
+        function ComponentManager(componentType) {
+            this.data = [];
+            this.entityToDataIndex = new Map();
+            this.freeDataIndices = [];
+            this.componentType = componentType;
         }
-        /**
-         * 生成 [0, 1) 范围内的随机浮点数
-         * @returns
-         */
-        Random.prototype.next = function () {
-            this.seed = (this.seed * 9301 + 49297) % 233280;
-            return this.seed / 233280;
+        ComponentManager.prototype.create = function (entityId) {
+            var index = this.allocateDataIndex();
+            var component = new this.componentType(entityId);
+            this.data[index] = component;
+            this.entityToDataIndex.set(entityId, index);
+            return component;
         };
         /**
-         * 生成 [min, max) 范围内的随机整数
-         * @param min
-         * @param max
-         * @returns
+         * 获取组件数据
+         * @param entityId 实体ID
+         * @returns 组件数据
          */
-        Random.prototype.nextInt = function (min, max) {
-            return min + Math.floor(this.next() * (max - min));
+        ComponentManager.prototype.get = function (entityId) {
+            var dataIndex = this.entityToDataIndex.get(entityId);
+            if (dataIndex === undefined) {
+                return null;
+            }
+            return this.data[dataIndex];
         };
         /**
-         * 生成 [min, max) 范围内的随机浮点数
-         * @param min
-         * @param max
+         *
+         * @param entityId
          * @returns
          */
-        Random.prototype.nextFloat = function (min, max) {
-            return min + this.next() * (max - min);
+        ComponentManager.prototype.has = function (entityId) {
+            return this.entityToDataIndex.has(entityId);
         };
         /**
-         * 从数组中随机选择一个元素
-         * @param array
+         *
+         * @param entityId
          * @returns
          */
-        Random.prototype.choose = function (array) {
-            var index = this.nextInt(0, array.length);
-            return array[index];
+        ComponentManager.prototype.remove = function (entityId) {
+            var dataIndex = this.entityToDataIndex.get(entityId);
+            if (dataIndex === undefined) {
+                return;
+            }
+            this.entityToDataIndex.delete(entityId);
+            this.data[dataIndex] = null;
+            this.freeDataIndices.push(dataIndex);
         };
-        return Random;
+        /**
+         * 分配数据索引
+         * @returns
+         */
+        ComponentManager.prototype.allocateDataIndex = function () {
+            if (this.freeDataIndices.length > 0) {
+                return this.freeDataIndices.pop();
+            }
+            return this.data.length;
+        };
+        return ComponentManager;
     }());
-    gs.Random = Random;
+    gs.ComponentManager = ComponentManager;
 })(gs || (gs = {}));
 var gs;
 (function (gs) {
-    /**
-     * 系统基类
-     */
-    var System = /** @class */ (function () {
-        function System(entityManager, priority, workerScript) {
-            this.paused = false;
-            this.enabled = true;
-            this.entityManager = entityManager;
-            this.priority = priority;
-            this.workerScript = workerScript;
+    var EntityManager = /** @class */ (function () {
+        function EntityManager(componentManagers) {
+            var e_5, _a;
+            this.entities = new Map();
+            this.entityIdAllocator = new gs.EntityIdAllocator();
+            this.componentManagers = new Map();
+            try {
+                for (var componentManagers_1 = __values(componentManagers), componentManagers_1_1 = componentManagers_1.next(); !componentManagers_1_1.done; componentManagers_1_1 = componentManagers_1.next()) {
+                    var manager = componentManagers_1_1.value;
+                    this.componentManagers.set(manager.componentType, manager);
+                }
+            }
+            catch (e_5_1) { e_5 = { error: e_5_1 }; }
+            finally {
+                try {
+                    if (componentManagers_1_1 && !componentManagers_1_1.done && (_a = componentManagers_1.return)) _a.call(componentManagers_1);
+                }
+                finally { if (e_5) throw e_5.error; }
+            }
         }
-        System.prototype.pause = function () {
-            this.paused = true;
-        };
-        System.prototype.resume = function () {
-            this.paused = false;
-        };
-        System.prototype.isPaused = function () {
-            return this.paused;
-        };
-        System.prototype.enable = function () {
-            this.enabled = true;
-        };
-        System.prototype.disable = function () {
-            this.enabled = false;
-        };
-        System.prototype.isEnabled = function () {
-            return this.enabled;
+        /**
+         * 创建实体
+         * @returns
+         */
+        EntityManager.prototype.createEntity = function () {
+            var entityId = this.entityIdAllocator.allocate();
+            var entity = new gs.Entity(entityId, this.componentManagers);
+            entity.onCreate();
+            return entity;
         };
         /**
-         * 系统注册时的逻辑
+         * 删除实体
+         * @param entityId
          */
-        System.prototype.onRegister = function () {
+        EntityManager.prototype.deleteEntity = function (entityId) {
+            var entity = this.getEntity(entityId);
+            entity.onDestroy();
+            this.entities.delete(entityId);
         };
         /**
-         * 系统注销时的逻辑
+         * 获取实体
+         * @param entityId 实体id
+         * @returns 实体
          */
-        System.prototype.onUnregister = function () {
+        EntityManager.prototype.getEntity = function (entityId) {
+            return this.entities.has(entityId) ? this.entities.get(entityId) : null;
         };
-        return System;
+        /**
+         * 获取具有特定组件的所有实体
+         * @param componentClass 要检查的组件类
+         * @returns 具有指定组件的实体数组
+         */
+        EntityManager.prototype.getEntitiesWithComponent = function (componentClass) {
+            var e_6, _a;
+            var entitiesWithComponent = [];
+            try {
+                for (var _b = __values(this.getEntities()), _c = _b.next(); !_c.done; _c = _b.next()) {
+                    var entity = _c.value;
+                    if (entity.hasComponent(componentClass)) {
+                        entitiesWithComponent.push(entity);
+                    }
+                }
+            }
+            catch (e_6_1) { e_6 = { error: e_6_1 }; }
+            finally {
+                try {
+                    if (_c && !_c.done && (_a = _b.return)) _a.call(_b);
+                }
+                finally { if (e_6) throw e_6.error; }
+            }
+            return entitiesWithComponent;
+        };
+        /**
+         * 获取所有实体
+         * @returns
+         */
+        EntityManager.prototype.getEntities = function () {
+            return Array.from(this.entities.values());
+        };
+        /**
+        * 获取具有特定标签的所有实体
+        * @param tag 要检查的标签
+        * @returns 具有指定标签的实体数组
+        */
+        EntityManager.prototype.getEntitiesWithTag = function (tag) {
+            var e_7, _a;
+            var entitiesWithTag = [];
+            try {
+                for (var _b = __values(this.getEntities()), _c = _b.next(); !_c.done; _c = _b.next()) {
+                    var entity = _c.value;
+                    if (entity.hasTag(tag)) {
+                        entitiesWithTag.push(entity);
+                    }
+                }
+            }
+            catch (e_7_1) { e_7 = { error: e_7_1 }; }
+            finally {
+                try {
+                    if (_c && !_c.done && (_a = _b.return)) _a.call(_b);
+                }
+                finally { if (e_7) throw e_7.error; }
+            }
+            return entitiesWithTag;
+        };
+        return EntityManager;
     }());
-    gs.System = System;
+    gs.EntityManager = EntityManager;
 })(gs || (gs = {}));
 var gs;
 (function (gs) {
@@ -814,6 +716,47 @@ var gs;
 })(gs || (gs = {}));
 var gs;
 (function (gs) {
+    var ObjectPool = /** @class */ (function () {
+        function ObjectPool(createFn, resetFn) {
+            this.createFn = createFn;
+            this.resetFn = resetFn;
+            this.pool = [];
+        }
+        ObjectPool.prototype.acquire = function () {
+            if (this.pool.length > 0) {
+                var obj = this.pool.pop();
+                this.resetFn(obj);
+                return obj;
+            }
+            else {
+                return this.createFn();
+            }
+        };
+        ObjectPool.prototype.release = function (obj) {
+            this.pool.push(obj);
+        };
+        return ObjectPool;
+    }());
+    gs.ObjectPool = ObjectPool;
+})(gs || (gs = {}));
+///<reference path="ObjectPool.ts" />
+var gs;
+///<reference path="ObjectPool.ts" />
+(function (gs) {
+    var EventPool = /** @class */ (function (_super) {
+        __extends(EventPool, _super);
+        function EventPool() {
+            return _super.call(this, function () { return new gs.Event("", null); }, function (event) {
+                event.type = "";
+                event.data = null;
+            }) || this;
+        }
+        return EventPool;
+    }(gs.ObjectPool));
+    gs.EventPool = EventPool;
+})(gs || (gs = {}));
+var gs;
+(function (gs) {
     var StateMachine = /** @class */ (function () {
         function StateMachine() {
             this.currentState = null;
@@ -845,7 +788,9 @@ var gs;
     }());
     gs.StateMachine = StateMachine;
 })(gs || (gs = {}));
+///<reference path="../Core/Component.ts" />
 var gs;
+///<reference path="../Core/Component.ts" />
 (function (gs) {
     var StateMachineComponent = /** @class */ (function (_super) {
         __extends(StateMachineComponent, _super);
@@ -858,7 +803,9 @@ var gs;
     }(gs.Component));
     gs.StateMachineComponent = StateMachineComponent;
 })(gs || (gs = {}));
+///<reference path="../Core/System.ts" />
 var gs;
+///<reference path="../Core/System.ts" />
 (function (gs) {
     var StateMachineSystem = /** @class */ (function (_super) {
         __extends(StateMachineSystem, _super);
@@ -888,4 +835,64 @@ var gs;
         return StateMachineSystem;
     }(gs.System));
     gs.StateMachineSystem = StateMachineSystem;
+})(gs || (gs = {}));
+var gs;
+(function (gs) {
+    var EntityIdAllocator = /** @class */ (function () {
+        function EntityIdAllocator() {
+            this.nextId = 0;
+        }
+        EntityIdAllocator.prototype.allocate = function () {
+            var newId = this.nextId;
+            this.nextId += 1;
+            return newId;
+        };
+        return EntityIdAllocator;
+    }());
+    gs.EntityIdAllocator = EntityIdAllocator;
+})(gs || (gs = {}));
+var gs;
+(function (gs) {
+    var Random = /** @class */ (function () {
+        function Random(seed) {
+            this.seed = seed;
+        }
+        /**
+         * 生成 [0, 1) 范围内的随机浮点数
+         * @returns
+         */
+        Random.prototype.next = function () {
+            this.seed = (this.seed * 9301 + 49297) % 233280;
+            return this.seed / 233280;
+        };
+        /**
+         * 生成 [min, max) 范围内的随机整数
+         * @param min
+         * @param max
+         * @returns
+         */
+        Random.prototype.nextInt = function (min, max) {
+            return min + Math.floor(this.next() * (max - min));
+        };
+        /**
+         * 生成 [min, max) 范围内的随机浮点数
+         * @param min
+         * @param max
+         * @returns
+         */
+        Random.prototype.nextFloat = function (min, max) {
+            return min + this.next() * (max - min);
+        };
+        /**
+         * 从数组中随机选择一个元素
+         * @param array
+         * @returns
+         */
+        Random.prototype.choose = function (array) {
+            var index = this.nextInt(0, array.length);
+            return array[index];
+        };
+        return Random;
+    }());
+    gs.Random = Random;
 })(gs || (gs = {}));

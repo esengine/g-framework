@@ -14,42 +14,6 @@ declare module gs {
     }
 }
 declare module gs {
-    /**
-     * 组件管理器
-     */
-    class ComponentManager<T extends Component> {
-        private data;
-        private entityToDataIndex;
-        private freeDataIndices;
-        componentType: new (entityId: number) => T;
-        constructor(componentType: new (entityId: number) => T);
-        create(entityId: number): T;
-        /**
-         * 获取组件数据
-         * @param entityId 实体ID
-         * @returns 组件数据
-         */
-        get(entityId: number): T | null;
-        /**
-         *
-         * @param entityId
-         * @returns
-         */
-        has(entityId: number): boolean;
-        /**
-         *
-         * @param entityId
-         * @returns
-         */
-        remove(entityId: number): void;
-        /**
-         * 分配数据索引
-         * @returns
-         */
-        allocateDataIndex(): number;
-    }
-}
-declare module gs {
     class Entity {
         private id;
         private componentManagers;
@@ -122,10 +86,127 @@ declare module gs {
     }
 }
 declare module gs {
-    class EntityIdAllocator {
-        private nextId;
+    /**
+     * 系统基类
+     */
+    abstract class System {
+        protected entityManager: EntityManager;
+        protected paused: boolean;
+        pause(): void;
+        resume(): void;
+        isPaused(): boolean;
+        protected enabled: boolean;
+        enable(): void;
+        disable(): void;
+        isEnabled(): boolean;
+        /**
+         * 系统优先级，优先级越高，越先执行
+         */
+        readonly priority: number;
+        /**
+         * 系统所在的worker脚本
+         */
+        readonly workerScript?: string;
+        constructor(entityManager: EntityManager, priority: number, workerScript?: string);
+        /**
+         * 筛选实体
+         * @param entity
+         */
+        abstract entityFilter(entity: Entity): boolean;
+        /**
+         * 更新系统
+         * @param entities
+         */
+        abstract update(entities: Entity[]): void;
+        /**
+         * 系统注册时的逻辑
+         */
+        onRegister(): void;
+        /**
+         * 系统注销时的逻辑
+         */
+        onUnregister(): void;
+    }
+}
+declare module gs {
+    class Event {
+        type: string;
+        data: any;
+        constructor(type: string, data?: any);
+    }
+}
+declare module gs {
+    class EventEmitter {
+        private listeners;
+        private eventPool;
         constructor();
-        allocate(): number;
+        /**
+         * 用于订阅特定事件类型的侦听器。当事件类型不存在时，将创建一个新的侦听器数组
+         * @param eventType
+         * @param listener
+         */
+        on(eventType: string, listener: EventListener): void;
+        /**
+         * 用于订阅特定事件类型的侦听器。当事件类型不存在时，将创建一个新的侦听器数组。该方法只会在回调函数被执行后，移除监听器
+         * @param eventType
+         * @param callback
+         */
+        once(eventType: string, callback: (event: Event) => void): void;
+        /**
+         * 用于取消订阅特定事件类型的侦听器。如果找到侦听器，则将其从数组中移除
+         * @param eventType
+         * @param listener
+         */
+        off(eventType: string, listener: EventListener): void;
+        /**
+         * 用于触发事件。该方法将遍历所有订阅给定事件类型的侦听器，并调用它们
+         * @param event
+         */
+        emit(type: string, data: any): void;
+    }
+}
+declare module gs {
+    interface EventListener {
+        (event: Event): void;
+    }
+}
+declare module gs {
+    const GlobalEventEmitter: EventEmitter;
+}
+declare module gs {
+    /**
+     * 组件管理器
+     */
+    class ComponentManager<T extends Component> {
+        private data;
+        private entityToDataIndex;
+        private freeDataIndices;
+        componentType: new (entityId: number) => T;
+        constructor(componentType: new (entityId: number) => T);
+        create(entityId: number): T;
+        /**
+         * 获取组件数据
+         * @param entityId 实体ID
+         * @returns 组件数据
+         */
+        get(entityId: number): T | null;
+        /**
+         *
+         * @param entityId
+         * @returns
+         */
+        has(entityId: number): boolean;
+        /**
+         *
+         * @param entityId
+         * @returns
+         */
+        remove(entityId: number): void;
+        /**
+         * 分配数据索引
+         * @returns
+         */
+        allocateDataIndex(): number;
     }
 }
 declare module gs {
@@ -167,136 +248,6 @@ declare module gs {
         * @returns 具有指定标签的实体数组
         */
         getEntitiesWithTag(tag: string): Entity[];
-    }
-}
-declare module gs {
-    interface EventListener {
-        (event: Event): void;
-    }
-    class Event {
-        type: string;
-        data: any;
-        constructor(type: string, data?: any);
-    }
-    class EventEmitter {
-        private listeners;
-        private eventPool;
-        constructor();
-        /**
-         * 用于订阅特定事件类型的侦听器。当事件类型不存在时，将创建一个新的侦听器数组
-         * @param eventType
-         * @param listener
-         */
-        on(eventType: string, listener: EventListener): void;
-        /**
-         * 用于订阅特定事件类型的侦听器。当事件类型不存在时，将创建一个新的侦听器数组。该方法只会在回调函数被执行后，移除监听器
-         * @param eventType
-         * @param callback
-         */
-        once(eventType: string, callback: (event: Event) => void): void;
-        /**
-         * 用于取消订阅特定事件类型的侦听器。如果找到侦听器，则将其从数组中移除
-         * @param eventType
-         * @param listener
-         */
-        off(eventType: string, listener: EventListener): void;
-        /**
-         * 用于触发事件。该方法将遍历所有订阅给定事件类型的侦听器，并调用它们
-         * @param event
-         */
-        emit(type: string, data: any): void;
-    }
-}
-declare module gs {
-    class ObjectPool<T> {
-        private createFn;
-        private resetFn;
-        private pool;
-        constructor(createFn: () => T, resetFn: (obj: T) => void);
-        acquire(): T;
-        release(obj: T): void;
-    }
-}
-declare module gs {
-    class EventPool extends ObjectPool<Event> {
-        constructor();
-    }
-}
-declare module gs {
-    const GlobalEventEmitter: EventEmitter;
-}
-declare module gs {
-    class Random {
-        private seed;
-        constructor(seed: number);
-        /**
-         * 生成 [0, 1) 范围内的随机浮点数
-         * @returns
-         */
-        next(): number;
-        /**
-         * 生成 [min, max) 范围内的随机整数
-         * @param min
-         * @param max
-         * @returns
-         */
-        nextInt(min: number, max: number): number;
-        /**
-         * 生成 [min, max) 范围内的随机浮点数
-         * @param min
-         * @param max
-         * @returns
-         */
-        nextFloat(min: number, max: number): number;
-        /**
-         * 从数组中随机选择一个元素
-         * @param array
-         * @returns
-         */
-        choose<T>(array: T[]): T;
-    }
-}
-declare module gs {
-    /**
-     * 系统基类
-     */
-    abstract class System {
-        protected entityManager: EntityManager;
-        protected paused: boolean;
-        pause(): void;
-        resume(): void;
-        isPaused(): boolean;
-        protected enabled: boolean;
-        enable(): void;
-        disable(): void;
-        isEnabled(): boolean;
-        /**
-         * 系统优先级，优先级越高，越先执行
-         */
-        readonly priority: number;
-        /**
-         * 系统所在的worker脚本
-         */
-        readonly workerScript?: string;
-        constructor(entityManager: EntityManager, priority: number, workerScript?: string);
-        /**
-         * 筛选实体
-         * @param entity
-         */
-        abstract entityFilter(entity: Entity): boolean;
-        /**
-         * 更新系统
-         * @param entities
-         */
-        abstract update(entities: Entity[]): void;
-        /**
-         * 系统注册时的逻辑
-         */
-        onRegister(): void;
-        /**
-         * 系统注销时的逻辑
-         */
-        onUnregister(): void;
     }
 }
 declare module gs {
@@ -349,6 +300,21 @@ declare module gs {
     }
 }
 declare module gs {
+    class ObjectPool<T> {
+        private createFn;
+        private resetFn;
+        private pool;
+        constructor(createFn: () => T, resetFn: (obj: T) => void);
+        acquire(): T;
+        release(obj: T): void;
+    }
+}
+declare module gs {
+    class EventPool extends ObjectPool<Event> {
+        constructor();
+    }
+}
+declare module gs {
     interface State {
         enter?(): void;
         exit?(): void;
@@ -374,5 +340,43 @@ declare module gs {
         constructor(entityManager: EntityManager);
         entityFilter(entity: Entity): boolean;
         update(entities: Entity[]): void;
+    }
+}
+declare module gs {
+    class EntityIdAllocator {
+        private nextId;
+        constructor();
+        allocate(): number;
+    }
+}
+declare module gs {
+    class Random {
+        private seed;
+        constructor(seed: number);
+        /**
+         * 生成 [0, 1) 范围内的随机浮点数
+         * @returns
+         */
+        next(): number;
+        /**
+         * 生成 [min, max) 范围内的随机整数
+         * @param min
+         * @param max
+         * @returns
+         */
+        nextInt(min: number, max: number): number;
+        /**
+         * 生成 [min, max) 范围内的随机浮点数
+         * @param min
+         * @param max
+         * @returns
+         */
+        nextFloat(min: number, max: number): number;
+        /**
+         * 从数组中随机选择一个元素
+         * @param array
+         * @returns
+         */
+        choose<T>(array: T[]): T;
     }
 }
