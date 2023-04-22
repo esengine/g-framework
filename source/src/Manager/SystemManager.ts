@@ -47,9 +47,8 @@ module gs {
 
         /**
          * 更新系统
-         * @param deltaTime 
          */
-        update(deltaTime: number): void {
+        update(): void {
             const entities = this.entityManager.getEntities();
             for (const system of this.systems) {
                 if (!system.isEnabled() || system.isPaused()) {
@@ -61,7 +60,6 @@ module gs {
                 const worker = this.systemWorkers.get(system);
                 if (worker) {
                     const message = {
-                        deltaTime,
                         entities: filteredEntities.map(entity => entity.serialize()),
                     };
                     worker.postMessage(message);

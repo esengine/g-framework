@@ -1,3 +1,4 @@
+///<reference path="../Pool/EventPool.ts" />
 module gs {
     export class EventEmitter {
         private listeners: Map<string, EventListener[]>;

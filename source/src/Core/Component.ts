@@ -28,7 +28,10 @@ module gs {
          * @param componentClass 
          * @param manager 
          */
-        public static registerComponent<T extends Component>(componentClass: new (...args: any[]) => T, manager: ComponentManager<T>) {
+        public static registerComponent<T extends Component>(
+            componentClass: new (...args: any[]) => T,
+            manager: ComponentManager<T>
+        ) {
             const componentInstance = new componentClass();
             const keys = Object.keys(componentInstance);
             for (let i = 0; i < keys.length; i++) {

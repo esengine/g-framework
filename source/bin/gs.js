@@ -1,4 +1,14 @@
 "use strict";
+var __extends = (this && this.__extends) || (function () {
+    var extendStatics = Object.setPrototypeOf ||
+        ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+        function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+    return function (d, b) {
+        extendStatics(d, b);
+        function __() { this.constructor = d; }
+        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+    };
+})();
 var __values = (this && this.__values) || function (o) {
     var m = typeof Symbol === "function" && o[Symbol.iterator], i = 0;
     if (m) return m.call(o);
@@ -25,16 +35,134 @@ var __read = (this && this.__read) || function (o, n) {
     }
     return ar;
 };
-var __extends = (this && this.__extends) || (function () {
-    var extendStatics = Object.setPrototypeOf ||
-        ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
-        function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
-    return function (d, b) {
-        extendStatics(d, b);
-        function __() { this.constructor = d; }
-        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
-    };
-})();
+var gs;
+(function (gs) {
+    var ObjectPool = /** @class */ (function () {
+        function ObjectPool(createFn, resetFn) {
+            this.createFn = createFn;
+            this.resetFn = resetFn;
+            this.pool = [];
+        }
+        ObjectPool.prototype.acquire = function () {
+            if (this.pool.length > 0) {
+                var obj = this.pool.pop();
+                this.resetFn(obj);
+                return obj;
+            }
+            else {
+                return this.createFn();
+            }
+        };
+        ObjectPool.prototype.release = function (obj) {
+            this.pool.push(obj);
+        };
+        return ObjectPool;
+    }());
+    gs.ObjectPool = ObjectPool;
+})(gs || (gs = {}));
+///<reference path="./ObjectPool.ts" />
+var gs;
+///<reference path="./ObjectPool.ts" />
+(function (gs) {
+    var EventPool = /** @class */ (function (_super) {
+        __extends(EventPool, _super);
+        function EventPool() {
+            return _super.call(this, function () { return new gs.Event("", null); }, function (event) {
+                event.type = "";
+                event.data = null;
+            }) || this;
+        }
+        return EventPool;
+    }(gs.ObjectPool));
+    gs.EventPool = EventPool;
+})(gs || (gs = {}));
+///<reference path="../Pool/EventPool.ts" />
+var gs;
+///<reference path="../Pool/EventPool.ts" />
+(function (gs) {
+    var EventEmitter = /** @class */ (function () {
+        function EventEmitter() {
+            this.listeners = new Map();
+            this.eventPool = new gs.EventPool();
+        }
+        /**
+         * 用于订阅特定事件类型的侦听器。当事件类型不存在时，将创建一个新的侦听器数组
+         * @param eventType
+         * @param listener
+         */
+        EventEmitter.prototype.on = function (eventType, listener) {
+            if (!this.listeners.has(eventType)) {
+                this.listeners.set(eventType, []);
+            }
+            var eventListeners = this.listeners.get(eventType);
+            if (eventListeners)
+                eventListeners.push(listener);
+        };
+        /**
+         * 用于订阅特定事件类型的侦听器。当事件类型不存在时，将创建一个新的侦听器数组。该方法只会在回调函数被执行后，移除监听器
+         * @param eventType
+         * @param callback
+         */
+        EventEmitter.prototype.once = function (eventType, callback) {
+            var _this = this;
+            var wrappedCallback = function (event) {
+                // 在回调函数被执行后，移除监听器
+                _this.off(eventType, wrappedCallback);
+                callback(event);
+            };
+            this.on(eventType, wrappedCallback);
+        };
+        /**
+         * 用于取消订阅特定事件类型的侦听器。如果找到侦听器，则将其从数组中移除
+         * @param eventType
+         * @param listener
+         */
+        EventEmitter.prototype.off = function (eventType, listener) {
+            var eventListeners = this.listeners.get(eventType);
+            if (eventListeners) {
+                var index = eventListeners.indexOf(listener);
+                if (index > -1) {
+                    eventListeners.splice(index, 1);
+                }
+            }
+        };
+        /**
+         * 用于触发事件。该方法将遍历所有订阅给定事件类型的侦听器，并调用它们
+         * @param event
+         */
+        EventEmitter.prototype.emit = function (type, data) {
+            var e_1, _a;
+            var event = this.eventPool.acquire();
+            event.type = type;
+            event.data = data;
+            var listeners = this.listeners[type];
+            if (listeners) {
+                try {
+                    for (var listeners_1 = __values(listeners), listeners_1_1 = listeners_1.next(); !listeners_1_1.done; listeners_1_1 = listeners_1.next()) {
+                        var listener = listeners_1_1.value;
+                        listener(event);
+                    }
+                }
+                catch (e_1_1) { e_1 = { error: e_1_1 }; }
+                finally {
+                    try {
+                        if (listeners_1_1 && !listeners_1_1.done && (_a = listeners_1.return)) _a.call(listeners_1);
+                    }
+                    finally { if (e_1) throw e_1.error; }
+                }
+            }
+            this.eventPool.release(event);
+        };
+        return EventEmitter;
+    }());
+    gs.EventEmitter = EventEmitter;
+})(gs || (gs = {}));
+///<reference path="./Event/EventEmitter.ts" />
+var gs;
+///<reference path="./Event/EventEmitter.ts" />
+(function (gs) {
+    gs.GlobalEventEmitter = new gs.EventEmitter();
+})(gs || (gs = {}));
 var gs;
 (function (gs) {
     /**
@@ -44,7 +172,7 @@ var gs;
         function Component() {
         }
         Component.prototype.serialize = function () {
-            var e_1, _a;
+            var e_2, _a;
             var data = {};
             try {
                 for (var _b = __values(Object.keys(this)), _c = _b.next(); !_c.done; _c = _b.next()) {
@@ -55,12 +183,12 @@ var gs;
                     }
                 }
             }
-            catch (e_1_1) { e_1 = { error: e_1_1 }; }
+            catch (e_2_1) { e_2 = { error: e_2_1 }; }
             finally {
                 try {
                     if (_c && !_c.done && (_a = _b.return)) _a.call(_b);
                 }
-                finally { if (e_1) throw e_1.error; }
+                finally { if (e_2) throw e_2.error; }
             }
             return data;
         };
@@ -192,7 +320,7 @@ var gs;
          * @returns
          */
         Entity.prototype.serialize = function () {
-            var e_2, _a;
+            var e_3, _a;
             var serializedEntity = {
                 id: this.id,
                 components: {},
@@ -206,12 +334,12 @@ var gs;
                     }
                 }
             }
-            catch (e_2_1) { e_2 = { error: e_2_1 }; }
+            catch (e_3_1) { e_3 = { error: e_3_1 }; }
             finally {
                 try {
                     if (_c && !_c.done && (_a = _b.return)) _a.call(_b);
                 }
-                finally { if (e_2) throw e_2.error; }
+                finally { if (e_3) throw e_3.error; }
             }
             return serializedEntity;
         };
@@ -220,7 +348,7 @@ var gs;
          * @param data
          */
         Entity.prototype.deserialize = function (data) {
-            var e_3, _a;
+            var e_4, _a;
             for (var componentName in data.components) {
                 try {
                     for (var _b = __values(this.componentManagers), _c = _b.next(); !_c.done; _c = _b.next()) {
@@ -234,12 +362,12 @@ var gs;
                         }
                     }
                 }
-                catch (e_3_1) { e_3 = { error: e_3_1 }; }
+                catch (e_4_1) { e_4 = { error: e_4_1 }; }
                 finally {
                     try {
                         if (_c && !_c.done && (_a = _b.return)) _a.call(_b);
                     }
-                    finally { if (e_3) throw e_3.error; }
+                    finally { if (e_4) throw e_4.error; }
                 }
             }
         };
@@ -324,89 +452,6 @@ var gs;
         return Event;
     }());
     gs.Event = Event;
-})(gs || (gs = {}));
-var gs;
-(function (gs) {
-    var EventEmitter = /** @class */ (function () {
-        function EventEmitter() {
-            this.listeners = new Map();
-            this.eventPool = new gs.EventPool();
-        }
-        /**
-         * 用于订阅特定事件类型的侦听器。当事件类型不存在时，将创建一个新的侦听器数组
-         * @param eventType
-         * @param listener
-         */
-        EventEmitter.prototype.on = function (eventType, listener) {
-            if (!this.listeners.has(eventType)) {
-                this.listeners.set(eventType, []);
-            }
-            var eventListeners = this.listeners.get(eventType);
-            if (eventListeners)
-                eventListeners.push(listener);
-        };
-        /**
-         * 用于订阅特定事件类型的侦听器。当事件类型不存在时，将创建一个新的侦听器数组。该方法只会在回调函数被执行后，移除监听器
-         * @param eventType
-         * @param callback
-         */
-        EventEmitter.prototype.once = function (eventType, callback) {
-            var _this = this;
-            var wrappedCallback = function (event) {
-                // 在回调函数被执行后，移除监听器
-                _this.off(eventType, wrappedCallback);
-                callback(event);
-            };
-            this.on(eventType, wrappedCallback);
-        };
-        /**
-         * 用于取消订阅特定事件类型的侦听器。如果找到侦听器，则将其从数组中移除
-         * @param eventType
-         * @param listener
-         */
-        EventEmitter.prototype.off = function (eventType, listener) {
-            var eventListeners = this.listeners.get(eventType);
-            if (eventListeners) {
-                var index = eventListeners.indexOf(listener);
-                if (index > -1) {
-                    eventListeners.splice(index, 1);
-                }
-            }
-        };
-        /**
-         * 用于触发事件。该方法将遍历所有订阅给定事件类型的侦听器，并调用它们
-         * @param event
-         */
-        EventEmitter.prototype.emit = function (type, data) {
-            var e_4, _a;
-            var event = this.eventPool.acquire();
-            event.type = type;
-            event.data = data;
-            var listeners = this.listeners[type];
-            if (listeners) {
-                try {
-                    for (var listeners_1 = __values(listeners), listeners_1_1 = listeners_1.next(); !listeners_1_1.done; listeners_1_1 = listeners_1.next()) {
-                        var listener = listeners_1_1.value;
-                        listener(event);
-                    }
-                }
-                catch (e_4_1) { e_4 = { error: e_4_1 }; }
-                finally {
-                    try {
-                        if (listeners_1_1 && !listeners_1_1.done && (_a = listeners_1.return)) _a.call(listeners_1);
-                    }
-                    finally { if (e_4) throw e_4.error; }
-                }
-            }
-            this.eventPool.release(event);
-        };
-        return EventEmitter;
-    }());
-    gs.EventEmitter = EventEmitter;
-})(gs || (gs = {}));
-var gs;
-(function (gs) {
-    gs.GlobalEventEmitter = new gs.EventEmitter();
 })(gs || (gs = {}));
 var gs;
 (function (gs) {
@@ -572,24 +617,26 @@ var gs;
 var gs;
 (function (gs) {
     var EntityManager = /** @class */ (function () {
-        function EntityManager(componentManagers) {
+        function EntityManager(componentClasses) {
             var e_5, _a;
             this.entities = new Map();
             this.entityIdAllocator = new gs.EntityIdAllocator();
-            this.componentManagers = new Map();
             this.inputManager = new gs.InputManager(this);
             this.networkManager = new gs.NetworkManager();
             this.currentFrameNumber = 0; // 初始化当前帧编号为0
+            this.componentManagers = new Map();
             try {
-                for (var componentManagers_1 = __values(componentManagers), componentManagers_1_1 = componentManagers_1.next(); !componentManagers_1_1.done; componentManagers_1_1 = componentManagers_1.next()) {
-                    var manager = componentManagers_1_1.value;
-                    this.componentManagers.set(manager.componentType, manager);
+                for (var componentClasses_1 = __values(componentClasses), componentClasses_1_1 = componentClasses_1.next(); !componentClasses_1_1.done; componentClasses_1_1 = componentClasses_1.next()) {
+                    var componentClass = componentClasses_1_1.value;
+                    var componentManager = new gs.ComponentManager(componentClass);
+                    gs.Component.registerComponent(componentClass, componentManager);
+                    this.componentManagers.set(componentClass, componentManager);
                 }
             }
             catch (e_5_1) { e_5 = { error: e_5_1 }; }
             finally {
                 try {
-                    if (componentManagers_1_1 && !componentManagers_1_1.done && (_a = componentManagers_1.return)) _a.call(componentManagers_1);
+                    if (componentClasses_1_1 && !componentClasses_1_1.done && (_a = componentClasses_1.return)) _a.call(componentClasses_1);
                 }
                 finally { if (e_5) throw e_5.error; }
             }
@@ -622,8 +669,10 @@ var gs;
          */
         EntityManager.prototype.deleteEntity = function (entityId) {
             var entity = this.getEntity(entityId);
-            entity.onDestroy();
-            this.entities.delete(entityId);
+            if (entity) {
+                entity.onDestroy();
+                this.entities.delete(entityId);
+            }
         };
         /**
          * 获取实体
@@ -824,9 +873,8 @@ var gs;
         };
         /**
          * 更新系统
-         * @param deltaTime
          */
-        SystemManager.prototype.update = function (deltaTime) {
+        SystemManager.prototype.update = function () {
             var _this = this;
             var e_12, _a;
             var entities = this.entityManager.getEntities();
@@ -838,7 +886,6 @@ var gs;
                 var worker = this_1.systemWorkers.get(system);
                 if (worker) {
                     var message = {
-                        deltaTime: deltaTime,
                         entities: filteredEntities.map(function (entity) { return entity.serialize(); }),
                     };
                     worker.postMessage(message);
@@ -934,47 +981,6 @@ var gs;
         return NetworkManager;
     }());
     gs.NetworkManager = NetworkManager;
-})(gs || (gs = {}));
-var gs;
-(function (gs) {
-    var ObjectPool = /** @class */ (function () {
-        function ObjectPool(createFn, resetFn) {
-            this.createFn = createFn;
-            this.resetFn = resetFn;
-            this.pool = [];
-        }
-        ObjectPool.prototype.acquire = function () {
-            if (this.pool.length > 0) {
-                var obj = this.pool.pop();
-                this.resetFn(obj);
-                return obj;
-            }
-            else {
-                return this.createFn();
-            }
-        };
-        ObjectPool.prototype.release = function (obj) {
-            this.pool.push(obj);
-        };
-        return ObjectPool;
-    }());
-    gs.ObjectPool = ObjectPool;
-})(gs || (gs = {}));
-///<reference path="ObjectPool.ts" />
-var gs;
-///<reference path="ObjectPool.ts" />
-(function (gs) {
-    var EventPool = /** @class */ (function (_super) {
-        __extends(EventPool, _super);
-        function EventPool() {
-            return _super.call(this, function () { return new gs.Event("", null); }, function (event) {
-                event.type = "";
-                event.data = null;
-            }) || this;
-        }
-        return EventPool;
-    }(gs.ObjectPool));
-    gs.EventPool = EventPool;
 })(gs || (gs = {}));
 var gs;
 (function (gs) {

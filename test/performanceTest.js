@@ -11,7 +11,9 @@ class MovementSystem extends gs.System {
     return entity.hasComponent(PositionComponent) && entity.hasComponent(VelocityComponent);
   }
 
-  update(deltaTime, entities) {
+  update(entities) {
+    const timeManager = gs.TimeManager.getInstance();
+    const deltaTime = timeManager.deltaTime;
     for (const entity of entities) {
       const position = entity.getComponent(PositionComponent);
       const velocity = entity.getComponent(VelocityComponent);
@@ -40,18 +42,9 @@ class VelocityComponent extends Component {
 }
 
 const NUM_ENTITIES = 1000;
-const positionManager = new ComponentManager(PositionComponent);
-const velocityManager = new ComponentManager(VelocityComponent);
-
-// 注册组件
-Component.registerComponent(PositionComponent, positionManager);
-Component.registerComponent(VelocityComponent, velocityManager);
-
-// 创建包含所有 ComponentManager 实例的数组
-const componentManagers = [positionManager, velocityManager];
 
 // 创建一个 EntityManager 实例，并传递 componentManagers 数组
-const entityManager = new EntityManager(componentManagers);
+const entityManager = new EntityManager([PositionComponent, VelocityComponent]);
 
 const startTime = performance.now();
 
@@ -76,8 +69,10 @@ const deltaTime = 1 / 60;
 
 const updateStartTime = performance.now();
 
+const timeManager = gs.TimeManager.getInstance();
+timeManager.update(deltaTime);
 for (let i = 0; i < NUM_UPDATES; i++) {
-  systemManager.update(deltaTime);
+  systemManager.update();
 }
 
 const updateEndTime = performance.now();

@@ -11,8 +11,19 @@ G-Framework 是一个基于 TypeScript 编写的实体组件系统（ECS）框�
 - 易用性，降低上手难度
 - 可扩展性，方便添加自定义模块
 
-## 交流群
+# 交流群
+
 点击链接加入群聊【ecs游戏框架交流】：https://jq.qq.com/?_wv=1027&k=29w1Nud6
+
+# 性能测试报告
+
+| 测试项                                     | 耗时      |
+| ------------------------------------------ | --------- |
+| 创建 1000 个实体并分配组件                 | 0.80 ms   |
+| 更新 1000 次系统                           | 0.40 ms   |
+| 创建并删除 1000 个实体                     | 0.80 ms   |
+| 筛选 5000 个实体中具有位置和速度组件的实体 | 0.00 ms   |
+| 添加和删除 1000 个实体的组件              | 1.40 ms   |
 
 # G-Framework ECS 框架入门
 
@@ -21,12 +32,8 @@ G-Framework 是一个基于 TypeScript 编写的实体组件系统（ECS）框�
 实体是游戏中的基本对象，每个实体由一个唯一的 ID 标识，并包含一组组件。你可以通过 G-Framework 的 Entity 类来创建和管理实体。
 
 ```typescript
-// 创建组件管理器
-const positionManager = new gs.ComponentManager(PositionComponent);
-const velocityManager = new gs.ComponentManager(VelocityComponent);
-
 // 创建实体管理器
-const entityManager = new gs.EntityManager([positionManager, velocityManager]);
+const entityManager = new gs.EntityManager([PositionComponent, VelocityComponent]);
 
 // 创建实体
 const entity = entityManager.createEntity();
@@ -47,14 +54,6 @@ class VelocityComponent extends gs.Component {
     public x: number = 0;
     public y: number = 0;
 }
-```
-
-创建组件后，你需要注册它们到相应的组件管理器中，以便将其附加到实体上。
-
-```typescript
-// 注册组件到管理器中
-gs.Component.registerComponent(PositionComponent, positionManager);
-gs.Component.registerComponent(VelocityComponent, velocityManager);
 ```
 
 现在，你可以将组件附加到实体上：
