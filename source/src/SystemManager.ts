@@ -17,6 +17,7 @@ module gs {
          * @param system 系统 
          */
         registerSystem(system: System): void {
+            system.onRegister();
             this.systems.push(system);
             this.systems.sort((a, b) => a.priority - b.priority);
 
@@ -29,6 +30,18 @@ module gs {
                     const worker = new Worker(system.workerScript);
                     this.systemWorkers.set(system, worker);
                 }
+            }
+        }
+
+        /**
+         * 注销系统
+         * @param system 
+         */
+        unregisterSystem(system: System): void {
+            system.onUnregister();
+            const index = this.systems.indexOf(system);
+            if (index > -1) {
+                this.systems.splice(index, 1);
             }
         }
 

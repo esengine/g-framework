@@ -6,6 +6,16 @@ declare module gs {
         serialize(): any;
         deserialize(data: any): void;
         /**
+         * 组件添加到实体时的逻辑
+         * @param entity
+         */
+        onAttach(entity: Entity): void;
+        /**
+         * 组件从实体移除时的逻辑
+         * @param entity
+         */
+        onDetach(entity: Entity): void;
+        /**
          * 注册组件
          * @param componentClass
          * @param manager
@@ -106,6 +116,14 @@ declare module gs {
          * @param data
          */
         deserialize(data: any): void;
+        /**
+         * 实体创建时的逻辑
+         */
+        onCreate(): void;
+        /**
+         * 实体销毁时的逻辑
+         */
+        onDestroy(): void;
     }
 }
 declare module gs {
@@ -237,6 +255,14 @@ declare module gs {
          * @param entities
          */
         abstract update(entities: Entity[]): void;
+        /**
+         * 系统注册时的逻辑
+         */
+        onRegister(): void;
+        /**
+         * 系统注销时的逻辑
+         */
+        onUnregister(): void;
     }
 }
 declare module gs {
@@ -253,6 +279,11 @@ declare module gs {
          * @param system 系统
          */
         registerSystem(system: System): void;
+        /**
+         * 注销系统
+         * @param system
+         */
+        unregisterSystem(system: System): void;
         /**
          * 更新系统
          * @param deltaTime

@@ -72,6 +72,18 @@ var gs;
             }
         };
         /**
+         * 组件添加到实体时的逻辑
+         * @param entity
+         */
+        Component.prototype.onAttach = function (entity) {
+        };
+        /**
+         * 组件从实体移除时的逻辑
+         * @param entity
+         */
+        Component.prototype.onDetach = function (entity) {
+        };
+        /**
          * 注册组件
          * @param componentClass
          * @param manager
@@ -192,7 +204,9 @@ var gs;
             if (!manager) {
                 throw new Error("\u7EC4\u4EF6\u7C7B\u578B\u4E3A " + componentType.name + " \u7684\u7EC4\u4EF6\u7BA1\u7406\u5668\u672A\u627E\u5230.");
             }
-            return manager.create(this.id);
+            var component = manager.create(this.id);
+            component.onAttach(this);
+            return component;
         };
         /**
          * 获取组件
@@ -216,7 +230,11 @@ var gs;
             if (!manager) {
                 return;
             }
-            manager.remove(this.id);
+            var component = this.getComponent(componentType);
+            if (component) {
+                component.onDetach(this);
+                manager.remove(this.id);
+            }
         };
         /**
          * 是否有组件
@@ -305,6 +323,16 @@ var gs;
                 }
             }
         };
+        /**
+         * 实体创建时的逻辑
+         */
+        Entity.prototype.onCreate = function () {
+        };
+        /**
+         * 实体销毁时的逻辑
+         */
+        Entity.prototype.onDestroy = function () {
+        };
         return Entity;
     }());
     gs.Entity = Entity;
@@ -352,13 +380,17 @@ var gs;
          */
         EntityManager.prototype.createEntity = function () {
             var entityId = this.entityIdAllocator.allocate();
-            return new gs.Entity(entityId, this.componentManagers);
+            var entity = new gs.Entity(entityId, this.componentManagers);
+            entity.onCreate();
+            return entity;
         };
         /**
          * 删除实体
          * @param entityId
          */
         EntityManager.prototype.deleteEntity = function (entityId) {
+            var entity = this.getEntity(entityId);
+            entity.onDestroy();
             this.entities.delete(entityId);
         };
         /**
@@ -573,6 +605,16 @@ var gs;
             this.priority = priority;
             this.workerScript = workerScript;
         }
+        /**
+         * 系统注册时的逻辑
+         */
+        System.prototype.onRegister = function () {
+        };
+        /**
+         * 系统注销时的逻辑
+         */
+        System.prototype.onUnregister = function () {
+        };
         return System;
     }());
     gs.System = System;
@@ -593,6 +635,7 @@ var gs;
          * @param system 系统
          */
         SystemManager.prototype.registerSystem = function (system) {
+            system.onRegister();
             this.systems.push(system);
             this.systems.sort(function (a, b) { return a.priority - b.priority; });
             if (system.workerScript) {
@@ -603,6 +646,17 @@ var gs;
                     var worker = new Worker(system.workerScript);
                     this.systemWorkers.set(system, worker);
                 }
+            }
+        };
+        /**
+         * 注销系统
+         * @param system
+         */
+        SystemManager.prototype.unregisterSystem = function (system) {
+            system.onUnregister();
+            var index = this.systems.indexOf(system);
+            if (index > -1) {
+                this.systems.splice(index, 1);
             }
         };
         /**

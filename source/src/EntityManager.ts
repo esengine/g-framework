@@ -20,7 +20,9 @@ module gs {
          */
         public createEntity(): Entity {
             const entityId = this.entityIdAllocator.allocate();
-            return new Entity(entityId, this.componentManagers);
+            const entity = new Entity(entityId, this.componentManagers);
+            entity.onCreate();
+            return entity;
         }
 
         /**
@@ -28,6 +30,8 @@ module gs {
          * @param entityId 
          */
         deleteEntity(entityId: number): void {
+            const entity = this.getEntity(entityId);
+            entity.onDestroy();
             this.entities.delete(entityId);
         }
 

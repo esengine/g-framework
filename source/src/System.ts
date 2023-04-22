@@ -29,5 +29,17 @@ module gs {
          * @param entities 
          */
         abstract update(entities: Entity[]): void;
+
+        /**
+         * 系统注册时的逻辑
+         */
+        onRegister() {
+        }
+    
+        /**
+         * 系统注销时的逻辑
+         */
+        onUnregister() {
+        }
     }
 }

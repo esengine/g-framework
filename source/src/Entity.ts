@@ -24,7 +24,9 @@ module gs {
             if (!manager) {
                 throw new Error(`组件类型为 ${componentType.name} 的组件管理器未找到.`);
             }
-            return manager.create(this.id);
+            const component = manager.create(this.id) as T;
+            component.onAttach(this);
+            return component;
         }
 
         /**
@@ -50,7 +52,11 @@ module gs {
             if (!manager) {
                 return;
             }
-            manager.remove(this.id);
+            const component = this.getComponent(componentType);
+            if (component) {
+                component.onDetach(this);
+                manager.remove(this.id);
+            }
         }
 
         /**
@@ -124,6 +130,18 @@ module gs {
                     }
                 }
             }
+        }
+
+        /**
+         * 实体创建时的逻辑
+         */
+        onCreate() {
+        }
+    
+        /**
+         * 实体销毁时的逻辑
+         */
+        onDestroy() {
         }
     }
 }
