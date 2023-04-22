@@ -188,6 +188,7 @@ declare module gs {
          * @param event
          */
         abstract handleInputEvent(event: any): void;
+        protected sendInputToManager(inputEvent: InputEvent): void;
     }
 }
 declare module gs {
@@ -212,11 +213,25 @@ declare module gs {
 }
 declare module gs {
     class InputManager {
-        private inputBuffer;
+        private entityManager;
         private adapter?;
-        constructor();
+        private inputBuffer;
+        /** 输入历史记录队列 */
+        private inputHistory;
+        constructor(entityManager: EntityManager);
         setAdapter(adapter: InputAdapter): void;
+        sendInput(event: InputEvent): void;
+        private handleInput;
+        /**
+         * 获取当前帧编号的方法
+         * @returns
+         */
+        private getCurrentFrameNumber;
         getInputBuffer(): InputBuffer;
+        getInputHistory(): Array<{
+            frameNumber: number;
+            input: InputEvent;
+        }>;
     }
 }
 declare module gs {
@@ -269,9 +284,13 @@ declare module gs {
         private entities;
         private entityIdAllocator;
         private componentManagers;
+        /** 当前帧编号属性 */
+        private currentFrameNumber;
         private inputManager;
         private networkManager;
         constructor(componentManagers: Array<ComponentManager<Component>>);
+        updateFrameNumber(): void;
+        getCurrentFrameNumber(): number;
         getInputManager(): InputManager;
         getNetworkManager(): NetworkManager;
         /**

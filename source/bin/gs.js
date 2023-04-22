@@ -414,6 +414,9 @@ var gs;
         function InputAdapter(inputManager) {
             this.inputManager = inputManager;
         }
+        InputAdapter.prototype.sendInputToManager = function (inputEvent) {
+            this.inputManager.sendInput(inputEvent);
+        };
         return InputAdapter;
     }());
     gs.InputAdapter = InputAdapter;
@@ -454,14 +457,35 @@ var gs;
 var gs;
 (function (gs) {
     var InputManager = /** @class */ (function () {
-        function InputManager() {
+        function InputManager(entityManager) {
+            /** 输入历史记录队列 */
+            this.inputHistory = [];
+            this.entityManager = entityManager;
             this.inputBuffer = new gs.InputBuffer();
         }
         InputManager.prototype.setAdapter = function (adapter) {
             this.adapter = adapter;
         };
+        InputManager.prototype.sendInput = function (event) {
+            this.handleInput(event);
+        };
+        InputManager.prototype.handleInput = function (event) {
+            this.inputBuffer.addEvent(event);
+            // 将输入和当前帧编号存储在输入历史记录中
+            this.inputHistory.push({ frameNumber: this.getCurrentFrameNumber(), input: event });
+        };
+        /**
+         * 获取当前帧编号的方法
+         * @returns
+         */
+        InputManager.prototype.getCurrentFrameNumber = function () {
+            return this.entityManager.getCurrentFrameNumber();
+        };
         InputManager.prototype.getInputBuffer = function () {
             return this.inputBuffer;
+        };
+        InputManager.prototype.getInputHistory = function () {
+            return this.inputHistory;
         };
         return InputManager;
     }());
@@ -553,8 +577,9 @@ var gs;
             this.entities = new Map();
             this.entityIdAllocator = new gs.EntityIdAllocator();
             this.componentManagers = new Map();
-            this.inputManager = new gs.InputManager();
+            this.inputManager = new gs.InputManager(this);
             this.networkManager = new gs.NetworkManager();
+            this.currentFrameNumber = 0; // 初始化当前帧编号为0
             try {
                 for (var componentManagers_1 = __values(componentManagers), componentManagers_1_1 = componentManagers_1.next(); !componentManagers_1_1.done; componentManagers_1_1 = componentManagers_1.next()) {
                     var manager = componentManagers_1_1.value;
@@ -569,6 +594,12 @@ var gs;
                 finally { if (e_5) throw e_5.error; }
             }
         }
+        EntityManager.prototype.updateFrameNumber = function () {
+            this.currentFrameNumber++;
+        };
+        EntityManager.prototype.getCurrentFrameNumber = function () {
+            return this.currentFrameNumber;
+        };
         EntityManager.prototype.getInputManager = function () {
             return this.inputManager;
         };

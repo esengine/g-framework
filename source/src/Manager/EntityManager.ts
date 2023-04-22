@@ -3,6 +3,8 @@ module gs {
         private entities: Map<number, Entity>;
         private entityIdAllocator: EntityIdAllocator;
         private componentManagers: Map<new (entityId: number) => Component, ComponentManager<Component>>;
+        /** 当前帧编号属性 */
+        private currentFrameNumber: number;
         private inputManager: InputManager;
         private networkManager: NetworkManager;
 
@@ -10,12 +12,21 @@ module gs {
             this.entities = new Map();
             this.entityIdAllocator = new EntityIdAllocator();
             this.componentManagers = new Map();
-            this.inputManager = new InputManager();
+            this.inputManager = new InputManager(this);
             this.networkManager = new NetworkManager();
+            this.currentFrameNumber = 0; // 初始化当前帧编号为0
 
             for (const manager of componentManagers) {
                 this.componentManagers.set(manager.componentType, manager);
             }
+        }
+
+        public updateFrameNumber(): void {
+            this.currentFrameNumber++;
+        }
+
+        public getCurrentFrameNumber(): number {
+            return this.currentFrameNumber;
         }
 
         public getInputManager(): InputManager {

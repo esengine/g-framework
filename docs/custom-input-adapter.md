@@ -22,7 +22,7 @@ class MyInputAdapter extends gs.InputAdapter {
     }
 
     // 将游戏引擎的输入事件转换为 InputEvent
-    private convertEngineEventToInputEvent(event: any): InputEvent {
+    private convertEngineEventToInputEvent(event: any): gs.InputEvent {
         // 根据您使用的游戏引擎实现相应的转换逻辑
         // ...
         return {

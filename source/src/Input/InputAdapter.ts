@@ -11,5 +11,9 @@ module gs {
          * @param event 
          */
         abstract handleInputEvent(event: any): void;
+
+        protected sendInputToManager(inputEvent: InputEvent): void {
+            this.inputManager.sendInput(inputEvent);
+        }
     }
 }

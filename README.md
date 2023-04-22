@@ -21,8 +21,12 @@ G-Framework 是一个基于 TypeScript 编写的实体组件系统（ECS）框�
 实体是游戏中的基本对象，每个实体由一个唯一的 ID 标识，并包含一组组件。你可以通过 G-Framework 的 Entity 类来创建和管理实体。
 
 ```typescript
+// 创建组件管理器
+const positionManager = new gs.ComponentManager(PositionComponent);
+const velocityManager = new gs.ComponentManager(VelocityComponent);
+
 // 创建实体管理器
-const entityManager = new gs.EntityManager();
+const entityManager = new gs.EntityManager([positionManager, velocityManager]);
 
 // 创建实体
 const entity = entityManager.createEntity();
@@ -48,10 +52,6 @@ class VelocityComponent extends gs.Component {
 创建组件后，你需要注册它们到相应的组件管理器中，以便将其附加到实体上。
 
 ```typescript
-// 创建组件管理器
-const positionManager = new gs.ComponentManager(PositionComponent);
-const velocityManager = new gs.ComponentManager(VelocityComponent);
-
 // 注册组件到管理器中
 gs.Component.registerComponent(PositionComponent, positionManager);
 gs.Component.registerComponent(VelocityComponent, velocityManager);
@@ -113,3 +113,4 @@ function gameLoop(deltaTime: number) {
 - [网络适配器](docs/network-adapter.md)
 - [状态快照](docs/state-snapshop.md)
 - [客户端插值](docs/interpolation.md)
+- [输入管理器](docs/input-manager.md)
