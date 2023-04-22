@@ -12,7 +12,8 @@ jobs:
         uses: actions/checkout@v3
       - name: Check Changes
         run: |
-          changed_files=$(git diff --name-only HEAD~1 HEAD)
+          last_commit=$(git log -1 --format="%H")
+          changed_files=$(git diff --name-only $last_commit HEAD)
           echo "Changed files: $changed_files"
           if echo "$changed_files" | grep -qE '^source/src/.*\.(js|ts)$'; then
             echo "Changes in source/src detected. Proceeding with build and release."
