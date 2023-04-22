@@ -136,5 +136,20 @@ module gs {
 
             this.entities = newEntityMap;
         }
+
+        /**
+         * 应用插值
+         * @param factor 
+         */
+        public applyInterpolation(factor: number) {
+            for (const entity of this.getEntities()) {
+                for (const [componentType, manager] of this.componentManagers) {
+                    const component = entity.getComponent(componentType);
+                    if (component instanceof Component && 'savePreviousState' in component && 'applyInterpolation' in component) {
+                        (component as Interpolatable).applyInterpolation(factor);
+                    }
+                }
+            }
+        }
     }
 }

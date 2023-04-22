@@ -701,6 +701,41 @@ var gs;
             }
             this.entities = newEntityMap;
         };
+        /**
+         * 应用插值
+         * @param factor
+         */
+        EntityManager.prototype.applyInterpolation = function (factor) {
+            var e_10, _a, e_11, _b;
+            try {
+                for (var _c = __values(this.getEntities()), _d = _c.next(); !_d.done; _d = _c.next()) {
+                    var entity = _d.value;
+                    try {
+                        for (var _e = __values(this.componentManagers), _f = _e.next(); !_f.done; _f = _e.next()) {
+                            var _g = __read(_f.value, 2), componentType = _g[0], manager = _g[1];
+                            var component = entity.getComponent(componentType);
+                            if (component instanceof gs.Component && 'savePreviousState' in component && 'applyInterpolation' in component) {
+                                component.applyInterpolation(factor);
+                            }
+                        }
+                    }
+                    catch (e_11_1) { e_11 = { error: e_11_1 }; }
+                    finally {
+                        try {
+                            if (_f && !_f.done && (_b = _e.return)) _b.call(_e);
+                        }
+                        finally { if (e_11) throw e_11.error; }
+                    }
+                }
+            }
+            catch (e_10_1) { e_10 = { error: e_10_1 }; }
+            finally {
+                try {
+                    if (_d && !_d.done && (_a = _c.return)) _a.call(_c);
+                }
+                finally { if (e_10) throw e_10.error; }
+            }
+        };
         return EntityManager;
     }());
     gs.EntityManager = EntityManager;
@@ -751,7 +786,7 @@ var gs;
          */
         SystemManager.prototype.update = function (deltaTime) {
             var _this = this;
-            var e_10, _a;
+            var e_12, _a;
             var entities = this.entityManager.getEntities();
             var _loop_2 = function (system) {
                 if (!system.isEnabled() || system.isPaused()) {
@@ -766,7 +801,7 @@ var gs;
                     };
                     worker.postMessage(message);
                     worker.onmessage = function (event) {
-                        var e_11, _a;
+                        var e_13, _a;
                         var updatedEntities = event.data.entities;
                         try {
                             for (var updatedEntities_1 = __values(updatedEntities), updatedEntities_1_1 = updatedEntities_1.next(); !updatedEntities_1_1.done; updatedEntities_1_1 = updatedEntities_1.next()) {
@@ -777,12 +812,12 @@ var gs;
                                 }
                             }
                         }
-                        catch (e_11_1) { e_11 = { error: e_11_1 }; }
+                        catch (e_13_1) { e_13 = { error: e_13_1 }; }
                         finally {
                             try {
                                 if (updatedEntities_1_1 && !updatedEntities_1_1.done && (_a = updatedEntities_1.return)) _a.call(updatedEntities_1);
                             }
-                            finally { if (e_11) throw e_11.error; }
+                            finally { if (e_13) throw e_13.error; }
                         }
                     };
                 }
@@ -797,12 +832,12 @@ var gs;
                     _loop_2(system);
                 }
             }
-            catch (e_10_1) { e_10 = { error: e_10_1 }; }
+            catch (e_12_1) { e_12 = { error: e_12_1 }; }
             finally {
                 try {
                     if (_c && !_c.done && (_a = _b.return)) _a.call(_b);
                 }
-                finally { if (e_10) throw e_10.error; }
+                finally { if (e_12) throw e_12.error; }
             }
         };
         return SystemManager;
@@ -960,7 +995,7 @@ var gs;
             return entity.hasComponent(gs.StateMachineComponent);
         };
         StateMachineSystem.prototype.update = function (entities) {
-            var e_12, _a;
+            var e_14, _a;
             try {
                 for (var entities_1 = __values(entities), entities_1_1 = entities_1.next(); !entities_1_1.done; entities_1_1 = entities_1.next()) {
                     var entity = entities_1_1.value;
@@ -968,12 +1003,12 @@ var gs;
                     stateMachineComponent.stateMachine.update();
                 }
             }
-            catch (e_12_1) { e_12 = { error: e_12_1 }; }
+            catch (e_14_1) { e_14 = { error: e_14_1 }; }
             finally {
                 try {
                     if (entities_1_1 && !entities_1_1.done && (_a = entities_1.return)) _a.call(entities_1);
                 }
-                finally { if (e_12) throw e_12.error; }
+                finally { if (e_14) throw e_14.error; }
             }
         };
         return StateMachineSystem;

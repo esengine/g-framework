@@ -86,6 +86,12 @@ declare module gs {
     }
 }
 declare module gs {
+    interface Interpolatable {
+        savePreviousState(): void;
+        applyInterpolation(factor: number): void;
+    }
+}
+declare module gs {
     /**
      * 系统基类
      */
@@ -309,6 +315,11 @@ declare module gs {
          * @param stateSnapshot
          */
         updateStateFromSnapshot(stateSnapshot: any): void;
+        /**
+         * 应用插值
+         * @param factor
+         */
+        applyInterpolation(factor: number): void;
     }
 }
 declare module gs {
