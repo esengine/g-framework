@@ -2,25 +2,26 @@ module gs {
     export class EntityManager {
         private entities: Map<number, Entity>;
         private entityIdAllocator: EntityIdAllocator;
-        private componentManagers: Map<new (entityId: number) => Component, ComponentManager<Component>>;
+        private componentManagers: Map<ComponentConstructor<any>, ComponentManager<Component>>;
         /** 当前帧编号属性 */
         private currentFrameNumber: number;
         private inputManager: InputManager;
         private networkManager: NetworkManager;
 
-        constructor(componentClasses: Array<new (...args: any[]) => Component>) {
+        constructor(componentClasses: Array<ComponentConstructor<any>>) {
             this.entities = new Map();
             this.entityIdAllocator = new EntityIdAllocator();
             this.inputManager = new InputManager(this);
             this.networkManager = new NetworkManager();
-            this.currentFrameNumber = 0; // 初始化当前帧编号为0
+            this.currentFrameNumber = 0;
 
             this.componentManagers = new Map();
             for (const componentClass of componentClasses) {
-                const storageMode = componentClass["useFloat32ArrayStorage"]
-                    ? StorageMode.Float32Array
+                const storageMode = componentClass.useTypedArrayStorage
+                    ? StorageMode.TypedArray
                     : StorageMode.Object;
-                const componentManager = new ComponentManager(componentClass, storageMode);
+                const dataSize = componentClass.defaultDataSize || 10;
+                const componentManager = new ComponentManager(componentClass, storageMode, dataSize);
                 this.componentManagers.set(componentClass, componentManager);
             }
         }

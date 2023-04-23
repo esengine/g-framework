@@ -1,6 +1,6 @@
 /// <reference path="../source/bin/gs.d.ts" />
 
-const { Entity, EntityManager, Component, ComponentManager, StorageMode, float32Property, useFloat32ArrayStorage } = gs;
+const { Entity, EntityManager, Component, ComponentManager, StorageMode, typedProperty, useTypedArrayStorage, StorageType } = gs;
 
 // class MovementSystem extends gs.System {
 //   constructor(entityManager) {
@@ -134,21 +134,21 @@ const elapsedTime = endTime - startTime;
 
 console.log(`创建 ${NUM_ENTITIES} 个实体并分配组件耗时: ${elapsedTime.toFixed(2)}ms`);
 
-@useFloat32ArrayStorage
+@useTypedArrayStorage
 class FloatPositionComponent extends Component {
-  @float32Property()
+  @typedProperty(StorageType.Int32)
   x = 0;
 
-  @float32Property()
+  @typedProperty(StorageType.Int32)
   y = 0;
 }
 
-@useFloat32ArrayStorage
+@useTypedArrayStorage
 class FloatVelocityComponent extends Component {
-  @float32Property()
+  @typedProperty(StorageType.Int32)
   vx = 0;
 
-  @float32Property()
+  @typedProperty(StorageType.Int32)
   vy = 0;
 }
 

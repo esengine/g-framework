@@ -213,56 +213,23 @@ var gs;
                 }
             }
         };
-        /**
-         * 注册组件
-         * @param componentClass
-         * @param manager
-         */
-        Component.registerComponent = function (componentClass, manager, entityId) {
-            var componentInstance = new componentClass();
-            var keys = Object.keys(componentInstance);
-            var float32PropertyCount = 0;
-            var _loop_1 = function (i) {
-                var key = keys[i];
-                var isFloat32Property = componentClass.prototype[key] && componentClass.prototype[key].isFloat32Property;
-                // 如果属性被标记为 Float32Array 存储，并且 ComponentManager 使用 Float32Array 存储模式
-                if (isFloat32Property && manager.storageMode === gs.StorageMode.Float32Array) {
-                    var dataIndex_1 = manager.allocateDataIndex();
-                    Object.defineProperty(componentClass.prototype, key, {
-                        get: function () {
-                            return manager.getFloat32Array(entityId)[dataIndex_1];
-                        },
-                        set: function (value) {
-                            var float32Array = manager.getFloat32Array(entityId);
-                            float32Array[dataIndex_1] = value;
-                        },
-                        enumerable: true,
-                        configurable: true,
-                    });
-                    float32PropertyCount++;
-                }
-                else {
-                    // 使用原始的 Object 存储方式
-                    var dataIndex_2 = manager.allocateDataIndex();
-                    Object.defineProperty(componentClass.prototype, key, {
-                        get: function () {
-                            return manager.get(entityId)[dataIndex_2];
-                        },
-                        set: function (value) {
-                            manager.get(entityId)[dataIndex_2] = value;
-                        },
-                        enumerable: true,
-                        configurable: true,
-                    });
-                }
-            };
+        Component.getPropertyStorageTypes = function () {
+            var properties = {};
+            var prototype = this.prototype;
+            var keys = Object.keys(prototype);
             for (var i = 0; i < keys.length; i++) {
-                _loop_1(i);
+                var key = keys[i];
+                if (!Component.registeredProperties.has(key) && prototype[key] !== undefined) {
+                    var storageType = prototype[key].storageType;
+                    if (storageType) {
+                        properties[key] = storageType;
+                    }
+                }
             }
-            if (componentClass["useFloat32ArrayStorage"]) {
-                componentClass.prototype.float32PropertyCount = float32PropertyCount;
-            }
+            return properties;
         };
+        Component.registeredProperties = new Set();
+        Component.defaultDataSize = 10;
         return Component;
     }());
     gs.Component = Component;
@@ -434,6 +401,21 @@ var gs;
 })(gs || (gs = {}));
 var gs;
 (function (gs) {
+    var StorageType;
+    (function (StorageType) {
+        StorageType[StorageType["Int8"] = 0] = "Int8";
+        StorageType[StorageType["Int16"] = 1] = "Int16";
+        StorageType[StorageType["Int32"] = 2] = "Int32";
+        StorageType[StorageType["Uint8"] = 3] = "Uint8";
+        StorageType[StorageType["Uint16"] = 4] = "Uint16";
+        StorageType[StorageType["Uint32"] = 5] = "Uint32";
+        StorageType[StorageType["Uint8Clamped"] = 6] = "Uint8Clamped";
+        StorageType[StorageType["Float32"] = 7] = "Float32";
+        StorageType[StorageType["Float64"] = 8] = "Float64";
+    })(StorageType = gs.StorageType || (gs.StorageType = {}));
+})(gs || (gs = {}));
+var gs;
+(function (gs) {
     /**
      * 系统基类
      */
@@ -586,35 +568,47 @@ var gs;
 (function (gs) {
     var StorageMode;
     (function (StorageMode) {
-        StorageMode[StorageMode["Float32Array"] = 0] = "Float32Array";
+        StorageMode[StorageMode["TypedArray"] = 0] = "TypedArray";
         StorageMode[StorageMode["Object"] = 1] = "Object";
     })(StorageMode = gs.StorageMode || (gs.StorageMode = {}));
     /**
      * 组件管理器
      */
     var ComponentManager = /** @class */ (function () {
-        function ComponentManager(componentType, storageMode) {
+        /**
+         * ComponentManager 构造函数
+         * @param componentType - 用于创建和管理的组件类型。
+         * @param storageMode - 存储模式，可以是 StorageMode.TypedArray（默认值）或 StorageMode.Object。
+         * @param dataSize - 存储数组的初始大小。当使用 TypedArray 存储时，会根据此值创建数据存储。默认值为 10。
+         *
+         * 用法示例：
+         * const positionManager = new ComponentManager(PositionComponent);
+         * const positionManagerWithObjectStorage = new ComponentManager(PositionComponent, StorageMode.Object);
+         * const positionManagerWithCustomDataSize = new ComponentManager(PositionComponent, StorageMode.TypedArray, 50);
+         */
+        function ComponentManager(componentType, storageMode, dataSize) {
             if (storageMode === void 0) { storageMode = StorageMode.Object; }
+            if (dataSize === void 0) { dataSize = 10; }
             this.data = [];
             this.entityToDataIndex = new Map();
             this.freeDataIndices = [];
-            this.float32Data = [];
+            this.typedStorage = new Map();
             this.storageMode = storageMode;
             this.componentType = componentType;
-            if (this.storageMode === StorageMode.Float32Array) {
-                this.float32Data = [];
-            }
-            else {
-                this.data = [];
-            }
+            this.dataSize = dataSize;
         }
         ComponentManager.prototype.create = function (entityId) {
             var index = this.allocateDataIndex();
             var component = new this.componentType();
             component.setEntityId(entityId);
-            gs.Component.registerComponent(this.componentType, this, entityId);
-            if (this.storageMode === StorageMode.Float32Array) {
-                this.float32Data[index] = new Float32Array(component.constructor.prototype.float32PropertyCount);
+            ComponentManager.registerComponent(this.componentType, this, entityId);
+            if (this.storageMode === StorageMode.TypedArray) {
+                var propertyStorageTypes = this.componentType.getPropertyStorageTypes();
+                for (var key in propertyStorageTypes) {
+                    var storageType = propertyStorageTypes[key];
+                    var storageKey = this.getStorageKey(entityId, storageType);
+                    this.typedStorage.set(storageKey, new (getArrayConstructor(storageType))(component.constructor.prototype[storageType + "PropertyCount"]));
+                }
             }
             else {
                 this.data[index] = component;
@@ -632,11 +626,18 @@ var gs;
             if (dataIndex === undefined) {
                 return null;
             }
-            if (this.storageMode === StorageMode.Float32Array) {
-                return this.float32Data[dataIndex];
+            if (this.storageMode === StorageMode.TypedArray) {
+                var propertyStorageTypes = this.componentType.getPropertyStorageTypes();
+                var result = {};
+                for (var key in propertyStorageTypes) {
+                    var storageType = propertyStorageTypes[key];
+                    var storageKey = this.getStorageKey(entityId, storageType);
+                    result[key] = this.typedStorage.get(storageKey)[dataIndex];
+                }
+                return result;
             }
             else {
-                return this.data[dataIndex];
+                return this.data[dataIndex] || {}; // 确保始终返回一个对象
             }
         };
         /**
@@ -658,8 +659,13 @@ var gs;
                 return;
             }
             this.entityToDataIndex.delete(entityId);
-            if (this.storageMode === StorageMode.Float32Array) {
-                this.float32Data[dataIndex] = null;
+            if (this.storageMode === StorageMode.TypedArray) {
+                var propertyStorageTypes = this.componentType.getPropertyStorageTypes();
+                for (var key in propertyStorageTypes) {
+                    var storageType = propertyStorageTypes[key];
+                    var storageKey = this.getStorageKey(entityId, storageType);
+                    this.typedStorage.delete(storageKey);
+                }
             }
             else {
                 this.data[dataIndex] = null;
@@ -676,31 +682,132 @@ var gs;
             }
             return this.data.length;
         };
-        ComponentManager.prototype.getFloat32Array = function (entityId) {
-            if (this.storageMode !== StorageMode.Float32Array) {
-                console.error("ComponentManager 未使用 Float32ArrayStorage 模式");
-                return null;
+        ComponentManager.prototype.getTypedArray = function (entityId, storageType) {
+            var key = this.getStorageKey(entityId, storageType);
+            if (!this.typedStorage.has(key)) {
+                switch (storageType) {
+                    case gs.StorageType.Int8:
+                        this.typedStorage.set(key, new Int8Array(this.dataSize));
+                        break;
+                    case gs.StorageType.Int16:
+                        this.typedStorage.set(key, new Int16Array(this.dataSize));
+                        break;
+                    case gs.StorageType.Int32:
+                        this.typedStorage.set(key, new Int32Array(this.dataSize));
+                        break;
+                    case gs.StorageType.Float32:
+                        this.typedStorage.set(key, new Float32Array(this.dataSize));
+                        break;
+                    case gs.StorageType.Float64:
+                        this.typedStorage.set(key, new Float64Array(this.dataSize));
+                        break;
+                    case gs.StorageType.Uint8:
+                        this.typedStorage.set(key, new Uint8Array(this.dataSize));
+                        break;
+                    case gs.StorageType.Uint16:
+                        this.typedStorage.set(key, new Uint16Array(this.dataSize));
+                        break;
+                    case gs.StorageType.Uint32:
+                        this.typedStorage.set(key, new Uint32Array(this.dataSize));
+                        break;
+                    case gs.StorageType.Uint8Clamped:
+                        this.typedStorage.set(key, new Uint8ClampedArray(this.dataSize));
+                        break;
+                }
             }
-            var dataIndex = this.entityToDataIndex.get(entityId);
-            if (dataIndex === undefined) {
-                return null;
+            return this.typedStorage.get(key);
+        };
+        ComponentManager.prototype.getStorageKey = function (entityId, storageType) {
+            return entityId + "_" + storageType;
+        };
+        /**
+         * 注册组件
+         * @param componentClass
+         * @param manager
+         */
+        ComponentManager.registerComponent = function (componentClass, manager, entityId) {
+            var componentInstance = new componentClass();
+            var keys = Object.keys(componentInstance);
+            var _loop_1 = function (i) {
+                var key = keys[i];
+                gs.Component.registeredProperties.add(key);
+                var storageType = componentClass.prototype[key] && componentClass.prototype[key].storageType;
+                // 如果属性被标记为 TypedArray 存储，并且 ComponentManager 使用 TypedArray 存储模式
+                if (storageType && manager.storageMode === StorageMode.TypedArray) {
+                    var dataIndex_1 = manager.allocateDataIndex();
+                    var storageKey_1 = manager.getStorageKey(entityId, storageType);
+                    if (!manager.typedStorage.has(storageKey_1)) { // 如果存储中没有相应的键，则创建一个新的TypedArray
+                        manager.typedStorage.set(storageKey_1, new (getArrayConstructor(storageType))(manager.dataSize));
+                    }
+                    Object.defineProperty(componentClass.prototype, key, {
+                        get: function () {
+                            return manager.typedStorage.get(storageKey_1)[dataIndex_1];
+                        },
+                        set: function (value) {
+                            manager.typedStorage.get(storageKey_1)[dataIndex_1] = value;
+                        },
+                        enumerable: true,
+                        configurable: true,
+                    });
+                }
+                else {
+                    // 使用原始的 Object 存储方式
+                    var dataIndex_2 = manager.allocateDataIndex();
+                    Object.defineProperty(componentClass.prototype, key, {
+                        get: function () {
+                            return manager.get(dataIndex_2)[key];
+                        },
+                        set: function (value) {
+                            manager.get(dataIndex_2)[key] = value;
+                        },
+                        enumerable: true,
+                        configurable: true,
+                    });
+                }
+            };
+            for (var i = 0; i < keys.length; i++) {
+                _loop_1(i);
             }
-            return this.float32Data[dataIndex];
         };
         return ComponentManager;
     }());
     gs.ComponentManager = ComponentManager;
-    function float32Property() {
+    function typedProperty(storageType) {
         return function (target, propertyKey) {
             target[propertyKey] = target[propertyKey] || {};
-            target[propertyKey].isFloat32Property = true;
+            target[propertyKey].storageType = storageType;
         };
     }
-    gs.float32Property = float32Property;
-    function useFloat32ArrayStorage(target) {
-        target.useFloat32ArrayStorage = true;
+    gs.typedProperty = typedProperty;
+    function useTypedArrayStorage(target) {
+        target.useTypedArrayStorage = true;
     }
-    gs.useFloat32ArrayStorage = useFloat32ArrayStorage;
+    gs.useTypedArrayStorage = useTypedArrayStorage;
+    function getArrayConstructor(storageType) {
+        switch (storageType) {
+            case gs.StorageType.Float32:
+                return Float32Array;
+            case gs.StorageType.Int32:
+                return Int32Array;
+            case gs.StorageType.Uint32:
+                return Uint32Array;
+            case gs.StorageType.Uint16:
+                return Uint16Array;
+            case gs.StorageType.Uint8:
+                return Uint8Array;
+            case gs.StorageType.Uint8Clamped:
+                return Uint8ClampedArray;
+            case gs.StorageType.Int16:
+                return Int16Array;
+            case gs.StorageType.Int8:
+                return Int8Array;
+            case gs.StorageType.Float64:
+                return Float64Array;
+            default:
+                throw new Error("\u4E0D\u652F\u6301 storageType: " + storageType);
+        }
+    }
+    gs.getArrayConstructor = getArrayConstructor;
 })(gs || (gs = {}));
 var gs;
 (function (gs) {
@@ -711,15 +818,16 @@ var gs;
             this.entityIdAllocator = new gs.EntityIdAllocator();
             this.inputManager = new gs.InputManager(this);
             this.networkManager = new gs.NetworkManager();
-            this.currentFrameNumber = 0; // 初始化当前帧编号为0
+            this.currentFrameNumber = 0;
             this.componentManagers = new Map();
             try {
                 for (var componentClasses_1 = __values(componentClasses), componentClasses_1_1 = componentClasses_1.next(); !componentClasses_1_1.done; componentClasses_1_1 = componentClasses_1.next()) {
                     var componentClass = componentClasses_1_1.value;
-                    var storageMode = componentClass["useFloat32ArrayStorage"]
-                        ? gs.StorageMode.Float32Array
+                    var storageMode = componentClass.useTypedArrayStorage
+                        ? gs.StorageMode.TypedArray
                         : gs.StorageMode.Object;
-                    var componentManager = new gs.ComponentManager(componentClass, storageMode);
+                    var dataSize = componentClass.defaultDataSize || 10;
+                    var componentManager = new gs.ComponentManager(componentClass, storageMode, dataSize);
                     this.componentManagers.set(componentClass, componentManager);
                 }
             }

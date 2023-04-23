@@ -5,7 +5,7 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
     else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
     return c > 3 && r && Object.defineProperty(target, key, r), r;
 };
-const { Entity, EntityManager, Component, ComponentManager, StorageMode, float32Property, useFloat32ArrayStorage } = gs;
+const { Entity, EntityManager, Component, ComponentManager, StorageMode, typedProperty, useTypedArrayStorage, StorageType } = gs;
 // class MovementSystem extends gs.System {
 //   constructor(entityManager) {
 //     super(entityManager, 1);
@@ -117,13 +117,13 @@ let FloatPositionComponent = class FloatPositionComponent extends Component {
     }
 };
 __decorate([
-    float32Property()
+    typedProperty(StorageType.Int32)
 ], FloatPositionComponent.prototype, "x", void 0);
 __decorate([
-    float32Property()
+    typedProperty(StorageType.Int32)
 ], FloatPositionComponent.prototype, "y", void 0);
 FloatPositionComponent = __decorate([
-    useFloat32ArrayStorage
+    useTypedArrayStorage
 ], FloatPositionComponent);
 let FloatVelocityComponent = class FloatVelocityComponent extends Component {
     constructor() {
@@ -133,13 +133,13 @@ let FloatVelocityComponent = class FloatVelocityComponent extends Component {
     }
 };
 __decorate([
-    float32Property()
+    typedProperty(StorageType.Int32)
 ], FloatVelocityComponent.prototype, "vx", void 0);
 __decorate([
-    float32Property()
+    typedProperty(StorageType.Int32)
 ], FloatVelocityComponent.prototype, "vy", void 0);
 FloatVelocityComponent = __decorate([
-    useFloat32ArrayStorage
+    useTypedArrayStorage
 ], FloatVelocityComponent);
 // 创建一个使用 Float32Array 存储模式的 EntityManager 实例
 const float32EntityManager = new EntityManager([
