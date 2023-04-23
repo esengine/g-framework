@@ -170,7 +170,21 @@ var gs;
      */
     var Component = /** @class */ (function () {
         function Component() {
+            this._entityId = null;
         }
+        Component.prototype.setEntityId = function (entityId) {
+            this._entityId = entityId;
+        };
+        Object.defineProperty(Component.prototype, "entityId", {
+            get: function () {
+                if (this._entityId === null) {
+                    throw new Error("Entity ID 还未被设置");
+                }
+                return this._entityId;
+            },
+            enumerable: true,
+            configurable: true
+        });
         Component.prototype.serialize = function () {
             var e_2, _a;
             var data = {};
@@ -204,20 +218,38 @@ var gs;
          * @param componentClass
          * @param manager
          */
-        Component.registerComponent = function (componentClass, manager) {
+        Component.registerComponent = function (componentClass, manager, entityId) {
             var componentInstance = new componentClass();
             var keys = Object.keys(componentInstance);
+            var float32PropertyCount = 0;
             var _loop_1 = function (i) {
                 var key = keys[i];
-                var descriptor = Object.getOwnPropertyDescriptor(componentClass.prototype, key);
-                if (descriptor && typeof descriptor.get === 'function' && typeof descriptor.set === 'function') {
+                var isFloat32Property = componentClass.prototype[key] && componentClass.prototype[key].isFloat32Property;
+                // 如果属性被标记为 Float32Array 存储，并且 ComponentManager 使用 Float32Array 存储模式
+                if (isFloat32Property && manager.storageMode === gs.StorageMode.Float32Array) {
                     var dataIndex_1 = manager.allocateDataIndex();
                     Object.defineProperty(componentClass.prototype, key, {
                         get: function () {
-                            return manager.get(this.entityId)[dataIndex_1];
+                            return manager.getFloat32Array(entityId)[dataIndex_1];
                         },
                         set: function (value) {
-                            manager.get(this.entityId)[dataIndex_1] = value;
+                            var float32Array = manager.getFloat32Array(entityId);
+                            float32Array[dataIndex_1] = value;
+                        },
+                        enumerable: true,
+                        configurable: true,
+                    });
+                    float32PropertyCount++;
+                }
+                else {
+                    // 使用原始的 Object 存储方式
+                    var dataIndex_2 = manager.allocateDataIndex();
+                    Object.defineProperty(componentClass.prototype, key, {
+                        get: function () {
+                            return manager.get(entityId)[dataIndex_2];
+                        },
+                        set: function (value) {
+                            manager.get(entityId)[dataIndex_2] = value;
                         },
                         enumerable: true,
                         configurable: true,
@@ -226,6 +258,9 @@ var gs;
             };
             for (var i = 0; i < keys.length; i++) {
                 _loop_1(i);
+            }
+            if (componentClass["useFloat32ArrayStorage"]) {
+                componentClass.prototype.float32PropertyCount = float32PropertyCount;
             }
         };
         return Component;
@@ -549,20 +584,41 @@ var gs;
 })(gs || (gs = {}));
 var gs;
 (function (gs) {
+    var StorageMode;
+    (function (StorageMode) {
+        StorageMode[StorageMode["Float32Array"] = 0] = "Float32Array";
+        StorageMode[StorageMode["Object"] = 1] = "Object";
+    })(StorageMode = gs.StorageMode || (gs.StorageMode = {}));
     /**
      * 组件管理器
      */
     var ComponentManager = /** @class */ (function () {
-        function ComponentManager(componentType) {
+        function ComponentManager(componentType, storageMode) {
+            if (storageMode === void 0) { storageMode = StorageMode.Object; }
             this.data = [];
             this.entityToDataIndex = new Map();
             this.freeDataIndices = [];
+            this.float32Data = [];
+            this.storageMode = storageMode;
             this.componentType = componentType;
+            if (this.storageMode === StorageMode.Float32Array) {
+                this.float32Data = [];
+            }
+            else {
+                this.data = [];
+            }
         }
         ComponentManager.prototype.create = function (entityId) {
             var index = this.allocateDataIndex();
-            var component = new this.componentType(entityId);
-            this.data[index] = component;
+            var component = new this.componentType();
+            component.setEntityId(entityId);
+            gs.Component.registerComponent(this.componentType, this, entityId);
+            if (this.storageMode === StorageMode.Float32Array) {
+                this.float32Data[index] = new Float32Array(component.constructor.prototype.float32PropertyCount);
+            }
+            else {
+                this.data[index] = component;
+            }
             this.entityToDataIndex.set(entityId, index);
             return component;
         };
@@ -576,7 +632,12 @@ var gs;
             if (dataIndex === undefined) {
                 return null;
             }
-            return this.data[dataIndex];
+            if (this.storageMode === StorageMode.Float32Array) {
+                return this.float32Data[dataIndex];
+            }
+            else {
+                return this.data[dataIndex];
+            }
         };
         /**
          *
@@ -597,7 +658,12 @@ var gs;
                 return;
             }
             this.entityToDataIndex.delete(entityId);
-            this.data[dataIndex] = null;
+            if (this.storageMode === StorageMode.Float32Array) {
+                this.float32Data[dataIndex] = null;
+            }
+            else {
+                this.data[dataIndex] = null;
+            }
             this.freeDataIndices.push(dataIndex);
         };
         /**
@@ -610,9 +676,31 @@ var gs;
             }
             return this.data.length;
         };
+        ComponentManager.prototype.getFloat32Array = function (entityId) {
+            if (this.storageMode !== StorageMode.Float32Array) {
+                console.error("ComponentManager 未使用 Float32ArrayStorage 模式");
+                return null;
+            }
+            var dataIndex = this.entityToDataIndex.get(entityId);
+            if (dataIndex === undefined) {
+                return null;
+            }
+            return this.float32Data[dataIndex];
+        };
         return ComponentManager;
     }());
     gs.ComponentManager = ComponentManager;
+    function float32Property() {
+        return function (target, propertyKey) {
+            target[propertyKey] = target[propertyKey] || {};
+            target[propertyKey].isFloat32Property = true;
+        };
+    }
+    gs.float32Property = float32Property;
+    function useFloat32ArrayStorage(target) {
+        target.useFloat32ArrayStorage = true;
+    }
+    gs.useFloat32ArrayStorage = useFloat32ArrayStorage;
 })(gs || (gs = {}));
 var gs;
 (function (gs) {
@@ -628,8 +716,10 @@ var gs;
             try {
                 for (var componentClasses_1 = __values(componentClasses), componentClasses_1_1 = componentClasses_1.next(); !componentClasses_1_1.done; componentClasses_1_1 = componentClasses_1.next()) {
                     var componentClass = componentClasses_1_1.value;
-                    var componentManager = new gs.ComponentManager(componentClass);
-                    gs.Component.registerComponent(componentClass, componentManager);
+                    var storageMode = componentClass["useFloat32ArrayStorage"]
+                        ? gs.StorageMode.Float32Array
+                        : gs.StorageMode.Object;
+                    var componentManager = new gs.ComponentManager(componentClass, storageMode);
                     this.componentManagers.set(componentClass, componentManager);
                 }
             }
@@ -661,6 +751,7 @@ var gs;
             var entityId = this.entityIdAllocator.allocate();
             var entity = new gs.Entity(entityId, this.componentManagers);
             entity.onCreate();
+            this.entities.set(entityId, entity);
             return entity;
         };
         /**

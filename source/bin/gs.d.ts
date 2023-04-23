@@ -51,6 +51,9 @@ declare module gs {
      * 组件
      */
     abstract class Component {
+        protected _entityId: number | null;
+        setEntityId(entityId: number): void;
+        readonly entityId: number;
         serialize(): any;
         deserialize(data: any): void;
         /**
@@ -58,7 +61,7 @@ declare module gs {
          * @param componentClass
          * @param manager
          */
-        static registerComponent<T extends Component>(componentClass: new (...args: any[]) => T, manager: ComponentManager<T>): void;
+        static registerComponent<T extends Component>(componentClass: new (...args: any[]) => T, manager: ComponentManager<T>, entityId: number): void;
     }
 }
 declare module gs {
@@ -259,6 +262,10 @@ declare module gs {
     }
 }
 declare module gs {
+    enum StorageMode {
+        Float32Array = 0,
+        Object = 1
+    }
     /**
      * 组件管理器
      */
@@ -266,15 +273,17 @@ declare module gs {
         private data;
         private entityToDataIndex;
         private freeDataIndices;
-        componentType: new (entityId: number) => T;
-        constructor(componentType: new (entityId: number) => T);
+        componentType: new () => T;
+        storageMode: StorageMode;
+        private float32Data;
+        constructor(componentType: new () => T, storageMode?: StorageMode);
         create(entityId: number): T;
         /**
          * 获取组件数据
          * @param entityId 实体ID
          * @returns 组件数据
          */
-        get(entityId: number): T | null;
+        get(entityId: number): T | Float32Array | null;
         /**
          *
          * @param entityId
@@ -292,7 +301,10 @@ declare module gs {
          * @returns
          */
         allocateDataIndex(): number;
+        getFloat32Array(entityId: number): Float32Array | null;
     }
+    function float32Property(): (target: any, propertyKey: string) => void;
+    function useFloat32ArrayStorage(target: any): void;
 }
 declare module gs {
     class EntityManager {
@@ -303,7 +315,7 @@ declare module gs {
         private currentFrameNumber;
         private inputManager;
         private networkManager;
-        constructor(componentClasses: Array<new () => Component>);
+        constructor(componentClasses: Array<new (...args: any[]) => Component>);
         updateFrameNumber(): void;
         getCurrentFrameNumber(): number;
         getInputManager(): InputManager;

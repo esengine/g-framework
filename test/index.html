@@ -18,77 +18,77 @@
 <body>
     <canvas id="myChart"></canvas>
     <script>
-        const data = {
-            create: {
-                label: "创建实体",
-                time: elapsedTime,
-                color: "rgba(54, 162, 235, 0.2)",
-                borderColor: "rgba(54, 162, 235, 1)",
-            },
-            update: {
-                label: "更新系统",
-                time: updateElapsedTime,
-                color: "rgba(255, 206, 86, 0.2)",
-                borderColor: "rgba(255, 206, 86, 1)",
-            },
-            createDelete: {
-                label: "创建/删除实体",
-                time: createDeleteElapsedTime,
-                color: "rgba(255, 99, 132, 0.2)",
-                borderColor: "rgba(255, 99, 132, 1)",
-            },
-            filter: {
-                label: "过滤实体",
-                time: filterElapsedTime,
-                color: "rgba(75, 192, 192, 0.2)",
-                borderColor: "rgba(75, 192, 192, 1)",
-            },
-            componentChanges: {
-                label: "组件更改",
-                time: componentChangesElapsedTime,
-                color: "rgba(153, 102, 255, 0.2)",
-                borderColor: "rgba(153, 102, 255, 1)",
-            },
-        };
+        // const data = {
+        //     create: {
+        //         label: "创建实体",
+        //         time: elapsedTime,
+        //         color: "rgba(54, 162, 235, 0.2)",
+        //         borderColor: "rgba(54, 162, 235, 1)",
+        //     },
+        //     update: {
+        //         label: "更新系统",
+        //         time: updateElapsedTime,
+        //         color: "rgba(255, 206, 86, 0.2)",
+        //         borderColor: "rgba(255, 206, 86, 1)",
+        //     },
+        //     createDelete: {
+        //         label: "创建/删除实体",
+        //         time: createDeleteElapsedTime,
+        //         color: "rgba(255, 99, 132, 0.2)",
+        //         borderColor: "rgba(255, 99, 132, 1)",
+        //     },
+        //     filter: {
+        //         label: "过滤实体",
+        //         time: filterElapsedTime,
+        //         color: "rgba(75, 192, 192, 0.2)",
+        //         borderColor: "rgba(75, 192, 192, 1)",
+        //     },
+        //     componentChanges: {
+        //         label: "组件更改",
+        //         time: componentChangesElapsedTime,
+        //         color: "rgba(153, 102, 255, 0.2)",
+        //         borderColor: "rgba(153, 102, 255, 1)",
+        //     },
+        // };
 
-        const createDataset = (data) => ({
-            label: data.label,
-            data: [data.time || 0],
-            backgroundColor: data.time === 0 ? "#999" : data.color,
-            borderColor: data.time === 0 ? "#999" : data.borderColor,
-            borderWidth: 1,
-        });
+        // const createDataset = (data) => ({
+        //     label: data.label,
+        //     data: [data.time || 0],
+        //     backgroundColor: data.time === 0 ? "#999" : data.color,
+        //     borderColor: data.time === 0 ? "#999" : data.borderColor,
+        //     borderWidth: 1,
+        // });
 
-        const datasets = Object.values(data)
-            .sort((a, b) => a.time - b.time)
-            .map((d) => createDataset(d));
+        // const datasets = Object.values(data)
+        //     .sort((a, b) => a.time - b.time)
+        //     .map((d) => createDataset(d));
 
-        const chartData = {
-            labels: ["性能测试"],
-            datasets: datasets,
-        };
+        // const chartData = {
+        //     labels: ["性能测试"],
+        //     datasets: datasets,
+        // };
 
-        const ctx = document.getElementById("myChart").getContext("2d");
-        const chart = new Chart(ctx, {
-            type: "bar",
-            data: chartData,
-            options: {
-                scales: {
-                    y: {
-                        type: 'logarithmic',
-                        ticks: {
-                            callback: function (value, index, values) {
-                                if (value === 0) {
-                                    return '0'; // 返回一个带有0标记的文本
-                                }
-                                return value;
-                            },
-                            min: 0, // 设置最小刻度为0
-                        },
-                    },
-                },
-            },
-        });
+        // const ctx = document.getElementById("myChart").getContext("2d");
+        // const chart = new Chart(ctx, {
+        //     type: "bar",
+        //     data: chartData,
+        //     options: {
+        //         scales: {
+        //             y: {
+        //                 type: 'logarithmic',
+        //                 ticks: {
+        //                     callback: function (value, index, values) {
+        //                         if (value === 0) {
+        //                             return '0'; // 返回一个带有0标记的文本
+        //                         }
+        //                         return value;
+        //                     },
+        //                     min: 0, // 设置最小刻度为0
+        //                 },
+        //             },
+        //         },
+        //     },
+        // });
     </script>
 </body>
 
