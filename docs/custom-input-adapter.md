@@ -17,8 +17,8 @@ class MyInputAdapter extends gs.InputAdapter {
         // 处理特定的输入事件，例如将它们转换为通用的 InputEvent 对象
         const inputEvent = this.convertEngineEventToInputEvent(event);
 
-        // 将转换后的 InputEvent 添加到输入缓冲区中
-        this.inputManager.getInputBuffer().addEvent(inputEvent);
+        // 将转换后的 InputEvent 发送到 InputManager
+        this.sendInputToManager(inputEvent);
     }
 
     // 将游戏引擎的输入事件转换为 InputEvent
@@ -33,7 +33,7 @@ class MyInputAdapter extends gs.InputAdapter {
 }
 ```
 
-在这个例子中，我们创建了一个名为 `MyInputAdapter` 的自定义输入适配器。我们实现了 `handleEngineSpecificInputEvent` 方法，该方法负责处理游戏引擎或平台特定的输入事件，并将它们转换为通用的 `InputEvent` 对象。转换后的事件会被添加到输入缓冲区中。
+在这个例子中，我们创建了一个名为 `MyInputAdapter` 的自定义输入适配器。我们实现了 `handleEngineSpecificInputEvent` 方法，该方法负责处理游戏引擎或平台特定的输入事件，并将它们转换为通用的 `InputEvent` 对象。转换后的事件会被发送到 `InputManager`。
 
 ## 使用输入缓冲区处理游戏输入
 

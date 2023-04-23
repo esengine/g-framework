@@ -57,13 +57,18 @@ entityManager.getNetworkManager().setNetworkAdapter(websocketAdapter);
 在游戏逻辑中，使用sendInput方法发送客户端的输入数据到服务器。同时，使用onServerUpdate方法处理从服务器接收到的状态更新。
 
 ```ts
-entityManager.getInputManager().onInput((frameNumber, inputData) => {
-  entityManager.getNetworkManager().getNetworkAdapter().sendInput(frameNumber, inputData);
-});
+// 注册输入事件处理逻辑
+const inputAdapter = new MyInputAdapter(entityManager.getInputManager());
+inputAdapter.handleEngineSpecificInputEvent(/* 某些特定于引擎的事件 */);
 
+// 将转换后的 InputEvent 添加到输入缓冲区中
+entityManager.getInputManager().getInputBuffer().addEvent(inputEvent);
+
+// 监听服务器更新
 entityManager.getNetworkManager().getNetworkAdapter().onServerUpdate((serverState) => {
   // 更新游戏状态
 });
+
 ```
 
 通过以上步骤，可以将自定义的通信协议与ECS框架相结合，从而实现客户端与服务器之间的通信。
