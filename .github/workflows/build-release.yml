@@ -17,10 +17,10 @@ jobs:
           last_commit=$(git log -1 --format="%H")
           changed_files=$(git diff --name-only $last_commit HEAD)
           echo "Changed files: $changed_files"
-          if echo "$changed_files" | grep -qE '^source/src/.*\.(js|ts)$'; then
-            echo "Changes in source/src detected. Proceeding with build and release."
+          if echo "$changed_files" | grep -qE '^source/bin/.*\.(js|ts)$'; then
+            echo "Changes in source/bin detected. Proceeding with release."
           else
-            echo "No changes in source/src detected. Skipping build and release."
+            echo "No changes in source/bin detected. Skipping release."
             echo ::set-output name=skip::true
           fi
       - name: Use Node.js 10.20.1
@@ -28,12 +28,6 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: 10.20.1
-      - name: Build
-        if: ${{ !steps.check_changes.outputs.skip }}
-        run: |
-          cd source
-          npm install
-          gulp build
       - name: Install zip
         if: ${{ !steps.check_changes.outputs.skip }}
         run: sudo apt-get install -y zip
