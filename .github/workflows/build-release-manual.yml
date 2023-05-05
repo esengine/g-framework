@@ -1,0 +1,70 @@
+name: Build and Release Manual
+on:
+  workflow_dispatch:
+jobs:
+  build-and-release:
+    name: Build and Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Use Node.js 10.20.1
+        uses: actions/setup-node@v3
+        with:
+          node-version: 10.20.1
+      - name: Install zip
+        run: sudo apt-get install -y zip
+      - name: Create zip
+        run: zip -r bin.zip source/bin/
+      - name: Get Current Tag
+        id: current_tag
+        uses: actions/github-script@v4
+        with:
+          script: |
+            const { data: tags } = await github.repos.listTags({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              per_page: 1
+            });
+            return tags.length ? tags[0].name : 'v0.0.0';
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Increment Version
+        id: increment_version
+        run: echo ::set-output name=tag::$(echo ${{ steps.current_tag.outputs.result }} | awk -F. '{$NF = $NF + 1;} 1' | sed 's/ /./g')
+      - name: Get Latest Commit
+        id: latest_commit
+        uses: actions/github-script@v4
+        with:
+          script: |
+            const { data: commit } = await github.repos.getCommit({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: context.sha,
+            });
+            return commit.commit.message;
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1.0.1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ steps.increment_version.outputs.tag }}
+          release_name: Release ${{ steps.increment_version.outputs.tag }}
+          body: |
+            # Release ${{ steps.increment_version.outputs.tag }}
+            最近的提交记录: ${{ steps.latest_commit.outputs.result }} # 添加最近的提交记录
+            这是一个包含 bin 文件夹内容的 release。
+          draft: false
+          prerelease: false
+      - name: Upload Release Asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          asset_path: ./bin.zip
+          asset_name: bin.zip
+          asset_content_type: application/zip
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
