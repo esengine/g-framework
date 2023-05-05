@@ -51,14 +51,12 @@ declare module gs {
      * 组件
      */
     abstract class Component {
-        protected _entityId: number | null;
-        static registeredProperties: Set<string>;
-        static defaultDataSize: number;
+        private _entityId;
         setEntityId(entityId: number): void;
+        getEntityId(): number;
         readonly entityId: number;
         serialize(): any;
         deserialize(data: any): void;
-        static getPropertyStorageTypes(): Record<string, StorageType>;
     }
 }
 declare module gs {
@@ -137,19 +135,6 @@ declare module gs {
     interface Interpolatable {
         savePreviousState(): void;
         applyInterpolation(factor: number): void;
-    }
-}
-declare module gs {
-    enum StorageType {
-        Int8 = 0,
-        Int16 = 1,
-        Int32 = 2,
-        Uint8 = 3,
-        Uint16 = 4,
-        Uint32 = 5,
-        Uint8Clamped = 6,
-        Float32 = 7,
-        Float64 = 8
     }
 }
 declare module gs {
@@ -272,15 +257,8 @@ declare module gs {
     }
 }
 declare module gs {
-    enum StorageMode {
-        TypedArray = 0,
-        Object = 1
-    }
     type ComponentConstructor<T extends Component> = {
         new (): T;
-        useTypedArrayStorage?: boolean;
-        defaultDataSize?: number;
-        getPropertyStorageTypes(): Record<string, StorageType>;
     };
     /**
      * 组件管理器
@@ -289,29 +267,22 @@ declare module gs {
         private data;
         private entityToDataIndex;
         private freeDataIndices;
-        componentType: ComponentConstructor<T>;
-        storageMode: StorageMode;
-        typedStorage: Map<string, ArrayBufferView>;
-        dataSize: number;
+        private componentType;
         /**
          * ComponentManager 构造函数
          * @param componentType - 用于创建和管理的组件类型。
-         * @param storageMode - 存储模式，可以是 StorageMode.TypedArray（默认值）或 StorageMode.Object。
-         * @param dataSize - 存储数组的初始大小。当使用 TypedArray 存储时，会根据此值创建数据存储。默认值为 10。
          *
          * 用法示例：
          * const positionManager = new ComponentManager(PositionComponent);
-         * const positionManagerWithObjectStorage = new ComponentManager(PositionComponent, StorageMode.Object);
-         * const positionManagerWithCustomDataSize = new ComponentManager(PositionComponent, StorageMode.TypedArray, 50);
          */
-        constructor(componentType: ComponentConstructor<T>, storageMode?: StorageMode, dataSize?: number);
+        constructor(componentType: ComponentConstructor<T>);
         create(entityId: number): T;
         /**
          * 获取组件数据
          * @param entityId 实体ID
          * @returns 组件数据
          */
-        get(entityId: number): T | Record<string, any> | null;
+        get(entityId: number): T | null;
         /**
          *
          * @param entityId
@@ -329,18 +300,7 @@ declare module gs {
          * @returns
          */
         allocateDataIndex(): number;
-        getTypedArray(entityId: number, storageType: StorageType): ArrayBufferView;
-        private getStorageKey;
-        /**
-         * 注册组件
-         * @param componentClass
-         * @param manager
-         */
-        static registerComponent<T extends Component>(componentClass: new (...args: any[]) => T, manager: ComponentManager<T>, entityId: number): void;
     }
-    function typedProperty(storageType: StorageType): PropertyDecorator;
-    function useTypedArrayStorage(target: any): void;
-    function getArrayConstructor(storageType: StorageType): new (length?: number) => ArrayBufferView;
 }
 declare module gs {
     class EntityManager {

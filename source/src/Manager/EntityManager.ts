@@ -17,11 +17,7 @@ module gs {
 
             this.componentManagers = new Map();
             for (const componentClass of componentClasses) {
-                const storageMode = componentClass.useTypedArrayStorage
-                    ? StorageMode.TypedArray
-                    : StorageMode.Object;
-                const dataSize = componentClass.defaultDataSize || 10;
-                const componentManager = new ComponentManager(componentClass, storageMode, dataSize);
+                const componentManager = new ComponentManager(componentClass);
                 this.componentManagers.set(componentClass, componentManager);
             }
         }

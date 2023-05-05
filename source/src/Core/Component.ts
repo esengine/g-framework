@@ -3,12 +3,14 @@ module gs {
      * 组件
      */
     export abstract class Component {
-        protected _entityId: number | null = null;
-        public static registeredProperties: Set<string> = new Set();
-        public static defaultDataSize: number = 10;
+        private _entityId: number | null = null;
 
         setEntityId(entityId: number) {
             this._entityId = entityId;
+        }
+
+        getEntityId() {
+            return this._entityId;
         }
 
         get entityId(): number {
@@ -36,24 +38,6 @@ module gs {
                     (this as any)[key] = data[key];
                 }
             }
-        }
-
-        public static getPropertyStorageTypes(): Record<string, StorageType> {
-            const properties = {};
-            const prototype = this.prototype;
-            const keys = Object.keys(prototype);
-
-            for (let i = 0; i < keys.length; i++) {
-                const key = keys[i];
-                if (!Component.registeredProperties.has(key) && prototype[key] !== undefined) {
-                    const storageType = prototype[key].storageType;
-                    if (storageType) {
-                        properties[key] = storageType;
-                    }
-                }
-            }
-
-            return properties;
         }
     }
 }
