@@ -78,6 +78,14 @@ module gs {
         }
 
         /**
+         * 获取标签
+         * @returns 
+         */
+        getTags(): Set<string> {
+            return this.tags;
+        }
+
+        /**
          * 移除标签
          * @param tag 
          */

@@ -7,8 +7,11 @@ module gs {
         private currentFrameNumber: number;
         private inputManager: InputManager;
         private networkManager: NetworkManager;
+        // 查询缓存，用于缓存组件查询结果
+        private queryCache: Map<string, Entity[]> = new Map();
+        private tagCache: Map<string, Entity[]> = new Map();
 
-        constructor(componentClasses: Array<ComponentConstructor<any>>) {
+        constructor(componentClasses: Array<ComponentConstructor<any>> = null) {
             this.entities = new Map();
             this.entityIdAllocator = new EntityIdAllocator();
             this.inputManager = new InputManager(this);
@@ -16,10 +19,20 @@ module gs {
             this.currentFrameNumber = 0;
 
             this.componentManagers = new Map();
-            for (const componentClass of componentClasses) {
-                const componentManager = new ComponentManager(componentClass);
-                this.componentManagers.set(componentClass, componentManager);
-            }
+            if (componentClasses != null)
+                for (const componentClass of componentClasses) {
+                    const componentManager = new ComponentManager(componentClass);
+                    this.componentManagers.set(componentClass, componentManager);
+                }
+        }
+
+        /**
+         * 添加组件管理器
+         * @param componentClass 要添加的组件类
+         */
+        public addComponentManager<T extends Component>(componentClass: new (...args: any[]) => T): void {
+            const componentManager = new ComponentManager(componentClass);
+            this.componentManagers.set(componentClass, componentManager);
         }
 
         public updateFrameNumber(): void {
@@ -47,6 +60,17 @@ module gs {
             const entity = new Entity(entityId, this.componentManagers);
             entity.onCreate();
             this.entities.set(entityId, entity);
+
+            for (const tag of entity.getTags()) {
+                if (!this.tagCache.has(tag)) {
+                    this.tagCache.set(tag, []);
+                }
+
+                if (this.tagCache.has(tag)) {
+                    this.tagCache.get(tag).push(entity);
+                }
+            }
+
             return entity;
         }
 
@@ -54,11 +78,21 @@ module gs {
          * 删除实体
          * @param entityId 
          */
-        deleteEntity(entityId: number): void {
+        public deleteEntity(entityId: number): void {
             const entity = this.getEntity(entityId);
             if (entity) {
                 entity.onDestroy();
                 this.entities.delete(entityId);
+
+                for (const tag of entity.getTags()) {
+                    const entitiesWithTag = this.tagCache.get(tag);
+                    if (entitiesWithTag) {
+                        const index = entitiesWithTag.indexOf(entity);
+                        if (index > -1) {
+                            entitiesWithTag.splice(index, 1);
+                        }
+                    }
+                }
             }
         }
 
@@ -67,7 +101,7 @@ module gs {
          * @param entityId 实体id
          * @returns 实体
          */
-        getEntity(entityId: number): Entity | null {
+        public getEntity(entityId: number): Entity | null {
             return this.entities.has(entityId) ? this.entities.get(entityId) as Entity : null;
         }
 
@@ -76,23 +110,24 @@ module gs {
          * @param componentClass 要检查的组件类
          * @returns 具有指定组件的实体数组
          */
-        getEntitiesWithComponent<T extends Component>(componentClass: new (...args: any[]) => T): Entity[] {
-            const entitiesWithComponent: Entity[] = [];
+        public getEntitiesWithComponent<T extends Component>(componentClass: new (...args: any[]) => T): Entity[] {
+            return this.queryComponents([componentClass]);
+        }
 
-            for (const entity of this.getEntities()) {
-                if (entity.hasComponent(componentClass)) {
-                    entitiesWithComponent.push(entity);
-                }
-            }
-
-            return entitiesWithComponent;
+        /**
+         * 查找具有指定组件的实体
+         * @param componentClasses 
+         * @returns 
+         */
+        public getEntitiesWithComponents<T extends Component>(componentClasses: Array<new (...args: any[]) => T>): Entity[] {
+            return this.queryComponents(componentClasses);
         }
 
         /**
          * 获取所有实体
          * @returns 
          */
-        getEntities(): Entity[] {
+        public getEntities(): Entity[] {
             return Array.from(this.entities.values());
         }
 
@@ -101,16 +136,54 @@ module gs {
         * @param tag 要检查的标签
         * @returns 具有指定标签的实体数组
         */
-        getEntitiesWithTag(tag: string): Entity[] {
-            const entitiesWithTag: Entity[] = [];
+        public getEntitiesWithTag(tag: string): Entity[] {
+            if (!this.tagCache.has(tag)) {
+                const entitiesWithTag: Entity[] = [];
 
+                for (const entity of this.getEntities()) {
+                    if (entity.hasTag(tag)) {
+                        entitiesWithTag.push(entity);
+                    }
+                }
+
+                this.tagCache.set(tag, entitiesWithTag);
+            }
+
+            return this.tagCache.get(tag) as Entity[];
+        }
+
+
+        /**
+         * 根据提供的组件数组查询实体
+         * @param components 要查询的组件数组
+         * @returns 符合查询条件的实体数组
+         */
+        public queryComponents(components: (new (entityId: number) => Component)[]): Entity[] {
+            const key = components.map(c => c.name).sort().join('|');
+            if (!this.queryCache.has(key)) {
+                const result = this.performQuery(components);
+                this.queryCache.set(key, result);
+            }
+            return this.queryCache.get(key);
+        }
+
+        private performQuery(components: (new (entityId: number) => Component)[]): Entity[] {
+            const result: Entity[] = [];
+
+            // 遍历所有实体
             for (const entity of this.getEntities()) {
-                if (entity.hasTag(tag)) {
-                    entitiesWithTag.push(entity);
+                // 检查每个查询的组件是否存在于实体中
+                const hasAllComponents = components.every(componentType => {
+                    return entity.hasComponent(componentType);
+                });
+
+                // 如果所有组件存在，则将实体添加到结果中
+                if (hasAllComponents) {
+                    result.push(entity);
                 }
             }
 
-            return entitiesWithTag;
+            return result;
         }
 
         /**

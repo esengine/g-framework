@@ -101,6 +101,11 @@ declare module gs {
          */
         addTag(tag: string): void;
         /**
+         * 获取标签
+         * @returns
+         */
+        getTags(): Set<string>;
+        /**
          * 移除标签
          * @param tag
          */
@@ -316,7 +321,14 @@ declare module gs {
         private currentFrameNumber;
         private inputManager;
         private networkManager;
-        constructor(componentClasses: Array<ComponentConstructor<any>>);
+        private queryCache;
+        private tagCache;
+        constructor(componentClasses?: Array<ComponentConstructor<any>>);
+        /**
+         * 添加组件管理器
+         * @param componentClass 要添加的组件类
+         */
+        addComponentManager<T extends Component>(componentClass: new (...args: any[]) => T): void;
         updateFrameNumber(): void;
         getCurrentFrameNumber(): number;
         getInputManager(): InputManager;
@@ -344,6 +356,12 @@ declare module gs {
          */
         getEntitiesWithComponent<T extends Component>(componentClass: new (...args: any[]) => T): Entity[];
         /**
+         * 查找具有指定组件的实体
+         * @param componentClasses
+         * @returns
+         */
+        getEntitiesWithComponents<T extends Component>(componentClasses: Array<new (...args: any[]) => T>): Entity[];
+        /**
          * 获取所有实体
          * @returns
          */
@@ -354,6 +372,13 @@ declare module gs {
         * @returns 具有指定标签的实体数组
         */
         getEntitiesWithTag(tag: string): Entity[];
+        /**
+         * 根据提供的组件数组查询实体
+         * @param components 要查询的组件数组
+         * @returns 符合查询条件的实体数组
+         */
+        queryComponents(components: (new (entityId: number) => Component)[]): Entity[];
+        private performQuery;
         /**
          * 创建当前游戏状态的快照
          * @returns
