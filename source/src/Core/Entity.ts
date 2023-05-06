@@ -114,7 +114,7 @@ module gs {
 
             for (const [componentType, manager] of this.componentManagers) {
                 const component = manager.get(this.id) as Component;
-                if (component) {
+                if (component && component.shouldSerialize()) {
                     serializedEntity.components[componentType.name] = component.serialize();
                 }
             }

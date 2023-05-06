@@ -216,6 +216,19 @@ var gs;
                 }
             }
         };
+        /**
+         * 判断是否需要序列化的方法
+         * @returns 默认返回 true，表示需要序列化
+         */
+        Component.prototype.shouldSerialize = function () {
+            return true;
+        };
+        /**
+         * 清除数据方法，用于组件池在重用时
+         */
+        Component.prototype.reset = function () {
+            this._entityId = null;
+        };
         return Component;
     }());
     gs.Component = Component;
@@ -324,7 +337,7 @@ var gs;
                 for (var _b = __values(this.componentManagers), _c = _b.next(); !_c.done; _c = _b.next()) {
                     var _d = __read(_c.value, 2), componentType = _d[0], manager = _d[1];
                     var component = manager.get(this.id);
-                    if (component) {
+                    if (component && component.shouldSerialize()) {
                         serializedEntity.components[componentType.name] = component.serialize();
                     }
                 }

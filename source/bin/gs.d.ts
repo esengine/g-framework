@@ -58,9 +58,14 @@ declare module gs {
         serialize(): any;
         deserialize(data: any): void;
         /**
+         * 判断是否需要序列化的方法
+         * @returns 默认返回 true，表示需要序列化
+         */
+        shouldSerialize(): boolean;
+        /**
          * 清除数据方法，用于组件池在重用时
          */
-        abstract reset(): void;
+        reset(): void;
     }
 }
 declare module gs {

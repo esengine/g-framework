@@ -41,8 +41,19 @@ module gs {
         }
 
         /**
+         * 判断是否需要序列化的方法
+         * @returns 默认返回 true，表示需要序列化
+         */
+        shouldSerialize(): boolean {
+            return true;
+        }
+
+
+        /**
          * 清除数据方法，用于组件池在重用时
          */
-        public abstract reset(): void;
+        public reset(): void {
+            this._entityId = null;
+        }
     }
 }
