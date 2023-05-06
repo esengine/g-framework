@@ -13,7 +13,7 @@ class MyInputAdapter extends gs.InputAdapter {
     }
 
     // 这个方法将处理游戏引擎或平台特定的输入事件，并将它们转换为通用的 InputEvent 对象
-    handleEngineSpecificInputEvent(event: any): void {
+    handleInputEvent(event: any): void {
         // 处理特定的输入事件，例如将它们转换为通用的 InputEvent 对象
         const inputEvent = this.convertEngineEventToInputEvent(event);
 
@@ -26,14 +26,14 @@ class MyInputAdapter extends gs.InputAdapter {
         // 根据您使用的游戏引擎实现相应的转换逻辑
         // ...
         return {
-            type: InputType.KEY_DOWN, // 示例
-            data: event.data,
+            type: event.type, // 示例：游戏引擎事件类型（如按键按下或鼠标移动）
+            data: event.data, // 示例：事件相关数据（如按键的键码或鼠标坐标）
         };
     }
 }
 ```
 
-在这个例子中，我们创建了一个名为 `MyInputAdapter` 的自定义输入适配器。我们实现了 `handleEngineSpecificInputEvent` 方法，该方法负责处理游戏引擎或平台特定的输入事件，并将它们转换为通用的 `InputEvent` 对象。转换后的事件会被发送到 `InputManager`。
+在这个例子中，我们创建了一个名为 `MyInputAdapter` 的自定义输入适配器。我们实现了 `handleInputEvent` 方法，该方法负责处理游戏引擎或平台特定的输入事件，并将它们转换为通用的 `InputEvent` 对象。转换后的事件会被发送到 `InputManager`。
 
 ## 使用输入缓冲区处理游戏输入
 

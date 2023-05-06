@@ -247,7 +247,7 @@ declare module gs {
 }
 declare module gs {
     interface InputEvent {
-        type: InputType;
+        type: string;
         data: any;
     }
 }
@@ -258,7 +258,11 @@ declare module gs {
         private inputBuffer;
         /** 输入历史记录队列 */
         private inputHistory;
+        private historySizeThreshold;
+        private eventListeners;
         constructor(entityManager: EntityManager);
+        setHistorySizeThreshold(threshold: number): void;
+        addEventListener(callback: (event: InputEvent) => void): void;
         setAdapter(adapter: InputAdapter): void;
         sendInput(event: InputEvent): void;
         private handleInput;
@@ -272,15 +276,6 @@ declare module gs {
             frameNumber: number;
             input: InputEvent;
         }>;
-    }
-}
-declare module gs {
-    enum InputType {
-        KEY_DOWN = 0,
-        KEY_UP = 1,
-        MOUSE_DOWN = 2,
-        MOUSE_UP = 3,
-        MOUSE_MOVE = 4
     }
 }
 declare module gs {

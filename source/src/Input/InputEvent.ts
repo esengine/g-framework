@@ -1,6 +1,6 @@
 module gs {
     export interface InputEvent {
-        type: InputType;
+        type: string;
         data: any;
     }
 }

@@ -559,9 +559,17 @@ var gs;
         function InputManager(entityManager) {
             /** 输入历史记录队列 */
             this.inputHistory = [];
+            this.historySizeThreshold = 1000;
+            this.eventListeners = [];
             this.entityManager = entityManager;
             this.inputBuffer = new gs.InputBuffer();
         }
+        InputManager.prototype.setHistorySizeThreshold = function (threshold) {
+            this.historySizeThreshold = threshold;
+        };
+        InputManager.prototype.addEventListener = function (callback) {
+            this.eventListeners.push(callback);
+        };
         InputManager.prototype.setAdapter = function (adapter) {
             this.adapter = adapter;
         };
@@ -572,6 +580,12 @@ var gs;
             this.inputBuffer.addEvent(event);
             // 将输入和当前帧编号存储在输入历史记录中
             this.inputHistory.push({ frameNumber: this.getCurrentFrameNumber(), input: event });
+            // 触发输入事件监听器
+            this.eventListeners.forEach(function (listener) { return listener(event); });
+            // 当输入历史记录数量超过阈值时，删除最旧的事件
+            if (this.inputHistory.length > this.historySizeThreshold) {
+                this.inputHistory.splice(0, this.inputHistory.length - this.historySizeThreshold);
+            }
         };
         /**
          * 获取当前帧编号的方法
@@ -589,17 +603,6 @@ var gs;
         return InputManager;
     }());
     gs.InputManager = InputManager;
-})(gs || (gs = {}));
-var gs;
-(function (gs) {
-    var InputType;
-    (function (InputType) {
-        InputType[InputType["KEY_DOWN"] = 0] = "KEY_DOWN";
-        InputType[InputType["KEY_UP"] = 1] = "KEY_UP";
-        InputType[InputType["MOUSE_DOWN"] = 2] = "MOUSE_DOWN";
-        InputType[InputType["MOUSE_UP"] = 3] = "MOUSE_UP";
-        InputType[InputType["MOUSE_MOVE"] = 4] = "MOUSE_MOVE";
-    })(InputType = gs.InputType || (gs.InputType = {}));
 })(gs || (gs = {}));
 var gs;
 (function (gs) {
