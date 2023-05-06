@@ -17,11 +17,21 @@ class PositionComponent extends Component {
     this.y = this.random.next() + id;
     id ++;
   }
+
+  public reset(): void {
+    this.x = 0;
+    this.y = 0;
+  }
 }
 
 class VelocityComponent extends Component {
   vx = 0;
   vy = 0;
+
+  public reset(): void {
+    this.vx = 0;
+    this.vy = 0;
+  }
 }
 
 // 创建一个 EntityManager 实例，并传递 componentManagers 数组
@@ -46,7 +56,6 @@ class MovementSystem extends gs.System {
       const velocity = entity.getComponent(VelocityComponent);
       position.x += velocity.vx * deltaTime;
       position.y += velocity.vy * deltaTime;
-      console.log(position.x, position.y);
     }
   }
 }

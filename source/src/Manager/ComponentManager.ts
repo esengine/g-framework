@@ -11,6 +11,7 @@ module gs {
         private entityToDataIndex: Map<number, number> = new Map();
         private freeDataIndices: number[] = [];
         private componentType: ComponentConstructor<T>;
+        private componentPool: T[] = [];
 
         /**
          * ComponentManager 构造函数
@@ -25,7 +26,12 @@ module gs {
 
         public create(entityId: number): T {
             const index = this.allocateDataIndex();
-            const component = new this.componentType();
+            let component: T;
+            if (this.componentPool.length > 0) {
+                component = this.componentPool.pop();
+            } else {
+                component = new this.componentType();
+            }
             component.setEntityId(entityId);
 
             this.data[index] = component;
@@ -72,8 +78,12 @@ module gs {
             }
             this.entityToDataIndex.delete(entityId);
 
+            const component = this.data[dataIndex];
+            component.reset();
+
             this.data[dataIndex] = null;
             this.freeDataIndices.push(dataIndex);
+            this.componentPool.push(component); // 将组件回收到组件池中
         }
 
         /**

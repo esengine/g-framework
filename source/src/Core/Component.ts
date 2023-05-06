@@ -39,5 +39,10 @@ module gs {
                 }
             }
         }
+
+        /**
+         * 清除数据方法，用于组件池在重用时
+         */
+        public abstract reset(): void;
     }
 }

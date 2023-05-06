@@ -48,13 +48,25 @@ const entity = entityManager.createEntity();
 class PositionComponent extends gs.Component {
     public x: number = 0;
     public y: number = 0;
+
+    public reset() {
+        this.x = 0;
+        this.y = 0;
+    }
 }
 
 class VelocityComponent extends gs.Component {
     public x: number = 0;
     public y: number = 0;
+
+    public reset() {
+        this.x = 0;
+        this.y = 0;
+    }
 }
 ```
+
+> 注意，需要实现reset方法，当组件回收时会调用该方法
 
 现在，你可以将组件附加到实体上：
 

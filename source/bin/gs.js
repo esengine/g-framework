@@ -552,11 +552,18 @@ var gs;
             this.data = [];
             this.entityToDataIndex = new Map();
             this.freeDataIndices = [];
+            this.componentPool = [];
             this.componentType = componentType;
         }
         ComponentManager.prototype.create = function (entityId) {
             var index = this.allocateDataIndex();
-            var component = new this.componentType();
+            var component;
+            if (this.componentPool.length > 0) {
+                component = this.componentPool.pop();
+            }
+            else {
+                component = new this.componentType();
+            }
             component.setEntityId(entityId);
             this.data[index] = component;
             this.entityToDataIndex.set(entityId, index);
@@ -596,8 +603,11 @@ var gs;
                 return;
             }
             this.entityToDataIndex.delete(entityId);
+            var component = this.data[dataIndex];
+            component.reset();
             this.data[dataIndex] = null;
             this.freeDataIndices.push(dataIndex);
+            this.componentPool.push(component); // 将组件回收到组件池中
         };
         /**
          * 分配数据索引
@@ -1025,6 +1035,9 @@ var gs;
             _this.stateMachine = new gs.StateMachine();
             return _this;
         }
+        StateMachineComponent.prototype.reset = function () {
+            this.stateMachine = new gs.StateMachine();
+        };
         return StateMachineComponent;
     }(gs.Component));
     gs.StateMachineComponent = StateMachineComponent;

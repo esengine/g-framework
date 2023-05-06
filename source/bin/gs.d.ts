@@ -57,6 +57,10 @@ declare module gs {
         readonly entityId: number;
         serialize(): any;
         deserialize(data: any): void;
+        /**
+         * 清除数据方法，用于组件池在重用时
+         */
+        abstract reset(): void;
     }
 }
 declare module gs {
@@ -268,6 +272,7 @@ declare module gs {
         private entityToDataIndex;
         private freeDataIndices;
         private componentType;
+        private componentPool;
         /**
          * ComponentManager 构造函数
          * @param componentType - 用于创建和管理的组件类型。
@@ -463,6 +468,7 @@ declare module gs {
     class StateMachineComponent extends Component {
         stateMachine: StateMachine;
         constructor();
+        reset(): void;
     }
 }
 declare module gs {

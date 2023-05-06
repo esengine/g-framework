@@ -7,5 +7,9 @@ module gs {
             super();
             this.stateMachine = new StateMachine();
         }
+
+        public reset(): void {
+            this.stateMachine = new StateMachine();
+        }
     }
 }
