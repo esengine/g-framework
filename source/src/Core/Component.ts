@@ -4,6 +4,7 @@ module gs {
      */
     export abstract class Component {
         private _entityId: number | null = null;
+        private _version: number = 0;
 
         setEntityId(entityId: number) {
             this._entityId = entityId;
@@ -19,6 +20,19 @@ module gs {
             }
             return this._entityId;
         }
+
+        get version(): number {
+            return this._version;
+        }
+
+        /**
+         * 标记组件已更新的方法
+         * 通过增加 _version 的值来表示组件已更新
+         */
+        markUpdated(): void {
+            this._version++;
+        }
+
 
         serialize(): any {
             const data: any = {};

@@ -52,9 +52,16 @@ declare module gs {
      */
     abstract class Component {
         private _entityId;
+        private _version;
         setEntityId(entityId: number): void;
         getEntityId(): number;
         readonly entityId: number;
+        readonly version: number;
+        /**
+         * 标记组件已更新的方法
+         * 通过增加 _version 的值来表示组件已更新
+         */
+        markUpdated(): void;
         serialize(): any;
         deserialize(data: any): void;
         /**
@@ -126,6 +133,12 @@ declare module gs {
          * @returns
          */
         serialize(): any;
+        /**
+         * 增量序列化
+         * @param lastSnapshotVersion 上一次快照版本
+         * @returns 返回增量序列化后的实体对象，如果没有更新的组件，则返回null
+         */
+        serializeIncremental(lastSnapshotVersion: number): any | null;
         /**
          * 反序列化
          * @param data
@@ -389,6 +402,12 @@ declare module gs {
          * @returns
          */
         createStateSnapshot(): any;
+        /**
+         * 创建增量状态快照
+         * @param lastSnapshotVersion 上一个快照的版本号
+         * @returns 返回一个包含实体增量数据的快照对象
+         */
+        createIncrementalStateSnapshot(lastSnapshotVersion: number): any;
         /**
          * 使用给定的状态快照更新游戏状态
          * @param stateSnapshot

@@ -123,6 +123,30 @@ module gs {
         }
 
         /**
+         * 增量序列化
+         * @param lastSnapshotVersion 上一次快照版本
+         * @returns 返回增量序列化后的实体对象，如果没有更新的组件，则返回null
+         */
+        serializeIncremental(lastSnapshotVersion: number): any | null {
+            let hasUpdatedComponents = false;
+            const serializedEntity = {
+                id: this.id,
+                components: {},
+            };
+
+            for (const [componentType, manager] of this.componentManagers) {
+                const component = manager.get(this.id) as Component;
+                if (component && component.shouldSerialize() && component.version > lastSnapshotVersion) {
+                    serializedEntity.components[componentType.name] = component.serialize();
+                    hasUpdatedComponents = true;
+                }
+            }
+
+            return hasUpdatedComponents ? serializedEntity : null;
+        }
+
+
+        /**
          * 反序列化
          * @param data 
          */

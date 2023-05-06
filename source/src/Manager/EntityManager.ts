@@ -201,6 +201,27 @@ module gs {
 
             return snapshot;
         }
+        
+        /**
+         * 创建增量状态快照
+         * @param lastSnapshotVersion 上一个快照的版本号
+         * @returns 返回一个包含实体增量数据的快照对象
+         */
+        public createIncrementalStateSnapshot(lastSnapshotVersion: number): any {
+            const snapshot: any = {
+                entities: [],
+            };
+
+            for (const entity of this.getEntities()) {
+                const serializedEntity = entity.serializeIncremental(lastSnapshotVersion);
+                if (serializedEntity) {
+                    snapshot.entities.push(serializedEntity);
+                }
+            }
+
+            return snapshot;
+        }
+
 
         /**
          * 使用给定的状态快照更新游戏状态
