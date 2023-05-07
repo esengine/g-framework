@@ -62,7 +62,7 @@ const inputAdapter = new MyInputAdapter(entityManager.getInputManager());
 inputAdapter.handleInputEvent(/* 某些特定于引擎的事件 */);
 
 // 将转换后的 InputEvent 添加到输入缓冲区中
-entityManager.getInputManager().getInputBuffer().addEvent(inputEvent);
+entityManager.getInputManager().sendInput(inputEvent);
 
 // 监听服务器更新
 entityManager.getNetworkManager().getNetworkAdapter().onServerUpdate((serverState) => {
