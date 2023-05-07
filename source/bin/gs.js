@@ -1178,6 +1178,136 @@ var gs;
 })(gs || (gs = {}));
 var gs;
 (function (gs) {
+    /**
+     * 快照插值策略
+     */
+    var SnapshotInterpolationStrategy = /** @class */ (function () {
+        function SnapshotInterpolationStrategy() {
+            this.snapshotQueue = [];
+        }
+        /**
+         * 发送游戏状态
+         * @param state
+         */
+        SnapshotInterpolationStrategy.prototype.sendState = function (state) {
+        };
+        /**
+         * 在收到新的快照时将其添加到快照队列中
+         * @param state
+         */
+        SnapshotInterpolationStrategy.prototype.receiveState = function (state) {
+            this.snapshotQueue.push(state);
+        };
+        SnapshotInterpolationStrategy.prototype.handleStateUpdate = function (state) {
+            if (this.snapshotQueue.length < 2) {
+                // 至少需要2个快照才能执行插值
+                return;
+            }
+            var prevSnapshot = this.snapshotQueue[0];
+            var nextSnapshot = this.snapshotQueue[1];
+            var deltaTime = gs.TimeManager.getInstance().deltaTime;
+            var interpolationProgress = (deltaTime - prevSnapshot.timestamp) / (nextSnapshot.timestamp - prevSnapshot.timestamp);
+            this.interpolateAndUpdateGameState(prevSnapshot, nextSnapshot, interpolationProgress);
+            if (deltaTime >= nextSnapshot.timestamp) {
+                this.snapshotQueue.shift();
+            }
+        };
+        SnapshotInterpolationStrategy.prototype.interpolateAndUpdateGameState = function (prevSnapshot, nextSnapshot, progress) {
+            if (this.onInterpolation) {
+                this.onInterpolation(prevSnapshot, nextSnapshot, progress);
+            }
+        };
+        return SnapshotInterpolationStrategy;
+    }());
+    gs.SnapshotInterpolationStrategy = SnapshotInterpolationStrategy;
+})(gs || (gs = {}));
+var gs;
+(function (gs) {
+    /**
+     * 状态压缩策略
+     */
+    var StateCompressionStrategy = /** @class */ (function () {
+        function StateCompressionStrategy() {
+            this.handleStateUpdate = function () { };
+        }
+        /**
+         * 发送游戏状态时，将游戏状态压缩
+         * @param state
+         */
+        StateCompressionStrategy.prototype.sendState = function (state) {
+            var compressedState = state;
+            if (this.onCompressState) {
+                compressedState = this.onCompressState(state);
+            }
+            if (this.onSendState) {
+                this.onSendState(compressedState);
+            }
+        };
+        /**
+         * 接收服务器或客户端发送的压缩后的游戏状态，并解压缩更新
+         */
+        StateCompressionStrategy.prototype.receiveState = function (compressedState) {
+            var decompressedState = compressedState;
+            if (this.onDecompressState) {
+                decompressedState = this.onDecompressState(compressedState);
+            }
+            if (this.onReceiveState) {
+                this.onReceiveState(decompressedState);
+            }
+            this.handleStateUpdate(decompressedState);
+        };
+        return StateCompressionStrategy;
+    }());
+    gs.StateCompressionStrategy = StateCompressionStrategy;
+})(gs || (gs = {}));
+var gs;
+(function (gs) {
+    /**
+     * 同步策略管理器类
+     */
+    var SyncStrategyManager = /** @class */ (function () {
+        /**
+         * 构造函数
+         * @param strategy - 同步策略实现
+         */
+        function SyncStrategyManager(strategy) {
+            // 将传入的策略实现赋值给私有变量
+            this.strategy = strategy;
+        }
+        /**
+         * 发送状态方法
+         * @param state - 需要发送的状态对象
+         */
+        SyncStrategyManager.prototype.sendState = function (state) {
+            this.strategy.sendState(state);
+        };
+        /**
+         * 接收状态方法
+         * @param state - 接收到的状态对象
+         */
+        SyncStrategyManager.prototype.receiveState = function (state) {
+            this.strategy.receiveState(state);
+        };
+        /**
+         * 处理状态更新方法
+         * @param deltaTime - 时间增量
+         */
+        SyncStrategyManager.prototype.handleStateUpdate = function (deltaTime) {
+            this.strategy.handleStateUpdate(deltaTime);
+        };
+        /**
+         * 设置策略方法
+         * @param strategy - 新的同步策略实现
+         */
+        SyncStrategyManager.prototype.setStrategy = function (strategy) {
+            this.strategy = strategy;
+        };
+        return SyncStrategyManager;
+    }());
+    gs.SyncStrategyManager = SyncStrategyManager;
+})(gs || (gs = {}));
+var gs;
+(function (gs) {
     var StateMachine = /** @class */ (function () {
         function StateMachine() {
             this.currentState = null;

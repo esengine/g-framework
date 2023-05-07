@@ -494,6 +494,88 @@ declare module gs {
     }
 }
 declare module gs {
+    interface ISyncStrategy {
+        sendState(state: any): void;
+        receiveState(state: any): any;
+        handleStateUpdate(deltaTime: number): void;
+    }
+}
+declare module gs {
+    /**
+     * 快照插值策略
+     */
+    class SnapshotInterpolationStrategy implements ISyncStrategy {
+        private snapshotQueue;
+        onInterpolation: (prevSnapshot: any, nextSnapshot: any, progress: number) => void;
+        /**
+         * 发送游戏状态
+         * @param state
+         */
+        sendState(state: any): void;
+        /**
+         * 在收到新的快照时将其添加到快照队列中
+         * @param state
+         */
+        receiveState(state: any): void;
+        handleStateUpdate(state: any): void;
+        private interpolateAndUpdateGameState;
+    }
+}
+declare module gs {
+    /**
+     * 状态压缩策略
+     */
+    class StateCompressionStrategy implements ISyncStrategy {
+        onCompressState: (state: any) => any;
+        onDecompressState: (compressedState: any) => any;
+        onSendState: (compressedState: any) => void;
+        onReceiveState: (decompressedState: any) => void;
+        handleStateUpdate: (state: any) => void;
+        /**
+         * 发送游戏状态时，将游戏状态压缩
+         * @param state
+         */
+        sendState(state: any): void;
+        /**
+         * 接收服务器或客户端发送的压缩后的游戏状态，并解压缩更新
+         */
+        receiveState(compressedState: any): void;
+    }
+}
+declare module gs {
+    /**
+     * 同步策略管理器类
+     */
+    class SyncStrategyManager {
+        private strategy;
+        /**
+         * 构造函数
+         * @param strategy - 同步策略实现
+         */
+        constructor(strategy: ISyncStrategy);
+        /**
+         * 发送状态方法
+         * @param state - 需要发送的状态对象
+         */
+        sendState(state: any): void;
+        /**
+         * 接收状态方法
+         * @param state - 接收到的状态对象
+         */
+        receiveState(state: any): void;
+        /**
+         * 处理状态更新方法
+         * @param deltaTime - 时间增量
+         */
+        handleStateUpdate(deltaTime: number): void;
+        /**
+         * 设置策略方法
+         * @param strategy - 新的同步策略实现
+         */
+        setStrategy(strategy: ISyncStrategy): void;
+    }
+}
+declare module gs {
     interface State {
         enter?(): void;
         exit?(): void;
