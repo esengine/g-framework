@@ -59,7 +59,7 @@ entityManager.getNetworkManager().setNetworkAdapter(websocketAdapter);
 ```ts
 // 注册输入事件处理逻辑
 const inputAdapter = new MyInputAdapter(entityManager.getInputManager());
-inputAdapter.handleEngineSpecificInputEvent(/* 某些特定于引擎的事件 */);
+inputAdapter.handleInputEvent(/* 某些特定于引擎的事件 */);
 
 // 将转换后的 InputEvent 添加到输入缓冲区中
 entityManager.getInputManager().getInputBuffer().addEvent(inputEvent);
@@ -72,3 +72,9 @@ entityManager.getNetworkManager().getNetworkAdapter().onServerUpdate((serverStat
 ```
 
 通过以上步骤，可以将自定义的通信协议与ECS框架相结合，从而实现客户端与服务器之间的通信。
+
+## 提示
+
+上文提到的MyInputAdapter可以参考以下来实现
+
+- [输入适配器](custom-input-adapter.md)
