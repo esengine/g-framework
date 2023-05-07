@@ -75,6 +75,9 @@ const syncStrategy = new gs.StateCompressionStrategy();
 ```ts
 syncStrategy.onCompressState = (state) => {
   // 使用合适的压缩方法将游戏状态进行压缩，返回压缩后的状态
+  
+  // 例如：使用LZ-string库实现游戏状态压缩
+  return LZString.compressToUTF16(JSON.stringify(state));
 };
 ```
 
@@ -83,8 +86,9 @@ syncStrategy.onCompressState = (state) => {
 ```ts
 syncStrategy.onDecompressState = (compressedState) => {
   // 使用合适的解压缩方法将压缩状态恢复为原始游戏状态，返回解压缩后的状态
-  // 例如：使用LZ-string库实现游戏状态压缩
-  return LZString.compressToUTF16(JSON.stringify(state));
+  
+  // 例如：使用LZ-string 实现游戏状态解压缩
+  return JSON.parse(LZString.decompressFromUTF16(compressedState));
 };
 ```
 
@@ -93,8 +97,6 @@ syncStrategy.onDecompressState = (compressedState) => {
 ```ts
 syncStrategy.onSendState = (compressedState) => {
   // 在这里执行发送压缩状态的逻辑，例如使用网络库将压缩后的游戏状态发送给服务器或其他客户端
-  // 例如：使用LZ-string 实现游戏状态解压缩
-  return JSON.parse(LZString.decompressFromUTF16(compressedState));
 };
 
 syncStrategy.onReceiveState = (decompressedState) => {
