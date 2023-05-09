@@ -8,6 +8,10 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
+      - name: Use Node.js 10.20.1
+        uses: actions/setup-node@v3
+        with:
+          node-version: 10.20.1
       - name: Change working directory
         run: cd source
       - name: Install dependencies
