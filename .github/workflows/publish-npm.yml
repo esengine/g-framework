@@ -12,8 +12,9 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: 10.20.1
+          registry-url: https://npm.pkg.github.com
       - name: Publish to npm
-        run: npm publish
+        run: npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         working-directory: source
