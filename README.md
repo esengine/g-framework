@@ -52,6 +52,27 @@ const entityManager = new gs.EntityManager([PositionComponent, VelocityComponent
 const entity = entityManager.createEntity();
 ```
 
+### 创建自定义实体
+
+使用createCustomEntity你可以轻松的创建自定义实体
+
+```ts
+class Player extends gs.Entity {
+  onCreate(): void {
+    console.log('player 实体创建');
+  }
+
+  onDestroy(): void {
+    console.log('player 实体销毁');
+  }
+}
+
+
+const playerEntity = entityManager.createCustomEntity(Player);
+```
+
+> onCreate方法和onDestroy方法由框架调用，分别再实体的创建和销毁时触发
+
 ## 组件
 
 组件是实体的数据属性，用于描述实体的状态和行为。每个组件都是一个类，继承自 G-Framework 的 Component 类。

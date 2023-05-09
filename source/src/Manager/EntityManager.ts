@@ -75,6 +75,30 @@ module gs {
         }
 
         /**
+         * 创建自定义实体
+         * @param customEntityClass 
+         * @returns 
+         */
+        public createCustomEntity(customEntityClass: new (entityId: number, componentManagers: Map<ComponentConstructor<any>, ComponentManager<Component>>) => Entity): Entity {
+            const entityId = this.entityIdAllocator.allocate();
+            const entity = new customEntityClass(entityId, this.componentManagers);
+            entity.onCreate();
+            this.entities.set(entityId, entity);
+
+            for (const tag of entity.getTags()) {
+                if (!this.tagCache.has(tag)) {
+                    this.tagCache.set(tag, []);
+                }
+
+                if (this.tagCache.has(tag)) {
+                    this.tagCache.get(tag).push(entity);
+                }
+            }
+
+            return entity;
+        }
+
+        /**
          * 删除实体
          * @param entityId 
          */
@@ -201,7 +225,7 @@ module gs {
 
             return snapshot;
         }
-        
+
         /**
          * 创建增量状态快照
          * @param lastSnapshotVersion 上一个快照的版本号

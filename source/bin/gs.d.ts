@@ -352,6 +352,12 @@ declare module gs {
          */
         createEntity(): Entity;
         /**
+         * 创建自定义实体
+         * @param customEntityClass
+         * @returns
+         */
+        createCustomEntity(customEntityClass: new (entityId: number, componentManagers: Map<ComponentConstructor<any>, ComponentManager<Component>>) => Entity): Entity;
+        /**
          * 删除实体
          * @param entityId
          */

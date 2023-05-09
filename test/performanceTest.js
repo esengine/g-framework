@@ -27,8 +27,18 @@ class VelocityComponent extends Component {
         this.vy = 0;
     }
 }
+class Player extends Entity {
+    onCreate() {
+        console.log('player 实体创建');
+    }
+    onDestroy() {
+        console.log('player 实体销毁');
+    }
+}
 // 创建一个 EntityManager 实例，并传递 componentManagers 数组
 const entityManager = new EntityManager([PositionComponent, VelocityComponent]);
+var player = entityManager.createCustomEntity(Player);
+console.log(player);
 class MovementSystem extends gs.System {
     constructor(entityManager) {
         super(entityManager, 1);
