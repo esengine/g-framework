@@ -27,6 +27,7 @@ module gs {
                 throw new Error(`组件类型为 ${componentType.name} 的组件管理器未找到.`);
             }
             const component = manager.create(this.id) as T;
+            component.onAdded();
             return component;
         }
 
@@ -55,6 +56,7 @@ module gs {
             }
             const component = this.getComponent(componentType);
             if (component) {
+                component.onRemoved();
                 manager.remove(this.id);
             }
         }

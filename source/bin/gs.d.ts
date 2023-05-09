@@ -62,6 +62,14 @@ declare module gs {
          * 通过增加 _version 的值来表示组件已更新
          */
         markUpdated(): void;
+        /**
+         * 当组件被添加到实体上时执行
+         */
+        onAdded(): void;
+        /**
+         * 当组件从实体上被移除时执行
+         */
+        onRemoved(): void;
         serialize(): any;
         deserialize(data: any): void;
         /**

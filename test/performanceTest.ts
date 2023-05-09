@@ -18,6 +18,14 @@ class PositionComponent extends Component {
     id ++;
   }
 
+  onAdded(): void {
+    console.log('position 组件被添加');
+  }
+
+  onRemoved(): void {
+    console.log('position 组件被移除');
+  }
+
   public reset(): void {
     this.x = 0;
     this.y = 0;

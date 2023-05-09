@@ -98,6 +98,8 @@ class VelocityComponent extends gs.Component {
         this.y = 0;
     }
 }
+
+
 ```
 
 > 注意，需要实现reset方法，当组件回收时会调用该方法

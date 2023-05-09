@@ -11,6 +11,12 @@ class PositionComponent extends Component {
         this.y = this.random.next() + id;
         id++;
     }
+    onAdded() {
+        console.log('position 组件被添加');
+    }
+    onRemoved() {
+        console.log('position 组件被移除');
+    }
     reset() {
         this.x = 0;
         this.y = 0;

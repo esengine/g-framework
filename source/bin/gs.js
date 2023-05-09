@@ -203,6 +203,14 @@ var gs;
         Component.prototype.markUpdated = function () {
             this._version++;
         };
+        /**
+         * 当组件被添加到实体上时执行
+         */
+        Component.prototype.onAdded = function () { };
+        /**
+         * 当组件从实体上被移除时执行
+         */
+        Component.prototype.onRemoved = function () { };
         Component.prototype.serialize = function () {
             var e_2, _a;
             var data = {};
@@ -271,6 +279,7 @@ var gs;
                 throw new Error("\u7EC4\u4EF6\u7C7B\u578B\u4E3A " + componentType.name + " \u7684\u7EC4\u4EF6\u7BA1\u7406\u5668\u672A\u627E\u5230.");
             }
             var component = manager.create(this.id);
+            component.onAdded();
             return component;
         };
         /**
@@ -297,6 +306,7 @@ var gs;
             }
             var component = this.getComponent(componentType);
             if (component) {
+                component.onRemoved();
                 manager.remove(this.id);
             }
         };
