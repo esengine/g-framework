@@ -45,6 +45,23 @@ module gs {
         }
 
         /**
+         * 获取所有组件
+         * @returns 
+         */
+        public getAllComponents(): Component[] {
+            const components: Component[] = [];
+
+            for (const [, manager] of this.componentManagers) {
+                const component = manager.get(this.id);
+                if (component) {
+                    components.push(component);
+                }
+            }
+        
+            return components;
+        }
+
+        /**
          * 移除组件
          * @param componentType 
          * @returns 

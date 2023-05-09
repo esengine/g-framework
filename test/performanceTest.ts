@@ -99,6 +99,9 @@ for (let i = 0; i < NUM_BOTH_COMPONENTS; i++) {
   entity.addComponent(VelocityComponent);
 }
 
+console.log("entity:", entityManager.getEntities()[1]);
+console.log("all components:", entityManager.getEntities()[1].getAllComponents());
+
 const updateStartTime = performance.now();
 
 const timeManager = gs.TimeManager.getInstance();

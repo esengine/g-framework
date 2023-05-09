@@ -104,6 +104,11 @@ declare module gs {
          */
         getComponent<T extends Component>(componentType: new (entityId: number) => T): T | null;
         /**
+         * 获取所有组件
+         * @returns
+         */
+        getAllComponents(): Component[];
+        /**
          * 移除组件
          * @param componentType
          * @returns
