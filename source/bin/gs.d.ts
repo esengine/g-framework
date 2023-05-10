@@ -194,6 +194,9 @@ declare module gs {
     }
 }
 declare module gs {
+    /**
+     * ECS 框架中的系统接口，定义了系统需要实现的方法。
+     */
     interface ISystem {
         update(entities: Entity[]): void;
         filterEntities(entities: Entity[]): Entity[];
@@ -462,7 +465,7 @@ declare module gs {
 }
 declare module gs {
     /**
-     * 系统管理器
+     * ECS 框架中的系统管理器类，负责管理系统的注册、注销以及更新。
      */
     class SystemManager {
         private systems;

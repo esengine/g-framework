@@ -595,7 +595,12 @@ var gs;
         };
         System.prototype.filterEntities = function (entities) {
             var _this = this;
-            return entities.filter(function (entity) { return _this.matcher.isInterestedEntity(entity) && _this.entityFilter(entity); });
+            return entities.reduce(function (filteredEntities, entity) {
+                if (_this.matcher.isInterestedEntity(entity) && _this.entityFilter(entity)) {
+                    filteredEntities.push(entity);
+                }
+                return filteredEntities;
+            }, []);
         };
         System.prototype.handleComponentChange = function (entity, added) {
             if (this.matcher.isInterestedEntity(entity)) {
@@ -1163,7 +1168,7 @@ var gs;
 var gs;
 (function (gs) {
     /**
-     * 系统管理器
+     * ECS 框架中的系统管理器类，负责管理系统的注册、注销以及更新。
      */
     var SystemManager = /** @class */ (function () {
         function SystemManager(entityManager) {
@@ -1178,6 +1183,7 @@ var gs;
          * @param system 系统
          */
         SystemManager.prototype.registerSystem = function (system) {
+            var _this = this;
             system.onRegister();
             this.systems.push(system);
             this.systems.sort(function (a, b) { return a.priority - b.priority; });
@@ -1187,6 +1193,26 @@ var gs;
                 }
                 else {
                     var worker = new Worker(system.workerScript);
+                    worker.onmessage = function (event) {
+                        var e_17, _a;
+                        var updatedEntities = event.data.entities;
+                        try {
+                            for (var updatedEntities_1 = __values(updatedEntities), updatedEntities_1_1 = updatedEntities_1.next(); !updatedEntities_1_1.done; updatedEntities_1_1 = updatedEntities_1.next()) {
+                                var updatedEntityData = updatedEntities_1_1.value;
+                                var entity = _this.entityManager.getEntity(updatedEntityData.id);
+                                if (entity) {
+                                    entity.deserialize(updatedEntityData);
+                                }
+                            }
+                        }
+                        catch (e_17_1) { e_17 = { error: e_17_1 }; }
+                        finally {
+                            try {
+                                if (updatedEntities_1_1 && !updatedEntities_1_1.done && (_a = updatedEntities_1.return)) _a.call(updatedEntities_1);
+                            }
+                            finally { if (e_17) throw e_17.error; }
+                        }
+                    };
                     this.systemWorkers.set(system, worker);
                 }
             }
@@ -1201,38 +1227,19 @@ var gs;
             if (index > -1) {
                 this.systems.splice(index, 1);
             }
+            this.systemWorkers.delete(system);
+            this.entityCache.delete(system);
         };
         /**
          * 通知所有系统组件已添加
          * @param entity
          */
         SystemManager.prototype.notifyComponentAdded = function (entity) {
-            var e_17, _a;
-            try {
-                for (var _b = __values(this.systems), _c = _b.next(); !_c.done; _c = _b.next()) {
-                    var system = _c.value;
-                    system.handleComponentChange(entity, true);
-                    this.entityCache.delete(system);
-                }
-            }
-            catch (e_17_1) { e_17 = { error: e_17_1 }; }
-            finally {
-                try {
-                    if (_c && !_c.done && (_a = _b.return)) _a.call(_b);
-                }
-                finally { if (e_17) throw e_17.error; }
-            }
-        };
-        /**
-         * 通知所有系统组件已删除
-         * @param entity
-         */
-        SystemManager.prototype.notifyComponentRemoved = function (entity) {
             var e_18, _a;
             try {
                 for (var _b = __values(this.systems), _c = _b.next(); !_c.done; _c = _b.next()) {
                     var system = _c.value;
-                    system.handleComponentChange(entity, false);
+                    system.handleComponentChange(entity, true);
                     this.entityCache.delete(system);
                 }
             }
@@ -1242,6 +1249,27 @@ var gs;
                     if (_c && !_c.done && (_a = _b.return)) _a.call(_b);
                 }
                 finally { if (e_18) throw e_18.error; }
+            }
+        };
+        /**
+         * 通知所有系统组件已删除
+         * @param entity
+         */
+        SystemManager.prototype.notifyComponentRemoved = function (entity) {
+            var e_19, _a;
+            try {
+                for (var _b = __values(this.systems), _c = _b.next(); !_c.done; _c = _b.next()) {
+                    var system = _c.value;
+                    system.handleComponentChange(entity, false);
+                    this.entityCache.delete(system);
+                }
+            }
+            catch (e_19_1) { e_19 = { error: e_19_1 }; }
+            finally {
+                try {
+                    if (_c && !_c.done && (_a = _b.return)) _a.call(_b);
+                }
+                finally { if (e_19) throw e_19.error; }
             }
         };
         /**
@@ -1255,8 +1283,7 @@ var gs;
          * 更新系统
          */
         SystemManager.prototype.update = function () {
-            var _this = this;
-            var e_19, _a;
+            var e_20, _a;
             var entities = this.entityManager.getEntities();
             try {
                 for (var _b = __values(this.systems), _c = _b.next(); !_c.done; _c = _b.next()) {
@@ -1275,38 +1302,18 @@ var gs;
                             entities: filteredEntities.map(function (entity) { return entity.serialize(); }),
                         };
                         worker.postMessage(message);
-                        worker.onmessage = function (event) {
-                            var e_20, _a;
-                            var updatedEntities = event.data.entities;
-                            try {
-                                for (var updatedEntities_1 = __values(updatedEntities), updatedEntities_1_1 = updatedEntities_1.next(); !updatedEntities_1_1.done; updatedEntities_1_1 = updatedEntities_1.next()) {
-                                    var updatedEntityData = updatedEntities_1_1.value;
-                                    var entity = _this.entityManager.getEntity(updatedEntityData.id);
-                                    if (entity) {
-                                        entity.deserialize(updatedEntityData);
-                                    }
-                                }
-                            }
-                            catch (e_20_1) { e_20 = { error: e_20_1 }; }
-                            finally {
-                                try {
-                                    if (updatedEntities_1_1 && !updatedEntities_1_1.done && (_a = updatedEntities_1.return)) _a.call(updatedEntities_1);
-                                }
-                                finally { if (e_20) throw e_20.error; }
-                            }
-                        };
                     }
                     else {
                         system.update(filteredEntities);
                     }
                 }
             }
-            catch (e_19_1) { e_19 = { error: e_19_1 }; }
+            catch (e_20_1) { e_20 = { error: e_20_1 }; }
             finally {
                 try {
                     if (_c && !_c.done && (_a = _b.return)) _a.call(_b);
                 }
-                finally { if (e_19) throw e_19.error; }
+                finally { if (e_20) throw e_20.error; }
             }
         };
         return SystemManager;

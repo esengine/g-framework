@@ -1,6 +1,6 @@
 module gs {
     /**
-     * 系统管理器
+     * ECS 框架中的系统管理器类，负责管理系统的注册、注销以及更新。
      */
     export class SystemManager {
         private systems: System[];
@@ -30,6 +30,15 @@ module gs {
                     );
                 } else {
                     const worker = new Worker(system.workerScript);
+                    worker.onmessage = (event) => {
+                        const updatedEntities = event.data.entities;
+                        for (const updatedEntityData of updatedEntities) {
+                            const entity = this.entityManager.getEntity(updatedEntityData.id);
+                            if (entity) {
+                                entity.deserialize(updatedEntityData);
+                            }
+                        }
+                    };
                     this.systemWorkers.set(system, worker);
                 }
             }
@@ -45,6 +54,8 @@ module gs {
             if (index > -1) {
                 this.systems.splice(index, 1);
             }
+            this.systemWorkers.delete(system);
+            this.entityCache.delete(system);
         }
 
         /**
@@ -99,16 +110,6 @@ module gs {
                         entities: filteredEntities.map(entity => entity.serialize()),
                     };
                     worker.postMessage(message);
-
-                    worker.onmessage = (event) => {
-                        const updatedEntities = event.data.entities;
-                        for (const updatedEntityData of updatedEntities) {
-                            const entity = this.entityManager.getEntity(updatedEntityData.id);
-                            if (entity) {
-                                entity.deserialize(updatedEntityData);
-                            }
-                        }
-                    };
                 } else {
                     system.update(filteredEntities);
                 }
