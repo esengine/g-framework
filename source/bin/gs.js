@@ -1186,6 +1186,7 @@ var gs;
         function SystemManager(entityManager) {
             this.systemWorkers = new Map();
             this.entityCache = new Map();
+            this.workerWarningDisplayed = false;
             this.systems = [];
             this.entityManager = entityManager;
             entityManager.setSystemManager(this);
@@ -1201,7 +1202,10 @@ var gs;
             this.systems.sort(function (a, b) { return a.priority - b.priority; });
             if (system.workerScript) {
                 if (typeof Worker === 'undefined') {
-                    console.warn('Web Workers 在当前环境中不受支持。系统将在主线程中运行');
+                    if (!this.workerWarningDisplayed) {
+                        console.warn('Web Workers 在当前环境中不受支持。系统将在主线程中运行');
+                        this.workerWarningDisplayed = true;
+                    }
                 }
                 else {
                     var worker = new Worker(system.workerScript);
@@ -1327,6 +1331,24 @@ var gs;
                 }
                 finally { if (e_19) throw e_19.error; }
             }
+        };
+        SystemManager.prototype.dispose = function () {
+            var e_20, _a;
+            try {
+                for (var _b = __values(this.systemWorkers.values()), _c = _b.next(); !_c.done; _c = _b.next()) {
+                    var worker = _c.value;
+                    worker.terminate();
+                }
+            }
+            catch (e_20_1) { e_20 = { error: e_20_1 }; }
+            finally {
+                try {
+                    if (_c && !_c.done && (_a = _b.return)) _a.call(_b);
+                }
+                finally { if (e_20) throw e_20.error; }
+            }
+            this.systemWorkers.clear();
+            this.entityCache.clear();
         };
         return SystemManager;
     }());
@@ -1575,7 +1597,7 @@ var gs;
             return entity.hasComponent(gs.StateMachineComponent);
         };
         StateMachineSystem.prototype.update = function (entities) {
-            var e_20, _a;
+            var e_21, _a;
             try {
                 for (var entities_1 = __values(entities), entities_1_1 = entities_1.next(); !entities_1_1.done; entities_1_1 = entities_1.next()) {
                     var entity = entities_1_1.value;
@@ -1583,12 +1605,12 @@ var gs;
                     stateMachineComponent.stateMachine.update();
                 }
             }
-            catch (e_20_1) { e_20 = { error: e_20_1 }; }
+            catch (e_21_1) { e_21 = { error: e_21_1 }; }
             finally {
                 try {
                     if (entities_1_1 && !entities_1_1.done && (_a = entities_1.return)) _a.call(entities_1);
                 }
-                finally { if (e_20) throw e_20.error; }
+                finally { if (e_21) throw e_21.error; }
             }
         };
         return StateMachineSystem;
@@ -1671,30 +1693,11 @@ var gs;
             return this.checkAllSet(components) && this.checkExclusionSet(components) && this.checkOneSet(components);
         };
         Matcher.prototype.checkAllSet = function (components) {
-            var e_21, _a;
+            var e_22, _a;
             try {
                 for (var _b = __values(this.allSet), _c = _b.next(); !_c.done; _c = _b.next()) {
                     var type = _c.value;
                     if (!components.get(gs.ComponentTypeManager.getIndexFor(type))) {
-                        return false;
-                    }
-                }
-            }
-            catch (e_21_1) { e_21 = { error: e_21_1 }; }
-            finally {
-                try {
-                    if (_c && !_c.done && (_a = _b.return)) _a.call(_b);
-                }
-                finally { if (e_21) throw e_21.error; }
-            }
-            return true;
-        };
-        Matcher.prototype.checkExclusionSet = function (components) {
-            var e_22, _a;
-            try {
-                for (var _b = __values(this.exclusionSet), _c = _b.next(); !_c.done; _c = _b.next()) {
-                    var type = _c.value;
-                    if (components.get(gs.ComponentTypeManager.getIndexFor(type))) {
                         return false;
                     }
                 }
@@ -1708,8 +1711,27 @@ var gs;
             }
             return true;
         };
-        Matcher.prototype.checkOneSet = function (components) {
+        Matcher.prototype.checkExclusionSet = function (components) {
             var e_23, _a;
+            try {
+                for (var _b = __values(this.exclusionSet), _c = _b.next(); !_c.done; _c = _b.next()) {
+                    var type = _c.value;
+                    if (components.get(gs.ComponentTypeManager.getIndexFor(type))) {
+                        return false;
+                    }
+                }
+            }
+            catch (e_23_1) { e_23 = { error: e_23_1 }; }
+            finally {
+                try {
+                    if (_c && !_c.done && (_a = _b.return)) _a.call(_b);
+                }
+                finally { if (e_23) throw e_23.error; }
+            }
+            return true;
+        };
+        Matcher.prototype.checkOneSet = function (components) {
+            var e_24, _a;
             if (this.oneSet.length === 0) {
                 return true;
             }
@@ -1721,12 +1743,12 @@ var gs;
                     }
                 }
             }
-            catch (e_23_1) { e_23 = { error: e_23_1 }; }
+            catch (e_24_1) { e_24 = { error: e_24_1 }; }
             finally {
                 try {
                     if (_c && !_c.done && (_a = _b.return)) _a.call(_b);
                 }
-                finally { if (e_23) throw e_23.error; }
+                finally { if (e_24) throw e_24.error; }
             }
             return false;
         };

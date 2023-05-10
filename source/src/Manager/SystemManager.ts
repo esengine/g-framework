@@ -8,6 +8,8 @@ module gs {
         private systemWorkers: Map<System, Worker> = new Map();
         private entityCache: Map<System, Entity[]> = new Map();
 
+        private workerWarningDisplayed: boolean = false;
+
         constructor(entityManager: EntityManager) {
             this.systems = [];
             this.entityManager = entityManager;
@@ -25,9 +27,12 @@ module gs {
 
             if (system.workerScript) {
                 if (typeof Worker === 'undefined') {
-                    console.warn(
-                        'Web Workers 在当前环境中不受支持。系统将在主线程中运行'
-                    );
+                    if (!this.workerWarningDisplayed) {
+                        console.warn(
+                            'Web Workers 在当前环境中不受支持。系统将在主线程中运行'
+                        );
+                        this.workerWarningDisplayed = true;
+                    }
                 } else {
                     const worker = new Worker(system.workerScript);
                     worker.onmessage = (event) => {
@@ -114,6 +119,15 @@ module gs {
                     system.update(filteredEntities);
                 }
             }
+        }
+
+        public dispose(): void {
+            for (const worker of this.systemWorkers.values()) {
+                worker.terminate();
+            }
+        
+            this.systemWorkers.clear();
+            this.entityCache.clear();
         }
     }
 }

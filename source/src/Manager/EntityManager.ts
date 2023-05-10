@@ -1,4 +1,8 @@
 module gs {
+    export interface StateSnapshot {
+        entities: any[];
+    }
+
     export class EntityManager {
         private entities: Map<number, Entity>;
         private entityIdAllocator: EntityIdAllocator;
@@ -196,8 +200,8 @@ module gs {
          * 创建当前游戏状态的快照
          * @returns 
          */
-        public createStateSnapshot(): any {
-            const snapshot: any = {
+        public createStateSnapshot(): StateSnapshot {
+            const snapshot: StateSnapshot = {
                 entities: [],
             };
 
@@ -214,7 +218,7 @@ module gs {
          * @returns 返回一个包含实体增量数据的快照对象
          */
         public createIncrementalStateSnapshot(lastSnapshotVersion: number): any {
-            const snapshot: any = {
+            const snapshot: StateSnapshot = {
                 entities: [],
             };
 

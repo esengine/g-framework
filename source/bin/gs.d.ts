@@ -377,6 +377,9 @@ declare module gs {
     }
 }
 declare module gs {
+    interface StateSnapshot {
+        entities: any[];
+    }
     class EntityManager {
         private entities;
         private entityIdAllocator;
@@ -449,7 +452,7 @@ declare module gs {
          * 创建当前游戏状态的快照
          * @returns
          */
-        createStateSnapshot(): any;
+        createStateSnapshot(): StateSnapshot;
         /**
          * 创建增量状态快照
          * @param lastSnapshotVersion 上一个快照的版本号
@@ -483,6 +486,7 @@ declare module gs {
         private entityManager;
         private systemWorkers;
         private entityCache;
+        private workerWarningDisplayed;
         constructor(entityManager: EntityManager);
         /**
          * 注册系统
@@ -513,6 +517,7 @@ declare module gs {
          * 更新系统
          */
         update(): void;
+        dispose(): void;
     }
 }
 declare module gs {
