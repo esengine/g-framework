@@ -97,6 +97,9 @@ declare module gs {
     }
 }
 declare module gs {
+    /**
+     * 实体类，用于管理实体的组件和标签。
+     */
     class Entity {
         private id;
         private componentManagers;
@@ -136,6 +139,10 @@ declare module gs {
          * @returns
          */
         hasComponent<T extends Component>(componentType: new (entityId: number) => T): boolean;
+        /**
+         * 清除组件缓存
+         */
+        clearComponentCache(): void;
         /**
          * 添加标签
          * @param tag

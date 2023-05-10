@@ -1,4 +1,7 @@
 module gs {
+    /**
+     * 实体类，用于管理实体的组件和标签。
+     */
     export class Entity {
         private id: number;
         private componentManagers: Map<Function, ComponentManager<any>>;
@@ -78,16 +81,9 @@ module gs {
          * @returns 
          */
         public getAllComponents(): Component[] {
-            const components: Component[] = [];
-
-            for (const [, manager] of this.componentManagers) {
-                const component = manager.get(this.id);
-                if (component) {
-                    components.push(component);
-                }
-            }
-
-            return components;
+            return Array.from(this.componentManagers.values())
+                .map(manager => manager.get(this.id))
+                .filter(component => component !== null);
         }
 
         /**
@@ -127,6 +123,13 @@ module gs {
         }
 
         /**
+         * 清除组件缓存
+         */
+        public clearComponentCache(): void {
+            this.componentCache.clear();
+        }
+
+        /**
          * 添加标签
          * @param tag 
          */
@@ -139,7 +142,7 @@ module gs {
          * @returns 
          */
         getTags(): Set<string> {
-            return this.tags;
+            return new Set(Array.from(this.tags));
         }
 
         /**
