@@ -53,9 +53,11 @@ declare module gs {
     abstract class Component {
         private _entityId;
         private _version;
-        setEntityId(entityId: number): void;
+        private _entityManager;
+        setEntityId(entityId: number, entityManager: EntityManager): void;
         getEntityId(): number;
         readonly entityId: number;
+        readonly entity: Entity;
         readonly version: number;
         /**
          * 标记组件已更新的方法
@@ -95,6 +97,7 @@ declare module gs {
         private tags;
         private eventEmitter;
         private entityManager;
+        componentBits: Bits;
         constructor(id: number, entityManager: EntityManager, componentManagers: Map<new (entityId: number) => Component, ComponentManager<any>>);
         getId(): number;
         /**
@@ -190,6 +193,7 @@ declare module gs {
     abstract class System {
         protected entityManager: EntityManager;
         protected paused: boolean;
+        protected matcher: Matcher;
         pause(): void;
         resume(): void;
         isPaused(): boolean;
@@ -205,29 +209,21 @@ declare module gs {
          * 系统所在的worker脚本
          */
         readonly workerScript?: string;
-        constructor(entityManager: EntityManager, priority: number, workerScript?: string);
-        /**
-         * 筛选实体
-         * @param entity
-         */
-        abstract entityFilter(entity: Entity): boolean;
+        constructor(entityManager: EntityManager, priority: number, matcher?: Matcher, workerScript?: string);
         /**
          * 更新系统
          * @param entities
          */
         abstract update(entities: Entity[]): void;
         /**
-         * 当组件被添加到实体时调用
+         * 筛选实体
          * @param entity
-         * @param component
          */
-        onComponentAdded(entity: Entity, component: Component): void;
-        /**
-         * 当组件从实体移除时调用
-         * @param entity
-         * @param component
-         */
-        onComponentRemoved(entity: Entity, component: Component): void;
+        entityFilter(entity: Entity): boolean;
+        filterEntities(entities: Entity[]): Entity[];
+        handleComponentChange(entity: Entity, added: boolean): void;
+        protected onComponentAdded(entity: Entity): void;
+        protected onComponentRemoved(entity: Entity): void;
         /**
          * 系统注册时的逻辑
          */
@@ -328,7 +324,7 @@ declare module gs {
          * const positionManager = new ComponentManager(PositionComponent);
          */
         constructor(componentType: ComponentConstructor<T>);
-        create(entityId: number): T;
+        create(entityId: number, entityManager: EntityManager): T;
         /**
          * 获取组件数据
          * @param entityId 实体ID
@@ -347,6 +343,13 @@ declare module gs {
          * @returns
          */
         remove(entityId: number): void;
+    }
+}
+declare module gs {
+    class ComponentTypeManager {
+        private static componentTypes;
+        private static nextIndex;
+        static getIndexFor(componentType: new (...args: any[]) => Component): number;
     }
 }
 declare module gs {
@@ -455,6 +458,7 @@ declare module gs {
         private systems;
         private entityManager;
         private systemWorkers;
+        private entityCache;
         constructor(entityManager: EntityManager);
         /**
          * 注册系统
@@ -469,15 +473,18 @@ declare module gs {
         /**
          * 通知所有系统组件已添加
          * @param entity
-         * @param component
          */
-        notifyComponentAdded(entity: Entity, component: Component): void;
+        notifyComponentAdded(entity: Entity): void;
         /**
          * 通知所有系统组件已删除
          * @param entity
-         * @param component
          */
-        notifyComponentRemoved(entity: Entity, component: Component): void;
+        notifyComponentRemoved(entity: Entity): void;
+        /**
+         * 使特定系统的实体缓存无效。
+         * @param system 要使其实体缓存无效的系统
+         */
+        invalidateEntityCacheForSystem(system: System): void;
         /**
          * 更新系统
          */
@@ -649,10 +656,54 @@ declare module gs {
     }
 }
 declare module gs {
+    class Bits {
+        private data;
+        constructor(size?: number);
+        set(index: number): void;
+        clear(index: number): void;
+        get(index: number): boolean;
+        resize(newSize: number): void;
+    }
+}
+declare module gs {
     class EntityIdAllocator {
         private nextId;
         constructor();
         allocate(): number;
+    }
+}
+declare module gs {
+    /**
+     * 定义一个实体匹配器类。
+     */
+    class Matcher {
+        protected allSet: (new (...args: any[]) => Component)[];
+        protected exclusionSet: (new (...args: any[]) => Component)[];
+        protected oneSet: (new (...args: any[]) => Component)[];
+        static empty(): Matcher;
+        getAllSet(): (new (...args: any[]) => Component)[];
+        getExclusionSet(): (new (...args: any[]) => Component)[];
+        getOneSet(): (new (...args: any[]) => Component)[];
+        isInterestedEntity(e: Entity): boolean;
+        isInterested(components: Bits): boolean;
+        private checkAllSet;
+        private checkExclusionSet;
+        private checkOneSet;
+        /**
+        * 添加所有包含的组件类型。
+        * @param types 所有包含的组件类型列表
+        */
+        all(...types: (new (...args: any[]) => Component)[]): Matcher;
+        /**
+         * 添加排除包含的组件类型。
+         * @param types 排除包含的组件类型列表
+         */
+        exclude(...types: (new (...args: any[]) => Component)[]): Matcher;
+        /**
+         * 添加至少包含其中之一的组件类型。
+         * @param types 至少包含其中之一的组件类型列表
+         */
+        one(...types: (new (...args: any[]) => Component)[]): Matcher;
     }
 }
 declare module gs {

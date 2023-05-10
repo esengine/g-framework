@@ -5,9 +5,11 @@ module gs {
     export abstract class Component {
         private _entityId: number | null = null;
         private _version: number = 0;
+        private _entityManager: EntityManager;
 
-        setEntityId(entityId: number) {
+        setEntityId(entityId: number, entityManager: EntityManager) {
             this._entityId = entityId;
+            this._entityManager = entityManager;
         }
 
         getEntityId() {
@@ -19,6 +21,13 @@ module gs {
                 throw new Error("Entity ID 还未被设置");
             }
             return this._entityId;
+        }
+
+        get entity(): Entity {
+            if (this._entityId === null) {
+                throw new Error("Entity ID 还未被设置");
+            }
+            return this._entityManager.getEntity(this._entityId);
         }
 
         get version(): number {

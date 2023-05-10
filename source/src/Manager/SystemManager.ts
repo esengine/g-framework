@@ -6,6 +6,7 @@ module gs {
         private systems: System[];
         private entityManager: EntityManager;
         private systemWorkers: Map<System, Worker> = new Map();
+        private entityCache: Map<System, Entity[]> = new Map();
 
         constructor(entityManager: EntityManager) {
             this.systems = [];
@@ -49,23 +50,31 @@ module gs {
         /**
          * 通知所有系统组件已添加
          * @param entity 
-         * @param component 
          */
-        notifyComponentAdded(entity: Entity, component: Component): void {
+        notifyComponentAdded(entity: Entity): void {
             for (const system of this.systems) {
-                system.onComponentAdded(entity, component);
+                system.handleComponentChange(entity, true);
+                this.entityCache.delete(system);
             }
         }
 
         /**
          * 通知所有系统组件已删除
          * @param entity 
-         * @param component 
          */
-        notifyComponentRemoved(entity: Entity, component: Component): void {
+        notifyComponentRemoved(entity: Entity): void {
             for (const system of this.systems) {
-                system.onComponentRemoved(entity, component);
+                system.handleComponentChange(entity, false);
+                this.entityCache.delete(system);
             }
+        }
+
+        /**
+         * 使特定系统的实体缓存无效。
+         * @param system 要使其实体缓存无效的系统
+         */
+        invalidateEntityCacheForSystem(system: System): void {
+            this.entityCache.delete(system);
         }
 
         /**
@@ -78,7 +87,11 @@ module gs {
                     continue;
                 }
 
-                const filteredEntities = entities.filter(entity => system.entityFilter(entity));
+                let filteredEntities = this.entityCache.get(system);
+                if (!filteredEntities) {
+                    filteredEntities = system.filterEntities(entities);
+                    this.entityCache.set(system, filteredEntities);
+                }
 
                 const worker = this.systemWorkers.get(system);
                 if (worker) {

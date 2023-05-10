@@ -5,6 +5,8 @@ module gs {
     export abstract class System {
         protected entityManager: EntityManager;
         protected paused: boolean = false;
+        protected matcher: Matcher;
+
         public pause(): void {
             this.paused = true;
         }
@@ -40,17 +42,13 @@ module gs {
          */
         public readonly workerScript?: string;
 
-        constructor(entityManager: EntityManager, priority: number, workerScript?: string) {
+        constructor(entityManager: EntityManager, priority: number, matcher?: Matcher, workerScript?: string) {
             this.entityManager = entityManager;
             this.priority = priority;
             this.workerScript = workerScript;
+            this.matcher = matcher || Matcher.empty();
         }
 
-        /**
-         * 筛选实体
-         * @param entity 
-         */
-        abstract entityFilter(entity: Entity): boolean;
         /**
          * 更新系统
          * @param entities 
@@ -58,18 +56,30 @@ module gs {
         abstract update(entities: Entity[]): void;
 
         /**
-         * 当组件被添加到实体时调用
+         * 筛选实体
          * @param entity 
-         * @param component 
          */
-        onComponentAdded(entity: Entity, component: Component): void { }
+        entityFilter(entity: Entity): boolean {
+            return true;
+        }
 
-        /**
-         * 当组件从实体移除时调用
-         * @param entity 
-         * @param component 
-         */
-        onComponentRemoved(entity: Entity, component: Component): void { }
+        public filterEntities(entities: Entity[]): Entity[] {
+            return entities.filter(entity => this.matcher.isInterestedEntity(entity) && this.entityFilter(entity));
+        }
+
+        public handleComponentChange(entity: Entity, added: boolean): void {
+            if (this.matcher.isInterestedEntity(entity)) {
+                if (added) {
+                    this.onComponentAdded(entity);
+                } else {
+                    this.onComponentRemoved(entity);
+                }
+            }
+        }
+
+        protected onComponentAdded(entity: Entity): void { }
+
+        protected onComponentRemoved(entity: Entity): void { }
 
         /**
          * 系统注册时的逻辑

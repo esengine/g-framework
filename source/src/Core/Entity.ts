@@ -5,6 +5,7 @@ module gs {
         private tags: Set<string>;
         private eventEmitter: EventEmitter;
         private entityManager: EntityManager;
+        public componentBits: Bits;
 
         constructor(id: number, entityManager: EntityManager, componentManagers: Map<new (entityId: number) => Component, ComponentManager<any>>) {
             this.id = id;
@@ -12,6 +13,7 @@ module gs {
             this.tags = new Set();
             this.eventEmitter = new EventEmitter();
             this.entityManager = entityManager;
+            this.componentBits = new Bits();
         }
 
         public getId(): number {
@@ -28,11 +30,17 @@ module gs {
             if (!manager) {
                 throw new Error(`组件类型为 ${componentType.name} 的组件管理器未找到.`);
             }
-            const component = manager.create(this.id) as T;
+
+            const component = manager.create(this.id, this.entityManager) as T;
             component.onInitialize(...args);
+
+            const componentIndex = ComponentTypeManager.getIndexFor(componentType);
+            this.componentBits.set(componentIndex);
+
             if (this.entityManager.systemManager) {
-                this.entityManager.systemManager.notifyComponentAdded(this, component);
+                this.entityManager.systemManager.notifyComponentAdded(this);
             }
+
             return component;
         }
 
@@ -62,7 +70,7 @@ module gs {
                     components.push(component);
                 }
             }
-        
+
             return components;
         }
 
@@ -79,10 +87,13 @@ module gs {
             const component = this.getComponent(componentType);
             if (component) {
                 if (this.entityManager.systemManager) {
-                    this.entityManager.systemManager.notifyComponentRemoved(this, component);
+                    this.entityManager.systemManager.notifyComponentRemoved(this);
                 }
                 manager.remove(this.id);
             }
+
+            const componentIndex = ComponentTypeManager.getIndexFor(componentType);
+            this.componentBits.clear(componentIndex);
         }
 
         /**

@@ -23,14 +23,14 @@ module gs {
             this.components = new SparseSet<T>();
         }
 
-        public create(entityId: number): T {
+        public create(entityId: number, entityManager: EntityManager): T {
             let component: T;
             if (this.componentPool.length > 0) {
                 component = this.componentPool.pop();
             } else {
                 component = new this.componentType();
             }
-            component.setEntityId(entityId);
+            component.setEntityId(entityId, entityManager);
 
             this.components.add(entityId, component);
             return component;

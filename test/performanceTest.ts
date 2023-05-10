@@ -1,6 +1,6 @@
 /// <reference path="../source/bin/gs.d.ts" />
 
-const { Entity, EntityManager, Component, ComponentManager, Random, TimeManager } = gs;
+const { Entity, EntityManager, Component, ComponentManager, Random, TimeManager, Matcher } = gs;
 
 
 var id = 0;
@@ -18,14 +18,6 @@ class PositionComponent extends Component {
   onInitialize(x: number, y: number): void {
     this.x = x;
     this.y = y;
-  }
-
-  onAdded(): void {
-    console.log('position 组件被添加');
-  }
-
-  onRemoved(): void {
-    console.log('position 组件被移除');
   }
 
   public reset(): void {
@@ -57,26 +49,24 @@ class Player extends Entity {
 // 创建一个 EntityManager 实例，并传递 componentManagers 数组
 const entityManager = new EntityManager([PositionComponent, VelocityComponent]);
 
-var player = entityManager.createCustomEntity(Player);
-console.log(player);
+// var player = entityManager.createCustomEntity(Player);
+// console.log(player);
 
 class MovementSystem extends gs.System {
   constructor(entityManager) {
-    super(entityManager, 1);
+    super(entityManager, 1, new Matcher().all(PositionComponent, VelocityComponent));
   }
 
-  onComponentAdded(entity: gs.Entity, component: gs.Component): void {
-    console.log('组件被添加', entity, component);
+  onComponentAdded(entity: gs.Entity): void {
+    console.log('组件被添加', entity, entity.getAllComponents());
   }
 
-  onComponentRemoved(entity: gs.Entity, component: gs.Component): void {
-    console.log('组件被移除', entity, component);
+  onComponentRemoved(entity: gs.Entity): void {
+    console.log('组件被移除', entity);
   }
 
-  entityFilter(entity: gs.Entity) {
-    const hasPosition = entity.hasComponent(PositionComponent);
-    const hasVelocity = entity.hasComponent(VelocityComponent);
-    return hasPosition && hasVelocity;
+  entityFilter(entity: gs.Entity): boolean {
+    return true;
   }
 
   update(entities) {
@@ -88,6 +78,7 @@ class MovementSystem extends gs.System {
       position.x += velocity.vx * deltaTime;
       position.y += velocity.vy * deltaTime;
     }
+    console.log("update", entities);
   }
 }
 
@@ -105,14 +96,14 @@ const NUM_BOTH_COMPONENTS = NUM_FILTER_ENTITIES - NUM_POSITION_ONLY;
 
 for (let i = 0; i < NUM_BOTH_COMPONENTS; i++) {
   const entity = entityManager.createEntity();
-  entity.addComponent(PositionComponent, 1, 3);
+  entity.addComponent(PositionComponent, new Random(i).nextInt(0, 10), 3);
   entity.addComponent(VelocityComponent);
 }
 
-console.log("entity:", entityManager.getEntities()[1]);
-console.log("all components:", entityManager.getEntities()[1].getAllComponents());
+// console.log("entity:", entityManager.getEntities()[1]);
+// console.log("all components:", entityManager.getEntities()[1].getAllComponents());
 
-const updateStartTime = performance.now();
+// const updateStartTime = performance.now();
 
 const timeManager = gs.TimeManager.getInstance();
 timeManager.update(deltaTime);
