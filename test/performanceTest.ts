@@ -8,14 +8,16 @@ var id = 0;
 class PositionComponent extends Component {
   x = 0;
   y = 0;
-  random = new Random(new Date().getDate());
 
   constructor() {
     super();
 
-    this.x = this.random.next() + id;
-    this.y = this.random.next() + id;
     id ++;
+  }
+
+  onInitialize(x: number, y: number): void {
+    this.x = x;
+    this.y = y;
   }
 
   onAdded(): void {
@@ -103,7 +105,7 @@ const NUM_BOTH_COMPONENTS = NUM_FILTER_ENTITIES - NUM_POSITION_ONLY;
 
 for (let i = 0; i < NUM_BOTH_COMPONENTS; i++) {
   const entity = entityManager.createEntity();
-  entity.addComponent(PositionComponent);
+  entity.addComponent(PositionComponent, 1, 3);
   entity.addComponent(VelocityComponent);
 }
 

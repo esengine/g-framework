@@ -35,6 +35,10 @@ var __read = (this && this.__read) || function (o, n) {
     }
     return ar;
 };
+var __spread = (this && this.__spread) || function () {
+    for (var ar = [], i = 0; i < arguments.length; i++) ar = ar.concat(__read(arguments[i]));
+    return ar;
+};
 var gs;
 (function (gs) {
     var ObjectPool = /** @class */ (function () {
@@ -204,6 +208,16 @@ var gs;
             this._version++;
         };
         /**
+         * 当组件初始化的时候调用
+         * @param args
+         */
+        Component.prototype.onInitialize = function () {
+            var args = [];
+            for (var _i = 0; _i < arguments.length; _i++) {
+                args[_i] = arguments[_i];
+            }
+        };
+        /**
          * 当组件被添加到实体上时执行
          */
         Component.prototype.onAdded = function () { };
@@ -275,12 +289,16 @@ var gs;
          * @returns
          */
         Entity.prototype.addComponent = function (componentType) {
+            var args = [];
+            for (var _i = 1; _i < arguments.length; _i++) {
+                args[_i - 1] = arguments[_i];
+            }
             var manager = this.componentManagers.get(componentType);
             if (!manager) {
                 throw new Error("\u7EC4\u4EF6\u7C7B\u578B\u4E3A " + componentType.name + " \u7684\u7EC4\u4EF6\u7BA1\u7406\u5668\u672A\u627E\u5230.");
             }
             var component = manager.create(this.id);
-            component.onAdded();
+            component.onInitialize.apply(component, __spread(args));
             if (this.entityManager.systemManager) {
                 this.entityManager.systemManager.notifyComponentAdded(this, component);
             }
@@ -335,7 +353,6 @@ var gs;
             }
             var component = this.getComponent(componentType);
             if (component) {
-                component.onRemoved();
                 if (this.entityManager.systemManager) {
                     this.entityManager.systemManager.notifyComponentRemoved(this, component);
                 }
@@ -672,14 +689,11 @@ var gs;
          * const positionManager = new ComponentManager(PositionComponent);
          */
         function ComponentManager(componentType) {
-            this.data = [];
-            this.entityToDataIndex = new Map();
-            this.freeDataIndices = [];
             this.componentPool = [];
             this.componentType = componentType;
+            this.components = new gs.SparseSet();
         }
         ComponentManager.prototype.create = function (entityId) {
-            var index = this.allocateDataIndex();
             var component;
             if (this.componentPool.length > 0) {
                 component = this.componentPool.pop();
@@ -688,8 +702,7 @@ var gs;
                 component = new this.componentType();
             }
             component.setEntityId(entityId);
-            this.data[index] = component;
-            this.entityToDataIndex.set(entityId, index);
+            this.components.add(entityId, component);
             return component;
         };
         /**
@@ -698,14 +711,7 @@ var gs;
          * @returns 组件数据
          */
         ComponentManager.prototype.get = function (entityId) {
-            var dataIndex = this.entityToDataIndex.get(entityId);
-            if (dataIndex === undefined) {
-                return null;
-            }
-            if (!this.data[dataIndex]) {
-                this.data[dataIndex] = {};
-            }
-            return this.data[dataIndex];
+            return this.components.get(entityId);
         };
         /**
          *
@@ -713,7 +719,7 @@ var gs;
          * @returns
          */
         ComponentManager.prototype.has = function (entityId) {
-            return this.entityToDataIndex.has(entityId);
+            return this.components.has(entityId);
         };
         /**
          *
@@ -721,26 +727,12 @@ var gs;
          * @returns
          */
         ComponentManager.prototype.remove = function (entityId) {
-            var dataIndex = this.entityToDataIndex.get(entityId);
-            if (dataIndex === undefined) {
-                return;
+            var component = this.components.get(entityId);
+            if (component) {
+                component.reset();
+                this.componentPool.push(component); // 将组件回收到组件池中
             }
-            this.entityToDataIndex.delete(entityId);
-            var component = this.data[dataIndex];
-            component.reset();
-            this.data[dataIndex] = null;
-            this.freeDataIndices.push(dataIndex);
-            this.componentPool.push(component); // 将组件回收到组件池中
-        };
-        /**
-         * 分配数据索引
-         * @returns
-         */
-        ComponentManager.prototype.allocateDataIndex = function () {
-            if (this.freeDataIndices.length > 0) {
-                return this.freeDataIndices.pop();
-            }
-            return this.data.length;
+            this.components.remove(entityId);
         };
         return ComponentManager;
     }());
@@ -1581,4 +1573,51 @@ var gs;
         return Random;
     }());
     gs.Random = Random;
+})(gs || (gs = {}));
+var gs;
+(function (gs) {
+    /**
+     * SparseSet数据结构
+     */
+    var SparseSet = /** @class */ (function () {
+        function SparseSet() {
+            this.sparse = [];
+            this.dense = [];
+            this.items = [];
+            this.count = 0;
+        }
+        SparseSet.prototype.add = function (index, item) {
+            if (index >= this.sparse.length) {
+                this.sparse.length = index + 1;
+            }
+            this.sparse[index] = this.count;
+            this.dense[this.count] = index;
+            this.items[this.count] = item;
+            this.count++;
+        };
+        SparseSet.prototype.remove = function (index) {
+            var denseIndex = this.sparse[index];
+            var lastIndex = this.count - 1;
+            var lastDense = this.dense[lastIndex];
+            var lastItem = this.items[lastIndex];
+            this.dense[denseIndex] = lastDense;
+            this.items[denseIndex] = lastItem;
+            this.sparse[lastDense] = denseIndex;
+            this.count--;
+        };
+        SparseSet.prototype.has = function (index) {
+            return this.sparse[index] < this.count && this.dense[this.sparse[index]] === index;
+        };
+        SparseSet.prototype.get = function (index) {
+            if (!this.has(index)) {
+                return null;
+            }
+            return this.items[this.sparse[index]];
+        };
+        SparseSet.prototype.getCount = function () {
+            return this.count;
+        };
+        return SparseSet;
+    }());
+    gs.SparseSet = SparseSet;
 })(gs || (gs = {}));

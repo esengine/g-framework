@@ -6,10 +6,11 @@ class PositionComponent extends Component {
         super();
         this.x = 0;
         this.y = 0;
-        this.random = new Random(new Date().getDate());
-        this.x = this.random.next() + id;
-        this.y = this.random.next() + id;
         id++;
+    }
+    onInitialize(x, y) {
+        this.x = x;
+        this.y = y;
     }
     onAdded() {
         console.log('position 组件被添加');
@@ -81,7 +82,7 @@ const NUM_POSITION_ONLY = Math.floor(NUM_FILTER_ENTITIES * 0.6);
 const NUM_BOTH_COMPONENTS = NUM_FILTER_ENTITIES - NUM_POSITION_ONLY;
 for (let i = 0; i < NUM_BOTH_COMPONENTS; i++) {
     const entity = entityManager.createEntity();
-    entity.addComponent(PositionComponent);
+    entity.addComponent(PositionComponent, 1, 3);
     entity.addComponent(VelocityComponent);
 }
 console.log("entity:", entityManager.getEntities()[1]);

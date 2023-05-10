@@ -34,6 +34,12 @@ module gs {
         }
 
         /**
+         * 当组件初始化的时候调用
+         * @param args 
+         */
+        onInitialize(...args: any[]) { }
+
+        /**
          * 当组件被添加到实体上时执行
          */
         onAdded(): void { }

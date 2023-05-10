@@ -63,6 +63,11 @@ declare module gs {
          */
         markUpdated(): void;
         /**
+         * 当组件初始化的时候调用
+         * @param args
+         */
+        onInitialize(...args: any[]): void;
+        /**
          * 当组件被添加到实体上时执行
          */
         onAdded(): void;
@@ -97,7 +102,7 @@ declare module gs {
          * @param componentType
          * @returns
          */
-        addComponent<T extends Component>(componentType: new (entityId: number) => T): T;
+        addComponent<T extends Component>(componentType: new (entityId: number) => T, ...args: any[]): T;
         /**
          * 获取组件
          * @param componentType
@@ -312,9 +317,7 @@ declare module gs {
      * 组件管理器
      */
     class ComponentManager<T extends Component> {
-        private data;
-        private entityToDataIndex;
-        private freeDataIndices;
+        private components;
         private componentType;
         private componentPool;
         /**
@@ -344,11 +347,6 @@ declare module gs {
          * @returns
          */
         remove(entityId: number): void;
-        /**
-         * 分配数据索引
-         * @returns
-         */
-        allocateDataIndex(): number;
     }
 }
 declare module gs {
@@ -686,5 +684,22 @@ declare module gs {
          * @returns
          */
         choose<T>(array: T[]): T;
+    }
+}
+declare module gs {
+    /**
+     * SparseSet数据结构
+     */
+    class SparseSet<T> {
+        private sparse;
+        private dense;
+        private items;
+        private count;
+        constructor();
+        add(index: number, item: T): void;
+        remove(index: number): void;
+        has(index: number): boolean;
+        get(index: number): T;
+        getCount(): number;
     }
 }

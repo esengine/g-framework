@@ -23,13 +23,13 @@ module gs {
          * @param componentType 
          * @returns 
          */
-        public addComponent<T extends Component>(componentType: new (entityId: number) => T): T {
+        public addComponent<T extends Component>(componentType: new (entityId: number) => T, ...args: any[]): T {
             const manager = this.componentManagers.get(componentType);
             if (!manager) {
                 throw new Error(`组件类型为 ${componentType.name} 的组件管理器未找到.`);
             }
             const component = manager.create(this.id) as T;
-            component.onAdded();
+            component.onInitialize(...args);
             if (this.entityManager.systemManager) {
                 this.entityManager.systemManager.notifyComponentAdded(this, component);
             }
@@ -78,7 +78,6 @@ module gs {
             }
             const component = this.getComponent(componentType);
             if (component) {
-                component.onRemoved();
                 if (this.entityManager.systemManager) {
                     this.entityManager.systemManager.notifyComponentRemoved(this, component);
                 }

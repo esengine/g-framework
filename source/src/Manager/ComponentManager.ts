@@ -7,9 +7,7 @@ module gs {
      * 组件管理器
      */
     export class ComponentManager<T extends Component> {
-        private data: T[] = [];
-        private entityToDataIndex: Map<number, number> = new Map();
-        private freeDataIndices: number[] = [];
+        private components: SparseSet<T>;
         private componentType: ComponentConstructor<T>;
         private componentPool: T[] = [];
 
@@ -22,10 +20,10 @@ module gs {
          */
         constructor(componentType: ComponentConstructor<T>) {
             this.componentType = componentType;
+            this.components = new SparseSet<T>();
         }
 
         public create(entityId: number): T {
-            const index = this.allocateDataIndex();
             let component: T;
             if (this.componentPool.length > 0) {
                 component = this.componentPool.pop();
@@ -34,8 +32,7 @@ module gs {
             }
             component.setEntityId(entityId);
 
-            this.data[index] = component;
-            this.entityToDataIndex.set(entityId, index);
+            this.components.add(entityId, component);
             return component;
         }
 
@@ -45,16 +42,7 @@ module gs {
          * @returns 组件数据
          */
         public get(entityId: number): T | null {
-            const dataIndex = this.entityToDataIndex.get(entityId);
-            if (dataIndex === undefined) {
-                return null;
-            }
-
-            if (!this.data[dataIndex]) {
-                this.data[dataIndex] = {} as T;
-            }
-
-            return this.data[dataIndex];
+            return this.components.get(entityId);
         }
 
         /**
@@ -63,7 +51,7 @@ module gs {
          * @returns 
          */
         public has(entityId: number): boolean {
-            return this.entityToDataIndex.has(entityId);
+            return this.components.has(entityId);
         }
 
         /**
@@ -72,29 +60,12 @@ module gs {
          * @returns 
          */
         public remove(entityId: number): void {
-            const dataIndex = this.entityToDataIndex.get(entityId);
-            if (dataIndex === undefined) {
-                return;
+            const component = this.components.get(entityId);
+            if (component) {
+                component.reset();
+                this.componentPool.push(component); // 将组件回收到组件池中
             }
-            this.entityToDataIndex.delete(entityId);
-
-            const component = this.data[dataIndex];
-            component.reset();
-
-            this.data[dataIndex] = null;
-            this.freeDataIndices.push(dataIndex);
-            this.componentPool.push(component); // 将组件回收到组件池中
-        }
-
-        /**
-         * 分配数据索引
-         * @returns 
-         */
-        public allocateDataIndex(): number {
-            if (this.freeDataIndices.length > 0) {
-                return this.freeDataIndices.pop();
-            }
-            return this.data.length;
+            this.components.remove(entityId);
         }
     }
 }
