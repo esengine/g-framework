@@ -1,7 +1,5 @@
 module gs {
-    export type ComponentConstructor<T extends Component> = {
-        new(): T;
-    };
+    export type ComponentConstructor<T extends Component> = new (...args: any[]) => T;
 
     /**
      * 组件管理器

@@ -327,9 +327,7 @@ declare module gs {
     }
 }
 declare module gs {
-    type ComponentConstructor<T extends Component> = {
-        new (): T;
-    };
+    type ComponentConstructor<T extends Component> = new (...args: any[]) => T;
     /**
      * 组件管理器
      */
@@ -390,13 +388,13 @@ declare module gs {
         private queryCache;
         private tagCache;
         systemManager?: SystemManager;
-        constructor(componentClasses?: Array<ComponentConstructor<any>>, systemManager?: SystemManager);
+        constructor(componentClasses?: Array<ComponentConstructor<Component>>, systemManager?: SystemManager);
         setSystemManager(systemManager: SystemManager): void;
         /**
          * 添加组件管理器
          * @param componentClass 要添加的组件类
          */
-        addComponentManager<T extends Component>(componentClass: new (...args: any[]) => T): void;
+        addComponentManager<T extends Component>(componentClass: ComponentConstructor<T>): void;
         updateFrameNumber(): void;
         getCurrentFrameNumber(): number;
         getInputManager(): InputManager;
@@ -422,13 +420,13 @@ declare module gs {
          * @param componentClass 要检查的组件类
          * @returns 具有指定组件的实体数组
          */
-        getEntitiesWithComponent<T extends Component>(componentClass: new (...args: any[]) => T): Entity[];
+        getEntitiesWithComponent<T extends Component>(componentClass: ComponentConstructor<T>): Entity[];
         /**
          * 查找具有指定组件的实体
          * @param componentClasses
          * @returns
          */
-        getEntitiesWithComponents<T extends Component>(componentClasses: Array<new (...args: any[]) => T>): Entity[];
+        getEntitiesWithComponents<T extends Component>(componentClasses: ComponentConstructor<T>[]): Entity[];
         /**
          * 获取所有实体
          * @returns
@@ -445,7 +443,7 @@ declare module gs {
          * @param components 要查询的组件数组
          * @returns 符合查询条件的实体数组
          */
-        queryComponents(components: (new (entityId: number) => Component)[]): Entity[];
+        queryComponents(components: ComponentConstructor<Component>[]): Entity[];
         private performQuery;
         /**
          * 创建当前游戏状态的快照
@@ -468,6 +466,12 @@ declare module gs {
          * @param factor
          */
         applyInterpolation(factor: number): void;
+        /**
+         * 清除指定组件或标签的缓存
+         * @param componentClass
+         * @param tag
+         */
+        invalidateCache(componentClass?: ComponentConstructor<Component>, tag?: string): void;
     }
 }
 declare module gs {

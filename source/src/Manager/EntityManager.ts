@@ -2,7 +2,7 @@ module gs {
     export class EntityManager {
         private entities: Map<number, Entity>;
         private entityIdAllocator: EntityIdAllocator;
-        private componentManagers: Map<ComponentConstructor<any>, ComponentManager<Component>>;
+        private componentManagers: Map<ComponentConstructor<Component>, ComponentManager<Component>>;
         /** 当前帧编号属性 */
         private currentFrameNumber: number;
         private inputManager: InputManager;
@@ -12,7 +12,7 @@ module gs {
         private tagCache: Map<string, Entity[]> = new Map();
         public systemManager?: SystemManager;
 
-        constructor(componentClasses: Array<ComponentConstructor<any>> = null, systemManager?: SystemManager) {
+        constructor(componentClasses: Array<ComponentConstructor<Component>> = null, systemManager?: SystemManager) {
             this.entities = new Map();
             this.entityIdAllocator = new EntityIdAllocator();
             this.inputManager = new InputManager(this);
@@ -36,7 +36,7 @@ module gs {
          * 添加组件管理器
          * @param componentClass 要添加的组件类
          */
-        public addComponentManager<T extends Component>(componentClass: new (...args: any[]) => T): void {
+        public addComponentManager<T extends Component>(componentClass: ComponentConstructor<T>): void {
             const componentManager = new ComponentManager(componentClass);
             this.componentManagers.set(componentClass, componentManager);
         }
@@ -116,7 +116,7 @@ module gs {
          * @param componentClass 要检查的组件类
          * @returns 具有指定组件的实体数组
          */
-        public getEntitiesWithComponent<T extends Component>(componentClass: new (...args: any[]) => T): Entity[] {
+        public getEntitiesWithComponent<T extends Component>(componentClass: ComponentConstructor<T>): Entity[] {
             return this.queryComponents([componentClass]);
         }
 
@@ -125,7 +125,7 @@ module gs {
          * @param componentClasses 
          * @returns 
          */
-        public getEntitiesWithComponents<T extends Component>(componentClasses: Array<new (...args: any[]) => T>): Entity[] {
+        public getEntitiesWithComponents<T extends Component>(componentClasses: ComponentConstructor<T>[]): Entity[] {
             return this.queryComponents(componentClasses);
         }
 
@@ -164,8 +164,8 @@ module gs {
          * @param components 要查询的组件数组
          * @returns 符合查询条件的实体数组
          */
-        public queryComponents(components: (new (entityId: number) => Component)[]): Entity[] {
-            const key = components.map(c => c.name).sort().join('|');
+        public queryComponents(components: ComponentConstructor<Component>[]): Entity[] {
+            const key = `${components.map(c => c.name).sort().join('|')}`;
             if (!this.queryCache.has(key)) {
                 const result = this.performQuery(components);
                 this.queryCache.set(key, result);
@@ -173,7 +173,7 @@ module gs {
             return this.queryCache.get(key);
         }
 
-        private performQuery(components: (new (entityId: number) => Component)[]): Entity[] {
+        private performQuery(components: ComponentConstructor<Component>[]): Entity[] {
             const result: Entity[] = [];
 
             // 遍历所有实体
@@ -264,6 +264,22 @@ module gs {
                         (component as Interpolatable).applyInterpolation(factor);
                     }
                 }
+            }
+        }
+
+        /**
+         * 清除指定组件或标签的缓存
+         * @param componentClass 
+         * @param tag 
+         */
+        public invalidateCache(componentClass?: ComponentConstructor<Component>, tag?: string): void {
+            if (componentClass) {
+                const key = componentClass.name;
+                this.queryCache.delete(key);
+            }
+        
+            if (tag) {
+                this.tagCache.delete(tag);
             }
         }
     }

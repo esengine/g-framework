@@ -47,6 +47,8 @@ module gs {
                 this.entityManager.systemManager.notifyComponentAdded(this);
             }
 
+            this.entityManager.invalidateCache(componentType);
+
             return component;
         }
 
@@ -110,6 +112,7 @@ module gs {
 
             // 移除组件缓存
             this.componentCache.delete(componentType);
+            this.entityManager.invalidateCache(componentType);
         }
 
         /**
@@ -135,6 +138,7 @@ module gs {
          */
         addTag(tag: string): void {
             this.tags.add(tag);
+            this.entityManager.invalidateCache(undefined, tag);
         }
 
         /**
@@ -151,6 +155,7 @@ module gs {
          */
         removeTag(tag: string): void {
             this.tags.delete(tag);
+            this.entityManager.invalidateCache(undefined, tag);
         }
 
         /**

@@ -327,6 +327,7 @@ var gs;
             if (this.entityManager.systemManager) {
                 this.entityManager.systemManager.notifyComponentAdded(this);
             }
+            this.entityManager.invalidateCache(componentType);
             return component;
         };
         /**
@@ -382,6 +383,7 @@ var gs;
             this.componentBits.clear(componentIndex);
             // 移除组件缓存
             this.componentCache.delete(componentType);
+            this.entityManager.invalidateCache(componentType);
         };
         /**
          * 是否有组件
@@ -404,6 +406,7 @@ var gs;
          */
         Entity.prototype.addTag = function (tag) {
             this.tags.add(tag);
+            this.entityManager.invalidateCache(undefined, tag);
         };
         /**
          * 获取标签
@@ -418,6 +421,7 @@ var gs;
          */
         Entity.prototype.removeTag = function (tag) {
             this.tags.delete(tag);
+            this.entityManager.invalidateCache(undefined, tag);
         };
         /**
          * 检查是否具有指定标签
@@ -1003,7 +1007,7 @@ var gs;
          * @returns 符合查询条件的实体数组
          */
         EntityManager.prototype.queryComponents = function (components) {
-            var key = components.map(function (c) { return c.name; }).sort().join('|');
+            var key = "" + components.map(function (c) { return c.name; }).sort().join('|');
             if (!this.queryCache.has(key)) {
                 var result = this.performQuery(components);
                 this.queryCache.set(key, result);
@@ -1153,6 +1157,20 @@ var gs;
                     if (_d && !_d.done && (_a = _c.return)) _a.call(_c);
                 }
                 finally { if (e_14) throw e_14.error; }
+            }
+        };
+        /**
+         * 清除指定组件或标签的缓存
+         * @param componentClass
+         * @param tag
+         */
+        EntityManager.prototype.invalidateCache = function (componentClass, tag) {
+            if (componentClass) {
+                var key = componentClass.name;
+                this.queryCache.delete(key);
+            }
+            if (tag) {
+                this.tagCache.delete(tag);
             }
         };
         return EntityManager;
