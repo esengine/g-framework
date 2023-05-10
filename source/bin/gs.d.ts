@@ -65,6 +65,12 @@ declare module gs {
          */
         markUpdated(): void;
         /**
+         * 重置组件的状态并进行必要的初始化
+         * @param entityId
+         * @param entityManager
+         */
+        reinitialize(entityId: number, entityManager: EntityManager): void;
+        /**
          * 当组件初始化的时候调用
          * @param args
          */
@@ -98,6 +104,7 @@ declare module gs {
         private eventEmitter;
         private entityManager;
         componentBits: Bits;
+        private componentCache;
         constructor(id: number, entityManager: EntityManager, componentManagers: Map<new (entityId: number) => Component, ComponentManager<any>>);
         getId(): number;
         /**
@@ -187,20 +194,18 @@ declare module gs {
     }
 }
 declare module gs {
+    interface ISystem {
+        update(entities: Entity[]): void;
+        filterEntities(entities: Entity[]): Entity[];
+        onRegister(): void;
+        onUnregister(): void;
+    }
     /**
      * 系统基类
      */
-    abstract class System {
+    abstract class System implements ISystem {
         protected entityManager: EntityManager;
-        protected paused: boolean;
         protected matcher: Matcher;
-        pause(): void;
-        resume(): void;
-        isPaused(): boolean;
-        protected enabled: boolean;
-        enable(): void;
-        disable(): void;
-        isEnabled(): boolean;
         /**
          * 系统优先级，优先级越高，越先执行
          */
@@ -210,6 +215,12 @@ declare module gs {
          */
         readonly workerScript?: string;
         constructor(entityManager: EntityManager, priority: number, matcher?: Matcher, workerScript?: string);
+        protected _paused: boolean;
+        protected _enabled: boolean;
+        paused: boolean;
+        enabled: boolean;
+        isPaused(): boolean;
+        isEnabled(): boolean;
         /**
          * 更新系统
          * @param entities
@@ -343,6 +354,11 @@ declare module gs {
          * @returns
          */
         remove(entityId: number): void;
+        /**
+        * 预先创建指定数量的组件实例，并将它们放入对象池
+        * @param count 要预先创建的组件数量
+        */
+        private preallocate;
     }
 }
 declare module gs {
@@ -377,15 +393,9 @@ declare module gs {
         getNetworkManager(): NetworkManager;
         /**
          * 创建实体
-         * @returns
+         * @returns customEntityClass 可选的自定义实体类
          */
-        createEntity(): Entity;
-        /**
-         * 创建自定义实体
-         * @param customEntityClass
-         * @returns
-         */
-        createCustomEntity(customEntityClass: new (entityId: number, entityManager: EntityManager, componentManagers: Map<ComponentConstructor<any>, ComponentManager<Component>>) => Entity): Entity;
+        createEntity(customEntityClass?: new (entityId: number, entityManager: EntityManager, componentManagers: Map<ComponentConstructor<any>, ComponentManager<Component>>) => Entity): Entity;
         /**
          * 删除实体
          * @param entityId

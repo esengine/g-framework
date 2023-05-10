@@ -21,12 +21,14 @@ module gs {
         constructor(componentType: ComponentConstructor<T>) {
             this.componentType = componentType;
             this.components = new SparseSet<T>();
+            this.preallocate(10); // 预先创建10个组件实例
         }
 
         public create(entityId: number, entityManager: EntityManager): T {
             let component: T;
             if (this.componentPool.length > 0) {
                 component = this.componentPool.pop();
+                component.reinitialize(entityId, entityManager); // 重置组件状态并进行初始化
             } else {
                 component = new this.componentType();
             }
@@ -66,6 +68,18 @@ module gs {
                 this.componentPool.push(component); // 将组件回收到组件池中
             }
             this.components.remove(entityId);
+        }
+
+        /**
+        * 预先创建指定数量的组件实例，并将它们放入对象池
+        * @param count 要预先创建的组件数量
+        */
+        private preallocate(count: number): void {
+            for (let i = 0; i < count; i++) {
+                const component = new this.componentType();
+                component.reset();
+                this.componentPool.push(component);
+            }
         }
     }
 }

@@ -1,37 +1,17 @@
 module gs {
+    export interface ISystem {
+        update(entities: Entity[]): void;
+        filterEntities(entities: Entity[]): Entity[];
+        onRegister(): void;
+        onUnregister(): void;
+    }
+
     /**
      * 系统基类
      */
-    export abstract class System {
+    export abstract class System implements ISystem {
         protected entityManager: EntityManager;
-        protected paused: boolean = false;
         protected matcher: Matcher;
-
-        public pause(): void {
-            this.paused = true;
-        }
-
-        public resume(): void {
-            this.paused = false;
-        }
-
-        public isPaused(): boolean {
-            return this.paused;
-        }
-
-        protected enabled: boolean = true;
-
-        public enable(): void {
-            this.enabled = true;
-        }
-
-        public disable(): void {
-            this.enabled = false;
-        }
-
-        public isEnabled(): boolean {
-            return this.enabled;
-        }
 
         /** 
          * 系统优先级，优先级越高，越先执行
@@ -47,6 +27,33 @@ module gs {
             this.priority = priority;
             this.workerScript = workerScript;
             this.matcher = matcher || Matcher.empty();
+        }
+
+        protected _paused: boolean = false;
+        protected _enabled: boolean = true;
+
+        get paused(): boolean {
+            return this._paused;
+        }
+
+        set paused(value: boolean) {
+            this._paused = value;
+        }
+
+        get enabled(): boolean {
+            return this._enabled;
+        }
+
+        set enabled(value: boolean) {
+            this._enabled = value;
+        }
+
+        public isPaused(): boolean {
+            return this.paused;
+        }
+
+        public isEnabled(): boolean {
+            return this.enabled;
         }
 
         /**
@@ -84,13 +91,11 @@ module gs {
         /**
          * 系统注册时的逻辑
          */
-        onRegister() {
-        }
+        onRegister() { }
 
         /**
          * 系统注销时的逻辑
          */
-        onUnregister() {
-        }
+        onUnregister() { }
     }
 }

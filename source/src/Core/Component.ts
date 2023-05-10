@@ -43,6 +43,13 @@ module gs {
         }
 
         /**
+         * 重置组件的状态并进行必要的初始化
+         * @param entityId 
+         * @param entityManager 
+         */
+        reinitialize(entityId: number, entityManager: EntityManager): void { }
+
+        /**
          * 当组件初始化的时候调用
          * @param args 
          */

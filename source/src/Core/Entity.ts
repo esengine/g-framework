@@ -7,6 +7,9 @@ module gs {
         private entityManager: EntityManager;
         public componentBits: Bits;
 
+        // 缓存获取的组件
+        private componentCache: Map<Function, Component> = new Map();
+
         constructor(id: number, entityManager: EntityManager, componentManagers: Map<new (entityId: number) => Component, ComponentManager<any>>) {
             this.id = id;
             this.componentManagers = componentManagers;
@@ -50,11 +53,24 @@ module gs {
          * @returns 
          */
         public getComponent<T extends Component>(componentType: new (entityId: number) => T): T | null {
+            // 从缓存中获取组件，如果存在，则直接返回
+            const cachedComponent = this.componentCache.get(componentType);
+            if (cachedComponent) {
+                return cachedComponent as T;
+            }
+
+            // 如果缓存中不存在，则从组件管理器中获取
             const manager = this.componentManagers.get(componentType);
             if (!manager) {
                 return null;
             }
-            return manager.get(this.id);
+
+            const component = manager.get(this.id);
+            if (component) {
+                this.componentCache.set(componentType, component);
+            }
+
+            return component as T;
         }
 
         /**
@@ -84,6 +100,7 @@ module gs {
             if (!manager) {
                 return;
             }
+
             const component = this.getComponent(componentType);
             if (component) {
                 if (this.entityManager.systemManager) {
@@ -94,6 +111,9 @@ module gs {
 
             const componentIndex = ComponentTypeManager.getIndexFor(componentType);
             this.componentBits.clear(componentIndex);
+
+            // 移除组件缓存
+            this.componentCache.delete(componentType);
         }
 
         /**

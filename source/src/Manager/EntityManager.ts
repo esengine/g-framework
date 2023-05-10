@@ -59,33 +59,11 @@ module gs {
 
         /**
          * 创建实体
-         * @returns
+         * @returns customEntityClass 可选的自定义实体类
          */
-        public createEntity(): Entity {
-            const entityId = this.entityIdAllocator.allocate();
-            const entity = new Entity(entityId, this, this.componentManagers);
-            entity.onCreate();
-            this.entities.set(entityId, entity);
-
-            for (const tag of entity.getTags()) {
-                if (!this.tagCache.has(tag)) {
-                    this.tagCache.set(tag, []);
-                }
-
-                if (this.tagCache.has(tag)) {
-                    this.tagCache.get(tag).push(entity);
-                }
-            }
-
-            return entity;
-        }
-
-        /**
-         * 创建自定义实体
-         * @param customEntityClass 
-         * @returns 
-         */
-        public createCustomEntity(customEntityClass: new (entityId: number, entityManager: EntityManager, componentManagers: Map<ComponentConstructor<any>, ComponentManager<Component>>) => Entity): Entity {
+        public createEntity(customEntityClass: new (entityId: number,
+            entityManager: EntityManager,
+            componentManagers: Map<ComponentConstructor<any>, ComponentManager<Component>>) => Entity = Entity): Entity {
             const entityId = this.entityIdAllocator.allocate();
             const entity = new customEntityClass(entityId, this, this.componentManagers);
             entity.onCreate();
@@ -96,9 +74,7 @@ module gs {
                     this.tagCache.set(tag, []);
                 }
 
-                if (this.tagCache.has(tag)) {
-                    this.tagCache.get(tag).push(entity);
-                }
+                this.tagCache.get(tag).push(entity);
             }
 
             return entity;
