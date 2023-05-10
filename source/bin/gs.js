@@ -797,10 +797,13 @@ var gs;
         * 预先创建指定数量的组件实例，并将它们放入对象池
         * @param count 要预先创建的组件数量
         */
-        ComponentManager.prototype.preallocate = function (count) {
+        ComponentManager.prototype.preallocate = function (count, resetComponents) {
+            if (resetComponents === void 0) { resetComponents = true; }
             for (var i = 0; i < count; i++) {
                 var component = new this.componentType();
-                component.reset();
+                if (resetComponents) {
+                    component.reset();
+                }
                 this.componentPool.push(component);
             }
         };

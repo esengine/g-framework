@@ -72,10 +72,12 @@ module gs {
         * 预先创建指定数量的组件实例，并将它们放入对象池
         * @param count 要预先创建的组件数量
         */
-        private preallocate(count: number): void {
+        private preallocate(count: number, resetComponents: boolean = true): void {
             for (let i = 0; i < count; i++) {
                 const component = new this.componentType();
-                component.reset();
+                if (resetComponents) {
+                    component.reset();
+                }
                 this.componentPool.push(component);
             }
         }
