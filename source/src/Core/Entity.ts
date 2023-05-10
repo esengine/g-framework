@@ -4,12 +4,14 @@ module gs {
         private componentManagers: Map<Function, ComponentManager<any>>;
         private tags: Set<string>;
         private eventEmitter: EventEmitter;
+        private entityManager: EntityManager;
 
-        constructor(id: number, componentManagers: Map<new (entityId: number) => Component, ComponentManager<any>>) {
+        constructor(id: number, entityManager: EntityManager, componentManagers: Map<new (entityId: number) => Component, ComponentManager<any>>) {
             this.id = id;
             this.componentManagers = componentManagers;
             this.tags = new Set();
             this.eventEmitter = new EventEmitter();
+            this.entityManager = entityManager;
         }
 
         public getId(): number {
@@ -28,6 +30,9 @@ module gs {
             }
             const component = manager.create(this.id) as T;
             component.onAdded();
+            if (this.entityManager.systemManager) {
+                this.entityManager.systemManager.notifyComponentAdded(this, component);
+            }
             return component;
         }
 
@@ -74,6 +79,9 @@ module gs {
             const component = this.getComponent(componentType);
             if (component) {
                 component.onRemoved();
+                if (this.entityManager.systemManager) {
+                    this.entityManager.systemManager.notifyComponentRemoved(this, component);
+                }
                 manager.remove(this.id);
             }
         }

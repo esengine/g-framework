@@ -89,7 +89,8 @@ declare module gs {
         private componentManagers;
         private tags;
         private eventEmitter;
-        constructor(id: number, componentManagers: Map<new (entityId: number) => Component, ComponentManager<any>>);
+        private entityManager;
+        constructor(id: number, entityManager: EntityManager, componentManagers: Map<new (entityId: number) => Component, ComponentManager<any>>);
         getId(): number;
         /**
          * 添加组件
@@ -210,6 +211,18 @@ declare module gs {
          * @param entities
          */
         abstract update(entities: Entity[]): void;
+        /**
+         * 当组件被添加到实体时调用
+         * @param entity
+         * @param component
+         */
+        onComponentAdded(entity: Entity, component: Component): void;
+        /**
+         * 当组件从实体移除时调用
+         * @param entity
+         * @param component
+         */
+        onComponentRemoved(entity: Entity, component: Component): void;
         /**
          * 系统注册时的逻辑
          */
@@ -349,7 +362,9 @@ declare module gs {
         private networkManager;
         private queryCache;
         private tagCache;
-        constructor(componentClasses?: Array<ComponentConstructor<any>>);
+        systemManager?: SystemManager;
+        constructor(componentClasses?: Array<ComponentConstructor<any>>, systemManager?: SystemManager);
+        setSystemManager(systemManager: SystemManager): void;
         /**
          * 添加组件管理器
          * @param componentClass 要添加的组件类
@@ -369,7 +384,7 @@ declare module gs {
          * @param customEntityClass
          * @returns
          */
-        createCustomEntity(customEntityClass: new (entityId: number, componentManagers: Map<ComponentConstructor<any>, ComponentManager<Component>>) => Entity): Entity;
+        createCustomEntity(customEntityClass: new (entityId: number, entityManager: EntityManager, componentManagers: Map<ComponentConstructor<any>, ComponentManager<Component>>) => Entity): Entity;
         /**
          * 删除实体
          * @param entityId
@@ -453,6 +468,18 @@ declare module gs {
          * @param system
          */
         unregisterSystem(system: System): void;
+        /**
+         * 通知所有系统组件已添加
+         * @param entity
+         * @param component
+         */
+        notifyComponentAdded(entity: Entity, component: Component): void;
+        /**
+         * 通知所有系统组件已删除
+         * @param entity
+         * @param component
+         */
+        notifyComponentRemoved(entity: Entity, component: Component): void;
         /**
          * 更新系统
          */

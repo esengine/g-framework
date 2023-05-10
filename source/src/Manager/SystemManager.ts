@@ -10,6 +10,7 @@ module gs {
         constructor(entityManager: EntityManager) {
             this.systems = [];
             this.entityManager = entityManager;
+            entityManager.setSystemManager(this);
         }
 
         /**
@@ -42,6 +43,28 @@ module gs {
             const index = this.systems.indexOf(system);
             if (index > -1) {
                 this.systems.splice(index, 1);
+            }
+        }
+
+        /**
+         * 通知所有系统组件已添加
+         * @param entity 
+         * @param component 
+         */
+        notifyComponentAdded(entity: Entity, component: Component): void {
+            for (const system of this.systems) {
+                system.onComponentAdded(entity, component);
+            }
+        }
+
+        /**
+         * 通知所有系统组件已删除
+         * @param entity 
+         * @param component 
+         */
+        notifyComponentRemoved(entity: Entity, component: Component): void {
+            for (const system of this.systems) {
+                system.onComponentRemoved(entity, component);
             }
         }
 

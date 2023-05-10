@@ -58,6 +58,20 @@ module gs {
         abstract update(entities: Entity[]): void;
 
         /**
+         * 当组件被添加到实体时调用
+         * @param entity 
+         * @param component 
+         */
+        onComponentAdded(entity: Entity, component: Component): void { }
+
+        /**
+         * 当组件从实体移除时调用
+         * @param entity 
+         * @param component 
+         */
+        onComponentRemoved(entity: Entity, component: Component): void { }
+
+        /**
          * 系统注册时的逻辑
          */
         onRegister() {

@@ -10,13 +10,15 @@ module gs {
         // 查询缓存，用于缓存组件查询结果
         private queryCache: Map<string, Entity[]> = new Map();
         private tagCache: Map<string, Entity[]> = new Map();
+        public systemManager?: SystemManager;
 
-        constructor(componentClasses: Array<ComponentConstructor<any>> = null) {
+        constructor(componentClasses: Array<ComponentConstructor<any>> = null, systemManager?: SystemManager) {
             this.entities = new Map();
             this.entityIdAllocator = new EntityIdAllocator();
             this.inputManager = new InputManager(this);
             this.networkManager = new NetworkManager();
             this.currentFrameNumber = 0;
+            this.systemManager = systemManager;
 
             this.componentManagers = new Map();
             if (componentClasses != null)
@@ -24,6 +26,10 @@ module gs {
                     const componentManager = new ComponentManager(componentClass);
                     this.componentManagers.set(componentClass, componentManager);
                 }
+        }
+
+        public setSystemManager(systemManager: SystemManager): void {
+            this.systemManager = systemManager;
         }
 
         /**
@@ -57,7 +63,7 @@ module gs {
          */
         public createEntity(): Entity {
             const entityId = this.entityIdAllocator.allocate();
-            const entity = new Entity(entityId, this.componentManagers);
+            const entity = new Entity(entityId, this, this.componentManagers);
             entity.onCreate();
             this.entities.set(entityId, entity);
 
@@ -79,9 +85,9 @@ module gs {
          * @param customEntityClass 
          * @returns 
          */
-        public createCustomEntity(customEntityClass: new (entityId: number, componentManagers: Map<ComponentConstructor<any>, ComponentManager<Component>>) => Entity): Entity {
+        public createCustomEntity(customEntityClass: new (entityId: number, entityManager: EntityManager, componentManagers: Map<ComponentConstructor<any>, ComponentManager<Component>>) => Entity): Entity {
             const entityId = this.entityIdAllocator.allocate();
-            const entity = new customEntityClass(entityId, this.componentManagers);
+            const entity = new customEntityClass(entityId, this, this.componentManagers);
             entity.onCreate();
             this.entities.set(entityId, entity);
 
@@ -259,7 +265,7 @@ module gs {
                 let entity = this.getEntity(entityId);
 
                 if (!entity) {
-                    entity = new Entity(entityId, this.componentManagers);
+                    entity = new Entity(entityId, this, this.componentManagers);
                     entity.onCreate();
                 }
 

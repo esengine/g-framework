@@ -259,11 +259,12 @@ var gs;
 var gs;
 (function (gs) {
     var Entity = /** @class */ (function () {
-        function Entity(id, componentManagers) {
+        function Entity(id, entityManager, componentManagers) {
             this.id = id;
             this.componentManagers = componentManagers;
             this.tags = new Set();
             this.eventEmitter = new gs.EventEmitter();
+            this.entityManager = entityManager;
         }
         Entity.prototype.getId = function () {
             return this.id;
@@ -280,6 +281,9 @@ var gs;
             }
             var component = manager.create(this.id);
             component.onAdded();
+            if (this.entityManager.systemManager) {
+                this.entityManager.systemManager.notifyComponentAdded(this, component);
+            }
             return component;
         };
         /**
@@ -332,6 +336,9 @@ var gs;
             var component = this.getComponent(componentType);
             if (component) {
                 component.onRemoved();
+                if (this.entityManager.systemManager) {
+                    this.entityManager.systemManager.notifyComponentRemoved(this, component);
+                }
                 manager.remove(this.id);
             }
         };
@@ -517,6 +524,18 @@ var gs;
         System.prototype.isEnabled = function () {
             return this.enabled;
         };
+        /**
+         * 当组件被添加到实体时调用
+         * @param entity
+         * @param component
+         */
+        System.prototype.onComponentAdded = function (entity, component) { };
+        /**
+         * 当组件从实体移除时调用
+         * @param entity
+         * @param component
+         */
+        System.prototype.onComponentRemoved = function (entity, component) { };
         /**
          * 系统注册时的逻辑
          */
@@ -730,7 +749,7 @@ var gs;
 var gs;
 (function (gs) {
     var EntityManager = /** @class */ (function () {
-        function EntityManager(componentClasses) {
+        function EntityManager(componentClasses, systemManager) {
             var e_7, _a;
             if (componentClasses === void 0) { componentClasses = null; }
             // 查询缓存，用于缓存组件查询结果
@@ -741,6 +760,7 @@ var gs;
             this.inputManager = new gs.InputManager(this);
             this.networkManager = new gs.NetworkManager();
             this.currentFrameNumber = 0;
+            this.systemManager = systemManager;
             this.componentManagers = new Map();
             if (componentClasses != null)
                 try {
@@ -758,6 +778,9 @@ var gs;
                     finally { if (e_7) throw e_7.error; }
                 }
         }
+        EntityManager.prototype.setSystemManager = function (systemManager) {
+            this.systemManager = systemManager;
+        };
         /**
          * 添加组件管理器
          * @param componentClass 要添加的组件类
@@ -785,7 +808,7 @@ var gs;
         EntityManager.prototype.createEntity = function () {
             var e_8, _a;
             var entityId = this.entityIdAllocator.allocate();
-            var entity = new gs.Entity(entityId, this.componentManagers);
+            var entity = new gs.Entity(entityId, this, this.componentManagers);
             entity.onCreate();
             this.entities.set(entityId, entity);
             try {
@@ -816,7 +839,7 @@ var gs;
         EntityManager.prototype.createCustomEntity = function (customEntityClass) {
             var e_9, _a;
             var entityId = this.entityIdAllocator.allocate();
-            var entity = new customEntityClass(entityId, this.componentManagers);
+            var entity = new customEntityClass(entityId, this, this.componentManagers);
             entity.onCreate();
             this.entities.set(entityId, entity);
             try {
@@ -1036,7 +1059,7 @@ var gs;
                     var entityId = entityData.id;
                     var entity = this.getEntity(entityId);
                     if (!entity) {
-                        entity = new gs.Entity(entityId, this.componentManagers);
+                        entity = new gs.Entity(entityId, this, this.componentManagers);
                         entity.onCreate();
                     }
                     entity.deserialize(entityData);
@@ -1101,6 +1124,7 @@ var gs;
             this.systemWorkers = new Map();
             this.systems = [];
             this.entityManager = entityManager;
+            entityManager.setSystemManager(this);
         }
         /**
          * 注册系统
@@ -1132,11 +1156,53 @@ var gs;
             }
         };
         /**
+         * 通知所有系统组件已添加
+         * @param entity
+         * @param component
+         */
+        SystemManager.prototype.notifyComponentAdded = function (entity, component) {
+            var e_18, _a;
+            try {
+                for (var _b = __values(this.systems), _c = _b.next(); !_c.done; _c = _b.next()) {
+                    var system = _c.value;
+                    system.onComponentAdded(entity, component);
+                }
+            }
+            catch (e_18_1) { e_18 = { error: e_18_1 }; }
+            finally {
+                try {
+                    if (_c && !_c.done && (_a = _b.return)) _a.call(_b);
+                }
+                finally { if (e_18) throw e_18.error; }
+            }
+        };
+        /**
+         * 通知所有系统组件已删除
+         * @param entity
+         * @param component
+         */
+        SystemManager.prototype.notifyComponentRemoved = function (entity, component) {
+            var e_19, _a;
+            try {
+                for (var _b = __values(this.systems), _c = _b.next(); !_c.done; _c = _b.next()) {
+                    var system = _c.value;
+                    system.onComponentRemoved(entity, component);
+                }
+            }
+            catch (e_19_1) { e_19 = { error: e_19_1 }; }
+            finally {
+                try {
+                    if (_c && !_c.done && (_a = _b.return)) _a.call(_b);
+                }
+                finally { if (e_19) throw e_19.error; }
+            }
+        };
+        /**
          * 更新系统
          */
         SystemManager.prototype.update = function () {
             var _this = this;
-            var e_18, _a;
+            var e_20, _a;
             var entities = this.entityManager.getEntities();
             var _loop_2 = function (system) {
                 if (!system.isEnabled() || system.isPaused()) {
@@ -1150,7 +1216,7 @@ var gs;
                     };
                     worker.postMessage(message);
                     worker.onmessage = function (event) {
-                        var e_19, _a;
+                        var e_21, _a;
                         var updatedEntities = event.data.entities;
                         try {
                             for (var updatedEntities_1 = __values(updatedEntities), updatedEntities_1_1 = updatedEntities_1.next(); !updatedEntities_1_1.done; updatedEntities_1_1 = updatedEntities_1.next()) {
@@ -1161,12 +1227,12 @@ var gs;
                                 }
                             }
                         }
-                        catch (e_19_1) { e_19 = { error: e_19_1 }; }
+                        catch (e_21_1) { e_21 = { error: e_21_1 }; }
                         finally {
                             try {
                                 if (updatedEntities_1_1 && !updatedEntities_1_1.done && (_a = updatedEntities_1.return)) _a.call(updatedEntities_1);
                             }
-                            finally { if (e_19) throw e_19.error; }
+                            finally { if (e_21) throw e_21.error; }
                         }
                     };
                 }
@@ -1181,12 +1247,12 @@ var gs;
                     _loop_2(system);
                 }
             }
-            catch (e_18_1) { e_18 = { error: e_18_1 }; }
+            catch (e_20_1) { e_20 = { error: e_20_1 }; }
             finally {
                 try {
                     if (_c && !_c.done && (_a = _b.return)) _a.call(_b);
                 }
-                finally { if (e_18) throw e_18.error; }
+                finally { if (e_20) throw e_20.error; }
             }
         };
         return SystemManager;
@@ -1436,7 +1502,7 @@ var gs;
             return entity.hasComponent(gs.StateMachineComponent);
         };
         StateMachineSystem.prototype.update = function (entities) {
-            var e_20, _a;
+            var e_22, _a;
             try {
                 for (var entities_1 = __values(entities), entities_1_1 = entities_1.next(); !entities_1_1.done; entities_1_1 = entities_1.next()) {
                     var entity = entities_1_1.value;
@@ -1444,12 +1510,12 @@ var gs;
                     stateMachineComponent.stateMachine.update();
                 }
             }
-            catch (e_20_1) { e_20 = { error: e_20_1 }; }
+            catch (e_22_1) { e_22 = { error: e_22_1 }; }
             finally {
                 try {
                     if (entities_1_1 && !entities_1_1.done && (_a = entities_1.return)) _a.call(entities_1);
                 }
-                finally { if (e_20) throw e_20.error; }
+                finally { if (e_22) throw e_22.error; }
             }
         };
         return StateMachineSystem;

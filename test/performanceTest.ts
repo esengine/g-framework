@@ -63,6 +63,14 @@ class MovementSystem extends gs.System {
     super(entityManager, 1);
   }
 
+  onComponentAdded(entity: gs.Entity, component: gs.Component): void {
+    console.log('组件被添加', entity, component);
+  }
+
+  onComponentRemoved(entity: gs.Entity, component: gs.Component): void {
+    console.log('组件被移除', entity, component);
+  }
+
   entityFilter(entity: gs.Entity) {
     const hasPosition = entity.hasComponent(PositionComponent);
     const hasVelocity = entity.hasComponent(VelocityComponent);
