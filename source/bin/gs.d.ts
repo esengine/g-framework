@@ -409,6 +409,7 @@ declare module gs {
         private networkManager;
         private queryCache;
         private tagCache;
+        private prefabs;
         systemManager?: SystemManager;
         constructor(componentClasses?: Array<ComponentConstructor<Component>>, systemManager?: SystemManager);
         setSystemManager(systemManager: SystemManager): void;
@@ -431,6 +432,24 @@ declare module gs {
          * @param entityId
          */
         deleteEntity(entityId: number): void;
+        /**
+         * 从预制件创建实体
+         * @param name
+         * @param deepCopy
+         * @returns
+         */
+        createEntityFromPrefab(name: string, deepCopy?: boolean): Entity | null;
+        /**
+         * 注册预制件
+         * @param name
+         * @param entity
+         */
+        registerPrefab(name: string, entity: Entity): void;
+        /**
+         * 注销预制件
+         * @param name
+         */
+        unregisterPrefab(name: string): void;
         /**
          * 获取实体
          * @param entityId 实体id

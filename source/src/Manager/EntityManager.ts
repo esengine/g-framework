@@ -14,6 +14,7 @@ module gs {
         // 查询缓存，用于缓存组件查询结果
         private queryCache: Map<string, Entity[]> = new Map();
         private tagCache: Map<string, Entity[]> = new Map();
+        private prefabs: Map<string, Entity> = new Map();
         public systemManager?: SystemManager;
 
         constructor(componentClasses: Array<ComponentConstructor<Component>> = null, systemManager?: SystemManager) {
@@ -103,6 +104,45 @@ module gs {
                         }
                     }
                 }
+            }
+        }
+
+        /**
+         * 从预制件创建实体
+         * @param name 
+         * @param deepCopy 
+         * @returns 
+         */
+        public createEntityFromPrefab(name: string, deepCopy: boolean = false): Entity | null {
+            const prefab = this.prefabs.get(name);
+            if (!prefab) {
+                console.warn(`找不到名称为 "${name}" 的预制件`);
+                return null;
+            }
+            return this.cloneEntity(prefab, deepCopy);
+        }
+
+        /**
+         * 注册预制件
+         * @param name 
+         * @param entity 
+         */
+        public registerPrefab(name: string, entity: Entity): void {
+            if (this.prefabs.has(name)) {
+                console.warn(`名称为 "${name}" 的预制件已存在。正在覆盖...`);
+            }
+            this.prefabs.set(name, entity);
+        }
+
+        /**
+         * 注销预制件
+         * @param name 
+         */
+        public unregisterPrefab(name: string): void {
+            if (this.prefabs.has(name)) {
+                this.prefabs.delete(name);
+            } else {
+                console.warn(`名称为 "${name}" 的预制件不存在`);
             }
         }
 

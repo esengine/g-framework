@@ -914,6 +914,7 @@ var gs;
             // 查询缓存，用于缓存组件查询结果
             this.queryCache = new Map();
             this.tagCache = new Map();
+            this.prefabs = new Map();
             this.entities = new Map();
             this.entityIdAllocator = new gs.EntityIdAllocator();
             this.inputManager = new gs.InputManager(this);
@@ -1018,6 +1019,44 @@ var gs;
                     }
                     finally { if (e_9) throw e_9.error; }
                 }
+            }
+        };
+        /**
+         * 从预制件创建实体
+         * @param name
+         * @param deepCopy
+         * @returns
+         */
+        EntityManager.prototype.createEntityFromPrefab = function (name, deepCopy) {
+            if (deepCopy === void 0) { deepCopy = false; }
+            var prefab = this.prefabs.get(name);
+            if (!prefab) {
+                console.warn("\u627E\u4E0D\u5230\u540D\u79F0\u4E3A \"" + name + "\" \u7684\u9884\u5236\u4EF6");
+                return null;
+            }
+            return this.cloneEntity(prefab, deepCopy);
+        };
+        /**
+         * 注册预制件
+         * @param name
+         * @param entity
+         */
+        EntityManager.prototype.registerPrefab = function (name, entity) {
+            if (this.prefabs.has(name)) {
+                console.warn("\u540D\u79F0\u4E3A \"" + name + "\" \u7684\u9884\u5236\u4EF6\u5DF2\u5B58\u5728\u3002\u6B63\u5728\u8986\u76D6...");
+            }
+            this.prefabs.set(name, entity);
+        };
+        /**
+         * 注销预制件
+         * @param name
+         */
+        EntityManager.prototype.unregisterPrefab = function (name) {
+            if (this.prefabs.has(name)) {
+                this.prefabs.delete(name);
+            }
+            else {
+                console.warn("\u540D\u79F0\u4E3A \"" + name + "\" \u7684\u9884\u5236\u4EF6\u4E0D\u5B58\u5728");
             }
         };
         /**
