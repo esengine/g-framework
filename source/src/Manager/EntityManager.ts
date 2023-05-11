@@ -6,7 +6,7 @@ module gs {
     export class EntityManager {
         private entities: Map<number, Entity>;
         private entityIdAllocator: EntityIdAllocator;
-        private componentManagers: Map<ComponentConstructor<Component>, ComponentManager<Component>>;
+        public componentManagers: Map<ComponentConstructor<Component>, ComponentManager<Component>>;
         /** 当前帧编号属性 */
         private currentFrameNumber: number;
         private inputManager: InputManager;
@@ -298,6 +298,32 @@ module gs {
             if (tag) {
                 this.tagCache.delete(tag);
             }
+        }
+
+        /**
+         * 克隆实体并返回新创建的实体
+         * @param entity 要克隆的实体
+         * @param deepCopy 是否使用深拷贝
+         * @returns 新创建的实体
+         */
+        public cloneEntity(entity: Entity, deepCopy: boolean = false): Entity {
+            const newEntity = this.createEntity(entity.constructor as typeof Entity);
+
+            // 遍历组件管理器并为新实体添加已克隆的组件
+            for (const [componentType, manager] of this.componentManagers) {
+                const component = entity.getComponent(componentType);
+                if (component) {
+                    const clonedComponent = deepCopy ? component.cloneDeep() : component.cloneShallow();
+                    newEntity.addComponent(componentType, clonedComponent);
+                }
+            }
+
+            // 添加实体标签
+            for (const tag of entity.getTags()) {
+                newEntity.addTag(tag);
+            }
+
+            return newEntity;
         }
     }
 }

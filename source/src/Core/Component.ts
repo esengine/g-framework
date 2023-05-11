@@ -102,5 +102,61 @@ module gs {
         public reset(): void {
             this._entityId = null;
         }
+
+        /**
+         * 默认的浅复制方法
+         * @returns 克隆的组件实例
+         */
+        public cloneShallow(): Component {
+            const clonedComponent = new (this.constructor as ComponentConstructor<Component>);
+            for (const key in this) {
+                if (this.hasOwnProperty(key)) {
+                    (clonedComponent as any)[key] = (this as any)[key];
+                }
+            }
+            return clonedComponent;
+        }
+
+        /**
+         * 默认的深复制方法
+         * 不处理循环引用
+         * 如果需要循环引用请重写该方法
+         * @returns 克隆的组件实例
+         */
+        public cloneDeep(): Component {
+            const clonedComponent = new (this.constructor as ComponentConstructor<Component>);
+            for (const key in this) {
+                if (this.hasOwnProperty(key)) {
+                    const value = (this as any)[key];
+                    if (typeof value === 'object' && value !== null) {
+                        (clonedComponent as any)[key] = this.deepCopy(value);
+                    } else {
+                        (clonedComponent as any)[key] = value;
+                    }
+                }
+            }
+            return clonedComponent;
+        }
+
+        /**
+         * 深复制辅助函数
+         * @param obj 
+         * @returns 
+         */
+        private deepCopy(obj: any): any {
+            if (Array.isArray(obj)) {
+                return obj.map(element => this.deepCopy(element));
+            } else if (typeof obj === 'object') {
+                const newObj: any = {};
+                for (const key in obj) {
+                    if (obj.hasOwnProperty(key)) {
+                        newObj[key] = this.deepCopy(obj[key]);
+                    }
+                }
+                return newObj;
+            } else {
+                return obj;
+            }
+        }
     }
 }

@@ -176,6 +176,7 @@ var gs;
         function Component() {
             this._entityId = null;
             this._version = 0;
+            this.dependencies = [];
         }
         Component.prototype.setEntityId = function (entityId, entityManager) {
             this._entityId = entityId;
@@ -282,6 +283,63 @@ var gs;
          */
         Component.prototype.reset = function () {
             this._entityId = null;
+        };
+        /**
+         * 默认的浅复制方法
+         * @returns 克隆的组件实例
+         */
+        Component.prototype.cloneShallow = function () {
+            var clonedComponent = new this.constructor;
+            for (var key in this) {
+                if (this.hasOwnProperty(key)) {
+                    clonedComponent[key] = this[key];
+                }
+            }
+            return clonedComponent;
+        };
+        /**
+         * 默认的深复制方法
+         * 不处理循环引用
+         * 如果需要循环引用请重写该方法
+         * @returns 克隆的组件实例
+         */
+        Component.prototype.cloneDeep = function () {
+            var clonedComponent = new this.constructor;
+            for (var key in this) {
+                if (this.hasOwnProperty(key)) {
+                    var value = this[key];
+                    if (typeof value === 'object' && value !== null) {
+                        clonedComponent[key] = this.deepCopy(value);
+                    }
+                    else {
+                        clonedComponent[key] = value;
+                    }
+                }
+            }
+            return clonedComponent;
+        };
+        /**
+         * 深复制辅助函数
+         * @param obj
+         * @returns
+         */
+        Component.prototype.deepCopy = function (obj) {
+            var _this = this;
+            if (Array.isArray(obj)) {
+                return obj.map(function (element) { return _this.deepCopy(element); });
+            }
+            else if (typeof obj === 'object') {
+                var newObj = {};
+                for (var key in obj) {
+                    if (obj.hasOwnProperty(key)) {
+                        newObj[key] = this.deepCopy(obj[key]);
+                    }
+                }
+                return newObj;
+            }
+            else {
+                return obj;
+            }
         };
         return Component;
     }());
@@ -752,7 +810,24 @@ var gs;
             this.preallocate(10); // 预先创建10个组件实例
         }
         ComponentManager.prototype.create = function (entityId, entityManager) {
+            var e_6, _a;
             var component;
+            try {
+                // 检查组件依赖
+                for (var _b = __values(component.dependencies), _c = _b.next(); !_c.done; _c = _b.next()) {
+                    var dependency = _c.value;
+                    if (!entityManager.hasComponent(entityId, dependency)) {
+                        throw new Error("\u7EC4\u4EF6 " + component.constructor.name + " \u4F9D\u8D56\u4E8E " + dependency.name + "\uFF0C\u4F46\u5B9E\u4F53 " + entityId + " \u7F3A\u5C11\u8BE5\u7EC4\u4EF6\u3002");
+                    }
+                }
+            }
+            catch (e_6_1) { e_6 = { error: e_6_1 }; }
+            finally {
+                try {
+                    if (_c && !_c.done && (_a = _b.return)) _a.call(_b);
+                }
+                finally { if (e_6) throw e_6.error; }
+            }
             if (this.componentPool.length > 0) {
                 component = this.componentPool.pop();
                 component.reinitialize(entityId, entityManager); // 重置组件状态并进行初始化
@@ -834,7 +909,7 @@ var gs;
 (function (gs) {
     var EntityManager = /** @class */ (function () {
         function EntityManager(componentClasses, systemManager) {
-            var e_6, _a;
+            var e_7, _a;
             if (componentClasses === void 0) { componentClasses = null; }
             // 查询缓存，用于缓存组件查询结果
             this.queryCache = new Map();
@@ -854,12 +929,12 @@ var gs;
                         this.componentManagers.set(componentClass, componentManager);
                     }
                 }
-                catch (e_6_1) { e_6 = { error: e_6_1 }; }
+                catch (e_7_1) { e_7 = { error: e_7_1 }; }
                 finally {
                     try {
                         if (componentClasses_1_1 && !componentClasses_1_1.done && (_a = componentClasses_1.return)) _a.call(componentClasses_1);
                     }
-                    finally { if (e_6) throw e_6.error; }
+                    finally { if (e_7) throw e_7.error; }
                 }
         }
         EntityManager.prototype.setSystemManager = function (systemManager) {
@@ -891,7 +966,7 @@ var gs;
          */
         EntityManager.prototype.createEntity = function (customEntityClass) {
             if (customEntityClass === void 0) { customEntityClass = gs.Entity; }
-            var e_7, _a;
+            var e_8, _a;
             var entityId = this.entityIdAllocator.allocate();
             var entity = new customEntityClass(entityId, this, this.componentManagers);
             entity.onCreate();
@@ -905,12 +980,12 @@ var gs;
                     this.tagCache.get(tag).push(entity);
                 }
             }
-            catch (e_7_1) { e_7 = { error: e_7_1 }; }
+            catch (e_8_1) { e_8 = { error: e_8_1 }; }
             finally {
                 try {
                     if (_c && !_c.done && (_a = _b.return)) _a.call(_b);
                 }
-                finally { if (e_7) throw e_7.error; }
+                finally { if (e_8) throw e_8.error; }
             }
             return entity;
         };
@@ -919,7 +994,7 @@ var gs;
          * @param entityId
          */
         EntityManager.prototype.deleteEntity = function (entityId) {
-            var e_8, _a;
+            var e_9, _a;
             var entity = this.getEntity(entityId);
             if (entity) {
                 entity.onDestroy();
@@ -936,12 +1011,12 @@ var gs;
                         }
                     }
                 }
-                catch (e_8_1) { e_8 = { error: e_8_1 }; }
+                catch (e_9_1) { e_9 = { error: e_9_1 }; }
                 finally {
                     try {
                         if (_c && !_c.done && (_a = _b.return)) _a.call(_b);
                     }
-                    finally { if (e_8) throw e_8.error; }
+                    finally { if (e_9) throw e_9.error; }
                 }
             }
         };
@@ -982,7 +1057,7 @@ var gs;
         * @returns 具有指定标签的实体数组
         */
         EntityManager.prototype.getEntitiesWithTag = function (tag) {
-            var e_9, _a;
+            var e_10, _a;
             if (!this.tagCache.has(tag)) {
                 var entitiesWithTag = [];
                 try {
@@ -993,16 +1068,29 @@ var gs;
                         }
                     }
                 }
-                catch (e_9_1) { e_9 = { error: e_9_1 }; }
+                catch (e_10_1) { e_10 = { error: e_10_1 }; }
                 finally {
                     try {
                         if (_c && !_c.done && (_a = _b.return)) _a.call(_b);
                     }
-                    finally { if (e_9) throw e_9.error; }
+                    finally { if (e_10) throw e_10.error; }
                 }
                 this.tagCache.set(tag, entitiesWithTag);
             }
             return this.tagCache.get(tag);
+        };
+        /**
+         * 检查实体是否具有指定类型的组件
+         * @param entityId 要检查的实体的ID
+         * @param componentClass 要检查的组件类型
+         * @returns 如果实体具有指定类型的组件，则返回 true，否则返回 false
+         */
+        EntityManager.prototype.hasComponent = function (entityId, componentClass) {
+            var componentManager = this.componentManagers.get(componentClass);
+            if (componentManager) {
+                return componentManager.has(entityId);
+            }
+            return false;
         };
         /**
          * 根据提供的组件数组查询实体
@@ -1018,7 +1106,7 @@ var gs;
             return this.queryCache.get(key);
         };
         EntityManager.prototype.performQuery = function (components) {
-            var e_10, _a;
+            var e_11, _a;
             var result = [];
             var _loop_1 = function (entity) {
                 // 检查每个查询的组件是否存在于实体中
@@ -1037,12 +1125,12 @@ var gs;
                     _loop_1(entity);
                 }
             }
-            catch (e_10_1) { e_10 = { error: e_10_1 }; }
+            catch (e_11_1) { e_11 = { error: e_11_1 }; }
             finally {
                 try {
                     if (_c && !_c.done && (_a = _b.return)) _a.call(_b);
                 }
-                finally { if (e_10) throw e_10.error; }
+                finally { if (e_11) throw e_11.error; }
             }
             return result;
         };
@@ -1051,31 +1139,6 @@ var gs;
          * @returns
          */
         EntityManager.prototype.createStateSnapshot = function () {
-            var e_11, _a;
-            var snapshot = {
-                entities: [],
-            };
-            try {
-                for (var _b = __values(this.getEntities()), _c = _b.next(); !_c.done; _c = _b.next()) {
-                    var entity = _c.value;
-                    snapshot.entities.push(entity.serialize());
-                }
-            }
-            catch (e_11_1) { e_11 = { error: e_11_1 }; }
-            finally {
-                try {
-                    if (_c && !_c.done && (_a = _b.return)) _a.call(_b);
-                }
-                finally { if (e_11) throw e_11.error; }
-            }
-            return snapshot;
-        };
-        /**
-         * 创建增量状态快照
-         * @param lastSnapshotVersion 上一个快照的版本号
-         * @returns 返回一个包含实体增量数据的快照对象
-         */
-        EntityManager.prototype.createIncrementalStateSnapshot = function (lastSnapshotVersion) {
             var e_12, _a;
             var snapshot = {
                 entities: [],
@@ -1083,10 +1146,7 @@ var gs;
             try {
                 for (var _b = __values(this.getEntities()), _c = _b.next(); !_c.done; _c = _b.next()) {
                     var entity = _c.value;
-                    var serializedEntity = entity.serializeIncremental(lastSnapshotVersion);
-                    if (serializedEntity) {
-                        snapshot.entities.push(serializedEntity);
-                    }
+                    snapshot.entities.push(entity.serialize());
                 }
             }
             catch (e_12_1) { e_12 = { error: e_12_1 }; }
@@ -1099,11 +1159,39 @@ var gs;
             return snapshot;
         };
         /**
+         * 创建增量状态快照
+         * @param lastSnapshotVersion 上一个快照的版本号
+         * @returns 返回一个包含实体增量数据的快照对象
+         */
+        EntityManager.prototype.createIncrementalStateSnapshot = function (lastSnapshotVersion) {
+            var e_13, _a;
+            var snapshot = {
+                entities: [],
+            };
+            try {
+                for (var _b = __values(this.getEntities()), _c = _b.next(); !_c.done; _c = _b.next()) {
+                    var entity = _c.value;
+                    var serializedEntity = entity.serializeIncremental(lastSnapshotVersion);
+                    if (serializedEntity) {
+                        snapshot.entities.push(serializedEntity);
+                    }
+                }
+            }
+            catch (e_13_1) { e_13 = { error: e_13_1 }; }
+            finally {
+                try {
+                    if (_c && !_c.done && (_a = _b.return)) _a.call(_b);
+                }
+                finally { if (e_13) throw e_13.error; }
+            }
+            return snapshot;
+        };
+        /**
          * 使用给定的状态快照更新游戏状态
          * @param stateSnapshot
          */
         EntityManager.prototype.updateStateFromSnapshot = function (stateSnapshot) {
-            var e_13, _a;
+            var e_14, _a;
             var newEntityMap = new Map();
             try {
                 for (var _b = __values(stateSnapshot.entities), _c = _b.next(); !_c.done; _c = _b.next()) {
@@ -1118,12 +1206,12 @@ var gs;
                     newEntityMap.set(entityId, entity);
                 }
             }
-            catch (e_13_1) { e_13 = { error: e_13_1 }; }
+            catch (e_14_1) { e_14 = { error: e_14_1 }; }
             finally {
                 try {
                     if (_c && !_c.done && (_a = _b.return)) _a.call(_b);
                 }
-                finally { if (e_13) throw e_13.error; }
+                finally { if (e_14) throw e_14.error; }
             }
             this.entities = newEntityMap;
         };
@@ -1132,7 +1220,7 @@ var gs;
          * @param factor
          */
         EntityManager.prototype.applyInterpolation = function (factor) {
-            var e_14, _a, e_15, _b;
+            var e_15, _a, e_16, _b;
             try {
                 for (var _c = __values(this.getEntities()), _d = _c.next(); !_d.done; _d = _c.next()) {
                     var entity = _d.value;
@@ -1145,21 +1233,21 @@ var gs;
                             }
                         }
                     }
-                    catch (e_15_1) { e_15 = { error: e_15_1 }; }
+                    catch (e_16_1) { e_16 = { error: e_16_1 }; }
                     finally {
                         try {
                             if (_f && !_f.done && (_b = _e.return)) _b.call(_e);
                         }
-                        finally { if (e_15) throw e_15.error; }
+                        finally { if (e_16) throw e_16.error; }
                     }
                 }
             }
-            catch (e_14_1) { e_14 = { error: e_14_1 }; }
+            catch (e_15_1) { e_15 = { error: e_15_1 }; }
             finally {
                 try {
                     if (_d && !_d.done && (_a = _c.return)) _a.call(_c);
                 }
-                finally { if (e_14) throw e_14.error; }
+                finally { if (e_15) throw e_15.error; }
             }
         };
         /**
@@ -1175,6 +1263,50 @@ var gs;
             if (tag) {
                 this.tagCache.delete(tag);
             }
+        };
+        /**
+         * 克隆实体并返回新创建的实体
+         * @param entity 要克隆的实体
+         * @param deepCopy 是否使用深拷贝
+         * @returns 新创建的实体
+         */
+        EntityManager.prototype.cloneEntity = function (entity, deepCopy) {
+            if (deepCopy === void 0) { deepCopy = false; }
+            var e_17, _a, e_18, _b;
+            var newEntity = this.createEntity(entity.constructor);
+            try {
+                // 遍历组件管理器并为新实体添加已克隆的组件
+                for (var _c = __values(this.componentManagers), _d = _c.next(); !_d.done; _d = _c.next()) {
+                    var _e = __read(_d.value, 2), componentType = _e[0], manager = _e[1];
+                    var component = entity.getComponent(componentType);
+                    if (component) {
+                        var clonedComponent = deepCopy ? component.cloneDeep() : component.cloneShallow();
+                        newEntity.addComponent(componentType, clonedComponent);
+                    }
+                }
+            }
+            catch (e_17_1) { e_17 = { error: e_17_1 }; }
+            finally {
+                try {
+                    if (_d && !_d.done && (_a = _c.return)) _a.call(_c);
+                }
+                finally { if (e_17) throw e_17.error; }
+            }
+            try {
+                // 添加实体标签
+                for (var _f = __values(entity.getTags()), _g = _f.next(); !_g.done; _g = _f.next()) {
+                    var tag = _g.value;
+                    newEntity.addTag(tag);
+                }
+            }
+            catch (e_18_1) { e_18 = { error: e_18_1 }; }
+            finally {
+                try {
+                    if (_g && !_g.done && (_b = _f.return)) _b.call(_f);
+                }
+                finally { if (e_18) throw e_18.error; }
+            }
+            return newEntity;
         };
         return EntityManager;
     }());
@@ -1218,7 +1350,7 @@ var gs;
                 else {
                     var worker = new Worker(system.workerScript);
                     worker.onmessage = function (event) {
-                        var e_16, _a;
+                        var e_19, _a;
                         var updatedEntities = event.data.entities;
                         try {
                             for (var updatedEntities_1 = __values(updatedEntities), updatedEntities_1_1 = updatedEntities_1.next(); !updatedEntities_1_1.done; updatedEntities_1_1 = updatedEntities_1.next()) {
@@ -1229,12 +1361,12 @@ var gs;
                                 }
                             }
                         }
-                        catch (e_16_1) { e_16 = { error: e_16_1 }; }
+                        catch (e_19_1) { e_19 = { error: e_19_1 }; }
                         finally {
                             try {
                                 if (updatedEntities_1_1 && !updatedEntities_1_1.done && (_a = updatedEntities_1.return)) _a.call(updatedEntities_1);
                             }
-                            finally { if (e_16) throw e_16.error; }
+                            finally { if (e_19) throw e_19.error; }
                         }
                     };
                     this.systemWorkers.set(system, worker);
@@ -1259,7 +1391,7 @@ var gs;
          * @param entity
          */
         SystemManager.prototype.notifyComponentAdded = function (entity) {
-            var e_17, _a;
+            var e_20, _a;
             try {
                 for (var _b = __values(this.systems), _c = _b.next(); !_c.done; _c = _b.next()) {
                     var system = _c.value;
@@ -1267,12 +1399,12 @@ var gs;
                     this.entityCache.delete(system);
                 }
             }
-            catch (e_17_1) { e_17 = { error: e_17_1 }; }
+            catch (e_20_1) { e_20 = { error: e_20_1 }; }
             finally {
                 try {
                     if (_c && !_c.done && (_a = _b.return)) _a.call(_b);
                 }
-                finally { if (e_17) throw e_17.error; }
+                finally { if (e_20) throw e_20.error; }
             }
         };
         /**
@@ -1280,7 +1412,7 @@ var gs;
          * @param entity
          */
         SystemManager.prototype.notifyComponentRemoved = function (entity) {
-            var e_18, _a;
+            var e_21, _a;
             try {
                 for (var _b = __values(this.systems), _c = _b.next(); !_c.done; _c = _b.next()) {
                     var system = _c.value;
@@ -1288,12 +1420,12 @@ var gs;
                     this.entityCache.delete(system);
                 }
             }
-            catch (e_18_1) { e_18 = { error: e_18_1 }; }
+            catch (e_21_1) { e_21 = { error: e_21_1 }; }
             finally {
                 try {
                     if (_c && !_c.done && (_a = _b.return)) _a.call(_b);
                 }
-                finally { if (e_18) throw e_18.error; }
+                finally { if (e_21) throw e_21.error; }
             }
         };
         /**
@@ -1307,7 +1439,7 @@ var gs;
          * 更新系统
          */
         SystemManager.prototype.update = function () {
-            var e_19, _a;
+            var e_22, _a;
             var entities = this.entityManager.getEntities();
             try {
                 for (var _b = __values(this.systems), _c = _b.next(); !_c.done; _c = _b.next()) {
@@ -1332,12 +1464,12 @@ var gs;
                     }
                 }
             }
-            catch (e_19_1) { e_19 = { error: e_19_1 }; }
+            catch (e_22_1) { e_22 = { error: e_22_1 }; }
             finally {
                 try {
                     if (_c && !_c.done && (_a = _b.return)) _a.call(_b);
                 }
-                finally { if (e_19) throw e_19.error; }
+                finally { if (e_22) throw e_22.error; }
             }
         };
         /**
@@ -1377,19 +1509,19 @@ var gs;
             return dependenciesOfA.some(function (dep) { return _this.dependsOn(dep, b); });
         };
         SystemManager.prototype.dispose = function () {
-            var e_20, _a;
+            var e_23, _a;
             try {
                 for (var _b = __values(this.systemWorkers.values()), _c = _b.next(); !_c.done; _c = _b.next()) {
                     var worker = _c.value;
                     worker.terminate();
                 }
             }
-            catch (e_20_1) { e_20 = { error: e_20_1 }; }
+            catch (e_23_1) { e_23 = { error: e_23_1 }; }
             finally {
                 try {
                     if (_c && !_c.done && (_a = _b.return)) _a.call(_b);
                 }
-                finally { if (e_20) throw e_20.error; }
+                finally { if (e_23) throw e_23.error; }
             }
             this.systemWorkers.clear();
             this.entityCache.clear();
@@ -1641,7 +1773,7 @@ var gs;
             return entity.hasComponent(gs.StateMachineComponent);
         };
         StateMachineSystem.prototype.update = function (entities) {
-            var e_21, _a;
+            var e_24, _a;
             try {
                 for (var entities_1 = __values(entities), entities_1_1 = entities_1.next(); !entities_1_1.done; entities_1_1 = entities_1.next()) {
                     var entity = entities_1_1.value;
@@ -1649,12 +1781,12 @@ var gs;
                     stateMachineComponent.stateMachine.update();
                 }
             }
-            catch (e_21_1) { e_21 = { error: e_21_1 }; }
+            catch (e_24_1) { e_24 = { error: e_24_1 }; }
             finally {
                 try {
                     if (entities_1_1 && !entities_1_1.done && (_a = entities_1.return)) _a.call(entities_1);
                 }
-                finally { if (e_21) throw e_21.error; }
+                finally { if (e_24) throw e_24.error; }
             }
         };
         return StateMachineSystem;
@@ -1737,7 +1869,7 @@ var gs;
             return this.checkAllSet(components) && this.checkExclusionSet(components) && this.checkOneSet(components);
         };
         Matcher.prototype.checkAllSet = function (components) {
-            var e_22, _a;
+            var e_25, _a;
             try {
                 for (var _b = __values(this.allSet), _c = _b.next(); !_c.done; _c = _b.next()) {
                     var type = _c.value;
@@ -1746,17 +1878,17 @@ var gs;
                     }
                 }
             }
-            catch (e_22_1) { e_22 = { error: e_22_1 }; }
+            catch (e_25_1) { e_25 = { error: e_25_1 }; }
             finally {
                 try {
                     if (_c && !_c.done && (_a = _b.return)) _a.call(_b);
                 }
-                finally { if (e_22) throw e_22.error; }
+                finally { if (e_25) throw e_25.error; }
             }
             return true;
         };
         Matcher.prototype.checkExclusionSet = function (components) {
-            var e_23, _a;
+            var e_26, _a;
             try {
                 for (var _b = __values(this.exclusionSet), _c = _b.next(); !_c.done; _c = _b.next()) {
                     var type = _c.value;
@@ -1765,17 +1897,17 @@ var gs;
                     }
                 }
             }
-            catch (e_23_1) { e_23 = { error: e_23_1 }; }
+            catch (e_26_1) { e_26 = { error: e_26_1 }; }
             finally {
                 try {
                     if (_c && !_c.done && (_a = _b.return)) _a.call(_b);
                 }
-                finally { if (e_23) throw e_23.error; }
+                finally { if (e_26) throw e_26.error; }
             }
             return true;
         };
         Matcher.prototype.checkOneSet = function (components) {
-            var e_24, _a;
+            var e_27, _a;
             if (this.oneSet.length === 0) {
                 return true;
             }
@@ -1787,12 +1919,12 @@ var gs;
                     }
                 }
             }
-            catch (e_24_1) { e_24 = { error: e_24_1 }; }
+            catch (e_27_1) { e_27 = { error: e_27_1 }; }
             finally {
                 try {
                     if (_c && !_c.done && (_a = _b.return)) _a.call(_b);
                 }
-                finally { if (e_24) throw e_24.error; }
+                finally { if (e_27) throw e_27.error; }
             }
             return false;
         };

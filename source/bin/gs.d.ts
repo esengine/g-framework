@@ -54,6 +54,7 @@ declare module gs {
         private _entityId;
         private _version;
         private _entityManager;
+        dependencies: ComponentConstructor<Component>[];
         setEntityId(entityId: number, entityManager: EntityManager): void;
         getEntityId(): number;
         readonly entityId: number;
@@ -94,6 +95,24 @@ declare module gs {
          * 清除数据方法，用于组件池在重用时
          */
         reset(): void;
+        /**
+         * 默认的浅复制方法
+         * @returns 克隆的组件实例
+         */
+        cloneShallow(): Component;
+        /**
+         * 默认的深复制方法
+         * 不处理循环引用
+         * 如果需要循环引用请重写该方法
+         * @returns 克隆的组件实例
+         */
+        cloneDeep(): Component;
+        /**
+         * 深复制辅助函数
+         * @param obj
+         * @returns
+         */
+        private deepCopy;
     }
 }
 declare module gs {
@@ -383,7 +402,7 @@ declare module gs {
     class EntityManager {
         private entities;
         private entityIdAllocator;
-        private componentManagers;
+        componentManagers: Map<ComponentConstructor<Component>, ComponentManager<Component>>;
         /** 当前帧编号属性 */
         private currentFrameNumber;
         private inputManager;
@@ -442,6 +461,13 @@ declare module gs {
         */
         getEntitiesWithTag(tag: string): Entity[];
         /**
+         * 检查实体是否具有指定类型的组件
+         * @param entityId 要检查的实体的ID
+         * @param componentClass 要检查的组件类型
+         * @returns 如果实体具有指定类型的组件，则返回 true，否则返回 false
+         */
+        hasComponent<T extends Component>(entityId: number, componentClass: ComponentConstructor<T>): boolean;
+        /**
          * 根据提供的组件数组查询实体
          * @param components 要查询的组件数组
          * @returns 符合查询条件的实体数组
@@ -475,6 +501,13 @@ declare module gs {
          * @param tag
          */
         invalidateCache(componentClass?: ComponentConstructor<Component>, tag?: string): void;
+        /**
+         * 克隆实体并返回新创建的实体
+         * @param entity 要克隆的实体
+         * @param deepCopy 是否使用深拷贝
+         * @returns 新创建的实体
+         */
+        cloneEntity(entity: Entity, deepCopy?: boolean): Entity;
     }
 }
 declare module gs {
