@@ -408,7 +408,7 @@ declare module gs {
         private inputManager;
         private networkManager;
         private queryCache;
-        private tagCache;
+        private tagToEntities;
         private prefabs;
         systemManager?: SystemManager;
         constructor(componentClasses?: Array<ComponentConstructor<Component>>, systemManager?: SystemManager);
@@ -527,6 +527,18 @@ declare module gs {
          * @returns 新创建的实体
          */
         cloneEntity(entity: Entity, deepCopy?: boolean): Entity;
+        /**
+         * 将实体添加到指定标签的缓存
+         * @param tag
+         * @param entity
+         */
+        private addToTagCache;
+        /**
+         * 将实体从指定标签的缓存中删除
+         * @param tag
+         * @param entity
+         */
+        private removeFromTagCache;
     }
 }
 declare module gs {

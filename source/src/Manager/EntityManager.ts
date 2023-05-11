@@ -13,7 +13,7 @@ module gs {
         private networkManager: NetworkManager;
         // 查询缓存，用于缓存组件查询结果
         private queryCache: Map<string, Entity[]> = new Map();
-        private tagCache: Map<string, Entity[]> = new Map();
+        private tagToEntities: Map<string, Entity[]> = new Map();
         private prefabs: Map<string, Entity> = new Map();
         public systemManager?: SystemManager;
 
@@ -75,11 +75,7 @@ module gs {
             this.entities.set(entityId, entity);
 
             for (const tag of entity.getTags()) {
-                if (!this.tagCache.has(tag)) {
-                    this.tagCache.set(tag, []);
-                }
-
-                this.tagCache.get(tag).push(entity);
+                this.addToTagCache(tag, entity);
             }
 
             return entity;
@@ -96,13 +92,7 @@ module gs {
                 this.entities.delete(entityId);
 
                 for (const tag of entity.getTags()) {
-                    const entitiesWithTag = this.tagCache.get(tag);
-                    if (entitiesWithTag) {
-                        const index = entitiesWithTag.indexOf(entity);
-                        if (index > -1) {
-                            entitiesWithTag.splice(index, 1);
-                        }
-                    }
+                    this.removeFromTagCache(tag, entity);
                 }
             }
         }
@@ -187,19 +177,7 @@ module gs {
         * @returns 具有指定标签的实体数组
         */
         public getEntitiesWithTag(tag: string): Entity[] {
-            if (!this.tagCache.has(tag)) {
-                const entitiesWithTag: Entity[] = [];
-
-                for (const entity of this.getEntities()) {
-                    if (entity.hasTag(tag)) {
-                        entitiesWithTag.push(entity);
-                    }
-                }
-
-                this.tagCache.set(tag, entitiesWithTag);
-            }
-
-            return this.tagCache.get(tag) as Entity[];
+            return this.tagToEntities.get(tag) || [];
         }
 
         /**
@@ -336,7 +314,7 @@ module gs {
             }
 
             if (tag) {
-                this.tagCache.delete(tag);
+                this.tagToEntities.delete(tag);
             }
         }
 
@@ -364,6 +342,33 @@ module gs {
             }
 
             return newEntity;
+        }
+
+        /**
+         * 将实体添加到指定标签的缓存
+         * @param tag 
+         * @param entity 
+         */
+        private addToTagCache(tag: string, entity: Entity): void {
+            if (!this.tagToEntities.has(tag)) {
+                this.tagToEntities.set(tag, []);
+            }
+            this.tagToEntities.get(tag).push(entity);
+        }
+
+        /**
+         * 将实体从指定标签的缓存中删除
+         * @param tag 
+         * @param entity 
+         */
+        private removeFromTagCache(tag: string, entity: Entity): void {
+            const entitiesWithTag = this.tagToEntities.get(tag);
+            if (entitiesWithTag) {
+                const index = entitiesWithTag.indexOf(entity);
+                if (index > -1) {
+                    entitiesWithTag.splice(index, 1);
+                }
+            }
         }
     }
 }
