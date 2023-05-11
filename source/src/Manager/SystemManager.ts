@@ -7,6 +7,7 @@ module gs {
         private entityManager: EntityManager;
         private systemWorkers: Map<System, Worker> = new Map();
         private entityCache: Map<System, Entity[]> = new Map();
+        private dependencies: Map<System, System[]> = new Map();
 
         private workerWarningDisplayed: boolean = false;
 
@@ -19,11 +20,16 @@ module gs {
         /**
          * 注册系统
          * @param system 系统 
+         * @param dependsOn 可选的依赖系统数组
          */
-        registerSystem(system: System): void {
+        registerSystem(system: System, dependsOn?: System[]): void {
             system.onRegister();
+            if (dependsOn) {
+                this.dependencies.set(system, dependsOn);
+            }
+
             this.systems.push(system);
-            this.systems.sort((a, b) => a.priority - b.priority);
+            this.sortSystemsByPriorityAndDependencies();
 
             if (system.workerScript) {
                 if (typeof Worker === 'undefined') {
@@ -121,11 +127,48 @@ module gs {
             }
         }
 
+        /**
+         * 按优先级和依赖关系对系统进行排序
+         */
+        private sortSystemsByPriorityAndDependencies(): void {
+            this.systems.sort((a, b) => {
+                const priorityDiff = a.priority - b.priority;
+                if (priorityDiff !== 0) {
+                    return priorityDiff;
+                }
+
+                if (this.dependsOn(a, b)) {
+                    return 1;
+                }
+                if (this.dependsOn(b, a)) {
+                    return -1;
+                }
+                return 0;
+            });
+        }
+
+        /**
+         * 确定系统 a 是否依赖于系统 b
+         * @param a 系统 a
+         * @param b 系统 b
+         * @returns 如果系统 a 依赖于系统 b，则为 true，否则为 false
+         */
+        private dependsOn(a: System, b: System): boolean {
+            const dependenciesOfA = this.dependencies.get(a);
+            if (!dependenciesOfA) {
+                return false;
+            }
+            if (dependenciesOfA.indexOf(b) !== -1) {
+                return true;
+            }
+            return dependenciesOfA.some(dep => this.dependsOn(dep, b));
+        }
+
         public dispose(): void {
             for (const worker of this.systemWorkers.values()) {
                 worker.terminate();
             }
-        
+
             this.systemWorkers.clear();
             this.entityCache.clear();
         }

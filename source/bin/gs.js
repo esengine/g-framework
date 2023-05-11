@@ -1189,6 +1189,7 @@ var gs;
         function SystemManager(entityManager) {
             this.systemWorkers = new Map();
             this.entityCache = new Map();
+            this.dependencies = new Map();
             this.workerWarningDisplayed = false;
             this.systems = [];
             this.entityManager = entityManager;
@@ -1197,12 +1198,16 @@ var gs;
         /**
          * 注册系统
          * @param system 系统
+         * @param dependsOn 可选的依赖系统数组
          */
-        SystemManager.prototype.registerSystem = function (system) {
+        SystemManager.prototype.registerSystem = function (system, dependsOn) {
             var _this = this;
             system.onRegister();
+            if (dependsOn) {
+                this.dependencies.set(system, dependsOn);
+            }
             this.systems.push(system);
-            this.systems.sort(function (a, b) { return a.priority - b.priority; });
+            this.sortSystemsByPriorityAndDependencies();
             if (system.workerScript) {
                 if (typeof Worker === 'undefined') {
                     if (!this.workerWarningDisplayed) {
@@ -1334,6 +1339,42 @@ var gs;
                 }
                 finally { if (e_19) throw e_19.error; }
             }
+        };
+        /**
+         * 按优先级和依赖关系对系统进行排序
+         */
+        SystemManager.prototype.sortSystemsByPriorityAndDependencies = function () {
+            var _this = this;
+            this.systems.sort(function (a, b) {
+                var priorityDiff = a.priority - b.priority;
+                if (priorityDiff !== 0) {
+                    return priorityDiff;
+                }
+                if (_this.dependsOn(a, b)) {
+                    return 1;
+                }
+                if (_this.dependsOn(b, a)) {
+                    return -1;
+                }
+                return 0;
+            });
+        };
+        /**
+         * 确定系统 a 是否依赖于系统 b
+         * @param a 系统 a
+         * @param b 系统 b
+         * @returns 如果系统 a 依赖于系统 b，则为 true，否则为 false
+         */
+        SystemManager.prototype.dependsOn = function (a, b) {
+            var _this = this;
+            var dependenciesOfA = this.dependencies.get(a);
+            if (!dependenciesOfA) {
+                return false;
+            }
+            if (dependenciesOfA.indexOf(b) !== -1) {
+                return true;
+            }
+            return dependenciesOfA.some(function (dep) { return _this.dependsOn(dep, b); });
         };
         SystemManager.prototype.dispose = function () {
             var e_20, _a;

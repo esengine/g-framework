@@ -486,13 +486,15 @@ declare module gs {
         private entityManager;
         private systemWorkers;
         private entityCache;
+        private dependencies;
         private workerWarningDisplayed;
         constructor(entityManager: EntityManager);
         /**
          * 注册系统
          * @param system 系统
+         * @param dependsOn 可选的依赖系统数组
          */
-        registerSystem(system: System): void;
+        registerSystem(system: System, dependsOn?: System[]): void;
         /**
          * 注销系统
          * @param system
@@ -517,6 +519,17 @@ declare module gs {
          * 更新系统
          */
         update(): void;
+        /**
+         * 按优先级和依赖关系对系统进行排序
+         */
+        private sortSystemsByPriorityAndDependencies;
+        /**
+         * 确定系统 a 是否依赖于系统 b
+         * @param a 系统 a
+         * @param b 系统 b
+         * @returns 如果系统 a 依赖于系统 b，则为 true，否则为 false
+         */
+        private dependsOn;
         dispose(): void;
     }
 }
