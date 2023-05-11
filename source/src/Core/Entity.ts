@@ -10,6 +10,10 @@ module gs {
         private entityManager: EntityManager;
         public componentBits: Bits;
 
+        private _parent?: Entity; // 父实体
+        private _children = new LinkedList<Entity>(); // 子实体列表
+        private _childNode?: Node<Entity>; // 当前实体在父实体的子实体列表中的节点
+
         // 缓存获取的组件
         private componentCache: Map<Function, Component> = new Map();
 
@@ -24,6 +28,39 @@ module gs {
 
         public getId(): number {
             return this.id;
+        }
+
+        get parent(): Entity | undefined {
+            return this._parent;
+        }
+
+        get children(): Entity[] {
+            return this._children.toArray();
+        }
+
+        public setParent(parent: Entity): void {
+            if (this._parent) {
+                this._parent._children.remove(this._childNode!);
+            }
+    
+            this._parent = parent;
+            this._childNode = this._parent._children.append(this);
+        }
+
+        public removeParent(): void {
+            if (this._parent) {
+                this._parent._children.remove(this._childNode!);
+            }
+            this._parent = undefined;
+            this._childNode = undefined;
+        }
+
+        public addChild(child: Entity): void {
+            child.setParent(this);
+        }
+
+        public removeChild(child: Entity): void {
+            child.removeParent();
         }
 
         /**

@@ -15,6 +15,7 @@ module gs {
         private queryCache: Map<string, Entity[]> = new Map();
         private tagToEntities: Map<string, Entity[]> = new Map();
         private prefabs: Map<string, Entity> = new Map();
+        
         public systemManager?: SystemManager;
 
         constructor(componentClasses: Array<ComponentConstructor<Component>> = null, systemManager?: SystemManager) {

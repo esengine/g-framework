@@ -126,9 +126,18 @@ declare module gs {
         private eventEmitter;
         private entityManager;
         componentBits: Bits;
+        private _parent?;
+        private _children;
+        private _childNode?;
         private componentCache;
         constructor(id: number, entityManager: EntityManager, componentManagers: Map<new (entityId: number) => Component, ComponentManager<any>>);
         getId(): number;
+        readonly parent: Entity | undefined;
+        readonly children: Entity[];
+        setParent(parent: Entity): void;
+        removeParent(): void;
+        addChild(child: Entity): void;
+        removeChild(child: Entity): void;
         /**
          * 添加组件
          * @param componentType
@@ -783,6 +792,24 @@ declare module gs {
         private nextId;
         constructor();
         allocate(): number;
+    }
+}
+declare module gs {
+    class Node<T> {
+        value: T;
+        next: Node<T> | null;
+        prev: Node<T> | null;
+        constructor(value: T);
+    }
+    /**
+     * 双向链表
+     */
+    class LinkedList<T> {
+        head: Node<T> | null;
+        tail: Node<T> | null;
+        append(value: T): Node<T>;
+        remove(node: Node<T>): void;
+        toArray(): T[];
     }
 }
 declare module gs {

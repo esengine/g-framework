@@ -352,6 +352,7 @@ var gs;
      */
     var Entity = /** @class */ (function () {
         function Entity(id, entityManager, componentManagers) {
+            this._children = new gs.LinkedList(); // 子实体列表
             // 缓存获取的组件
             this.componentCache = new Map();
             this.id = id;
@@ -363,6 +364,40 @@ var gs;
         }
         Entity.prototype.getId = function () {
             return this.id;
+        };
+        Object.defineProperty(Entity.prototype, "parent", {
+            get: function () {
+                return this._parent;
+            },
+            enumerable: true,
+            configurable: true
+        });
+        Object.defineProperty(Entity.prototype, "children", {
+            get: function () {
+                return this._children.toArray();
+            },
+            enumerable: true,
+            configurable: true
+        });
+        Entity.prototype.setParent = function (parent) {
+            if (this._parent) {
+                this._parent._children.remove(this._childNode);
+            }
+            this._parent = parent;
+            this._childNode = this._parent._children.append(this);
+        };
+        Entity.prototype.removeParent = function () {
+            if (this._parent) {
+                this._parent._children.remove(this._childNode);
+            }
+            this._parent = undefined;
+            this._childNode = undefined;
+        };
+        Entity.prototype.addChild = function (child) {
+            child.setParent(this);
+        };
+        Entity.prototype.removeChild = function (child) {
+            child.removeParent();
         };
         /**
          * 添加组件
@@ -1886,6 +1921,67 @@ var gs;
         return EntityIdAllocator;
     }());
     gs.EntityIdAllocator = EntityIdAllocator;
+})(gs || (gs = {}));
+var gs;
+(function (gs) {
+    var Node = /** @class */ (function () {
+        function Node(value) {
+            this.next = null;
+            this.prev = null;
+            this.value = value;
+        }
+        return Node;
+    }());
+    gs.Node = Node;
+    /**
+     * 双向链表
+     */
+    var LinkedList = /** @class */ (function () {
+        function LinkedList() {
+            this.head = null;
+            this.tail = null;
+        }
+        LinkedList.prototype.append = function (value) {
+            var newNode = new Node(value);
+            if (!this.head || !this.tail) {
+                this.head = newNode;
+                this.tail = newNode;
+            }
+            else {
+                newNode.prev = this.tail;
+                this.tail.next = newNode;
+                this.tail = newNode;
+            }
+            return newNode;
+        };
+        LinkedList.prototype.remove = function (node) {
+            if (node.prev) {
+                node.prev.next = node.next;
+            }
+            else {
+                this.head = node.next;
+            }
+            if (node.next) {
+                node.next.prev = node.prev;
+            }
+            else {
+                this.tail = node.prev;
+            }
+            node.prev = null;
+            node.next = null;
+        };
+        LinkedList.prototype.toArray = function () {
+            var result = [];
+            var current = this.head;
+            while (current) {
+                result.push(current.value);
+                current = current.next;
+            }
+            return result;
+        };
+        return LinkedList;
+    }());
+    gs.LinkedList = LinkedList;
 })(gs || (gs = {}));
 var gs;
 (function (gs) {
