@@ -160,7 +160,7 @@ module gs {
          * @param componentClasses 
          * @returns 
          */
-        public getEntitiesWithComponents<T extends Component>(componentClasses: ComponentConstructor<T>[]): Entity[] {
+        public getEntitiesWithComponents(componentClasses: ComponentConstructor<Component>[]): Entity[] {
             return this.queryComponents(componentClasses);
         }
 

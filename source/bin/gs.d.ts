@@ -483,7 +483,7 @@ declare module gs {
          * @param componentClasses
          * @returns
          */
-        getEntitiesWithComponents<T extends Component>(componentClasses: ComponentConstructor<T>[]): Entity[];
+        getEntitiesWithComponents(componentClasses: ComponentConstructor<Component>[]): Entity[];
         /**
          * 获取所有实体
          * @returns
