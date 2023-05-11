@@ -122,7 +122,7 @@ module gs {
                     };
                     worker.postMessage(message);
                 } else {
-                    system.update(filteredEntities);
+                    system.performUpdate(filteredEntities);
                 }
             }
         }

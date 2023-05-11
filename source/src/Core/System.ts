@@ -16,6 +16,9 @@ module gs {
         protected entityManager: EntityManager;
         protected matcher: Matcher;
 
+        protected lastUpdateTime: number;
+        protected updateInterval: number;
+
         /** 
          * 系统优先级，优先级越高，越先执行
          */
@@ -25,11 +28,14 @@ module gs {
          */
         public readonly workerScript?: string;
 
-        constructor(entityManager: EntityManager, priority: number, matcher?: Matcher, workerScript?: string) {
+        constructor(entityManager: EntityManager, priority: number, matcher?: Matcher, workerScript?: string, updateInterval?: number) {
             this.entityManager = entityManager;
             this.priority = priority;
             this.workerScript = workerScript;
             this.matcher = matcher || Matcher.empty();
+
+            this.updateInterval = updateInterval || 0;  // 默认为0，即每次都更新
+            this.lastUpdateTime = 0;
         }
 
         protected _paused: boolean = false;
@@ -57,6 +63,18 @@ module gs {
 
         public isEnabled(): boolean {
             return this.enabled;
+        }
+
+        /**
+        * 更新系统
+        * @param entities 
+        */
+        performUpdate(entities: Entity[]): void {
+            const now = Date.now();
+            if (now - this.lastUpdateTime >= this.updateInterval) {
+                this.update(entities);
+                this.lastUpdateTime = now;
+            }
         }
 
         /**

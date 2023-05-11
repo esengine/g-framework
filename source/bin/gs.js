@@ -608,13 +608,15 @@ var gs;
      * 系统基类
      */
     var System = /** @class */ (function () {
-        function System(entityManager, priority, matcher, workerScript) {
+        function System(entityManager, priority, matcher, workerScript, updateInterval) {
             this._paused = false;
             this._enabled = true;
             this.entityManager = entityManager;
             this.priority = priority;
             this.workerScript = workerScript;
             this.matcher = matcher || gs.Matcher.empty();
+            this.updateInterval = updateInterval || 0; // 默认为0，即每次都更新
+            this.lastUpdateTime = 0;
         }
         Object.defineProperty(System.prototype, "paused", {
             get: function () {
@@ -641,6 +643,17 @@ var gs;
         };
         System.prototype.isEnabled = function () {
             return this.enabled;
+        };
+        /**
+        * 更新系统
+        * @param entities
+        */
+        System.prototype.performUpdate = function (entities) {
+            var now = Date.now();
+            if (now - this.lastUpdateTime >= this.updateInterval) {
+                this.update(entities);
+                this.lastUpdateTime = now;
+            }
         };
         /**
          * 筛选实体
@@ -1495,7 +1508,7 @@ var gs;
                         worker.postMessage(message);
                     }
                     else {
-                        system.update(filteredEntities);
+                        system.performUpdate(filteredEntities);
                     }
                 }
             }

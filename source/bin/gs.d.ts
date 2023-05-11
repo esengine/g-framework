@@ -235,6 +235,8 @@ declare module gs {
     abstract class System implements ISystem {
         protected entityManager: EntityManager;
         protected matcher: Matcher;
+        protected lastUpdateTime: number;
+        protected updateInterval: number;
         /**
          * 系统优先级，优先级越高，越先执行
          */
@@ -243,13 +245,18 @@ declare module gs {
          * 系统所在的worker脚本
          */
         readonly workerScript?: string;
-        constructor(entityManager: EntityManager, priority: number, matcher?: Matcher, workerScript?: string);
+        constructor(entityManager: EntityManager, priority: number, matcher?: Matcher, workerScript?: string, updateInterval?: number);
         protected _paused: boolean;
         protected _enabled: boolean;
         paused: boolean;
         enabled: boolean;
         isPaused(): boolean;
         isEnabled(): boolean;
+        /**
+        * 更新系统
+        * @param entities
+        */
+        performUpdate(entities: Entity[]): void;
         /**
          * 更新系统
          * @param entities
