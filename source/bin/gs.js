@@ -1620,9 +1620,13 @@ var gs;
      */
     var TimeManager = /** @class */ (function () {
         function TimeManager() {
+            this.accumulatedTime = 0;
+            this.isPaused = false;
+            this.fixedUpdateCallbacks = [];
             this.deltaTime = 0;
             this.timeScale = 1;
             this.totalTime = 0;
+            this.fixedDeltaTime = 1 / 60; // 设定固定更新频率为60次每秒
         }
         TimeManager.getInstance = function () {
             if (!TimeManager.instance) {
@@ -1633,6 +1637,41 @@ var gs;
         TimeManager.prototype.update = function (deltaTime) {
             this.deltaTime = deltaTime * this.timeScale;
             this.totalTime += this.deltaTime;
+            if (!this.isPaused) {
+                this.accumulatedTime += deltaTime;
+                while (this.accumulatedTime >= this.fixedDeltaTime) {
+                    this.fixedUpdate(this.fixedDeltaTime);
+                    this.accumulatedTime -= this.fixedDeltaTime;
+                }
+            }
+        };
+        TimeManager.prototype.fixedUpdate = function (deltaTime) {
+            var e_23, _a;
+            try {
+                for (var _b = __values(this.fixedUpdateCallbacks), _c = _b.next(); !_c.done; _c = _b.next()) {
+                    var callback = _c.value;
+                    callback(deltaTime);
+                }
+            }
+            catch (e_23_1) { e_23 = { error: e_23_1 }; }
+            finally {
+                try {
+                    if (_c && !_c.done && (_a = _b.return)) _a.call(_b);
+                }
+                finally { if (e_23) throw e_23.error; }
+            }
+        };
+        TimeManager.prototype.registerFixedUpdate = function (callback) {
+            this.fixedUpdateCallbacks.push(callback);
+        };
+        TimeManager.prototype.pause = function () {
+            this.isPaused = true;
+        };
+        TimeManager.prototype.resume = function () {
+            this.isPaused = false;
+        };
+        TimeManager.prototype.isGamePaused = function () {
+            return this.isPaused;
         };
         return TimeManager;
     }());
@@ -1856,7 +1895,7 @@ var gs;
             return entity.hasComponent(gs.StateMachineComponent);
         };
         StateMachineSystem.prototype.update = function (entities) {
-            var e_23, _a;
+            var e_24, _a;
             try {
                 for (var entities_1 = __values(entities), entities_1_1 = entities_1.next(); !entities_1_1.done; entities_1_1 = entities_1.next()) {
                     var entity = entities_1_1.value;
@@ -1864,12 +1903,12 @@ var gs;
                     stateMachineComponent.stateMachine.update();
                 }
             }
-            catch (e_23_1) { e_23 = { error: e_23_1 }; }
+            catch (e_24_1) { e_24 = { error: e_24_1 }; }
             finally {
                 try {
                     if (entities_1_1 && !entities_1_1.done && (_a = entities_1.return)) _a.call(entities_1);
                 }
-                finally { if (e_23) throw e_23.error; }
+                finally { if (e_24) throw e_24.error; }
             }
         };
         return StateMachineSystem;
@@ -2013,30 +2052,11 @@ var gs;
             return this.checkAllSet(components) && this.checkExclusionSet(components) && this.checkOneSet(components);
         };
         Matcher.prototype.checkAllSet = function (components) {
-            var e_24, _a;
+            var e_25, _a;
             try {
                 for (var _b = __values(this.allSet), _c = _b.next(); !_c.done; _c = _b.next()) {
                     var type = _c.value;
                     if (!components.get(gs.ComponentTypeManager.getIndexFor(type))) {
-                        return false;
-                    }
-                }
-            }
-            catch (e_24_1) { e_24 = { error: e_24_1 }; }
-            finally {
-                try {
-                    if (_c && !_c.done && (_a = _b.return)) _a.call(_b);
-                }
-                finally { if (e_24) throw e_24.error; }
-            }
-            return true;
-        };
-        Matcher.prototype.checkExclusionSet = function (components) {
-            var e_25, _a;
-            try {
-                for (var _b = __values(this.exclusionSet), _c = _b.next(); !_c.done; _c = _b.next()) {
-                    var type = _c.value;
-                    if (components.get(gs.ComponentTypeManager.getIndexFor(type))) {
                         return false;
                     }
                 }
@@ -2050,8 +2070,27 @@ var gs;
             }
             return true;
         };
-        Matcher.prototype.checkOneSet = function (components) {
+        Matcher.prototype.checkExclusionSet = function (components) {
             var e_26, _a;
+            try {
+                for (var _b = __values(this.exclusionSet), _c = _b.next(); !_c.done; _c = _b.next()) {
+                    var type = _c.value;
+                    if (components.get(gs.ComponentTypeManager.getIndexFor(type))) {
+                        return false;
+                    }
+                }
+            }
+            catch (e_26_1) { e_26 = { error: e_26_1 }; }
+            finally {
+                try {
+                    if (_c && !_c.done && (_a = _b.return)) _a.call(_b);
+                }
+                finally { if (e_26) throw e_26.error; }
+            }
+            return true;
+        };
+        Matcher.prototype.checkOneSet = function (components) {
+            var e_27, _a;
             if (this.oneSet.length === 0) {
                 return true;
             }
@@ -2063,12 +2102,12 @@ var gs;
                     }
                 }
             }
-            catch (e_26_1) { e_26 = { error: e_26_1 }; }
+            catch (e_27_1) { e_27 = { error: e_27_1 }; }
             finally {
                 try {
                     if (_c && !_c.done && (_a = _b.return)) _a.call(_b);
                 }
-                finally { if (e_26) throw e_26.error; }
+                finally { if (e_27) throw e_27.error; }
             }
             return false;
         };

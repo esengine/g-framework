@@ -631,9 +631,21 @@ declare module gs {
          * 游戏运行的总时间
          */
         totalTime: number;
+        /**
+         * 固定时间步长
+         */
+        fixedDeltaTime: number;
+        accumulatedTime: number;
+        isPaused: boolean;
+        private fixedUpdateCallbacks;
         private constructor();
         static getInstance(): TimeManager;
         update(deltaTime: number): void;
+        fixedUpdate(deltaTime: number): void;
+        registerFixedUpdate(callback: (deltaTime: number) => void): void;
+        pause(): void;
+        resume(): void;
+        isGamePaused(): boolean;
     }
 }
 declare module gs {
