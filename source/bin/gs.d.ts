@@ -76,14 +76,6 @@ declare module gs {
          * @param args
          */
         onInitialize(...args: any[]): void;
-        /**
-         * 当组件被添加到实体上时执行
-         */
-        onAdded(): void;
-        /**
-         * 当组件从实体上被移除时执行
-         */
-        onRemoved(): void;
         serialize(): any;
         deserialize(data: any): void;
         /**

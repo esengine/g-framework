@@ -57,16 +57,6 @@ module gs {
          */
         onInitialize(...args: any[]) { }
 
-        /**
-         * 当组件被添加到实体上时执行
-         */
-        onAdded(): void { }
-
-        /**
-         * 当组件从实体上被移除时执行
-         */
-        onRemoved(): void { }
-
         serialize(): any {
             const data: any = {};
             for (const key of Object.keys(this)) {

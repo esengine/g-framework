@@ -235,14 +235,6 @@ var gs;
                 args[_i] = arguments[_i];
             }
         };
-        /**
-         * 当组件被添加到实体上时执行
-         */
-        Component.prototype.onAdded = function () { };
-        /**
-         * 当组件从实体上被移除时执行
-         */
-        Component.prototype.onRemoved = function () { };
         Component.prototype.serialize = function () {
             var e_2, _a;
             var data = {};
