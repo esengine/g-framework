@@ -162,6 +162,19 @@ module gs {
             return this.tagCache.get(tag) as Entity[];
         }
 
+        /**
+         * 检查实体是否具有指定类型的组件
+         * @param entityId 要检查的实体的ID
+         * @param componentClass 要检查的组件类型
+         * @returns 如果实体具有指定类型的组件，则返回 true，否则返回 false
+         */
+        public hasComponent<T extends Component>(entityId: number, componentClass: ComponentConstructor<T>): boolean {
+            const componentManager = this.componentManagers.get(componentClass);
+            if (componentManager) {
+                return componentManager.has(entityId);
+            }
+            return false;
+        }
 
         /**
          * 根据提供的组件数组查询实体
@@ -281,7 +294,7 @@ module gs {
                 const key = componentClass.name;
                 this.queryCache.delete(key);
             }
-        
+
             if (tag) {
                 this.tagCache.delete(tag);
             }

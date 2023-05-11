@@ -7,6 +7,8 @@ module gs {
         private _version: number = 0;
         private _entityManager: EntityManager;
 
+        public dependencies: ComponentConstructor<Component>[] = [];
+
         setEntityId(entityId: number, entityManager: EntityManager) {
             this._entityId = entityId;
             this._entityManager = entityManager;

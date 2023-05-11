@@ -24,6 +24,14 @@ module gs {
 
         public create(entityId: number, entityManager: EntityManager): T {
             let component: T;
+
+            // 检查组件依赖
+            for (const dependency of component.dependencies) {
+                if (!entityManager.hasComponent(entityId, dependency)) {
+                    throw new Error(`组件 ${component.constructor.name} 依赖于 ${dependency.name}，但实体 ${entityId} 缺少该组件。`);
+                }
+            }
+
             if (this.componentPool.length > 0) {
                 component = this.componentPool.pop();
                 component.reinitialize(entityId, entityManager); // 重置组件状态并进行初始化
