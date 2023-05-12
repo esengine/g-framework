@@ -208,6 +208,7 @@ declare module gs {
          * 实体销毁时的逻辑
          */
         onDestroy(): void;
+        [Symbol.iterator](): Iterator<Component>;
         on(eventType: string, listener: EventListener): void;
         once(eventType: string, callback: (event: Event) => void): void;
         off(eventType: string, listener: EventListener): void;
@@ -393,7 +394,7 @@ declare module gs {
         * 预先创建指定数量的组件实例，并将它们放入对象池
         * @param count 要预先创建的组件数量
         */
-        private preallocate;
+        preallocate(count: number, resetComponents?: boolean): void;
     }
 }
 declare module gs {

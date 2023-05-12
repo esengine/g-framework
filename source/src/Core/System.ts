@@ -92,12 +92,7 @@ module gs {
         }
 
         public filterEntities(entities: Entity[]): Entity[] {
-            return entities.reduce((filteredEntities, entity) => {
-                if (this.matcher.isInterestedEntity(entity) && this.entityFilter(entity)) {
-                    filteredEntities.push(entity);
-                }
-                return filteredEntities;
-            }, [] as Entity[]);
+            return entities.filter(entity => this.matcher.isInterestedEntity(entity) && this.entityFilter(entity));
         }
 
         public handleComponentChange(entity: Entity, added: boolean): void {

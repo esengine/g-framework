@@ -42,7 +42,7 @@ module gs {
             if (this._parent) {
                 this._parent._children.remove(this._childNode!);
             }
-    
+
             this._parent = parent;
             this._childNode = this._parent._children.append(this);
         }
@@ -120,9 +120,11 @@ module gs {
          * @returns 
          */
         public getAllComponents(): Component[] {
-            return Array.from(this.componentManagers.values())
-                .map(manager => manager.get(this.id))
-                .filter(component => component !== null);
+            const components: Component[] = [];
+            for (const component of this) {
+                components.push(component);
+            }
+            return components;
         }
 
         /**
@@ -276,6 +278,24 @@ module gs {
          * 实体销毁时的逻辑
          */
         onDestroy() {
+        }
+
+        [Symbol.iterator](): Iterator<Component> {
+            const managers = Array.from(this.componentManagers.values());
+            let index = 0;
+
+            return {
+                next: (): IteratorResult<Component> => {
+                    if (index < managers.length) {
+                        const component = managers[index++].get(this.id);
+                        if (component) {
+                            return { done: false, value: component };
+                        }
+                    }
+
+                    return { done: true, value: null };
+                }
+            };
         }
 
         public on(eventType: string, listener: EventListener): void {
