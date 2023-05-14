@@ -410,7 +410,7 @@ var gs;
             var componentIndex = gs.ComponentTypeManager.getIndexFor(componentType);
             this.componentBits.set(componentIndex);
             if (this.entityManager.systemManager) {
-                this.entityManager.systemManager.notifyComponentAdded(this);
+                this.entityManager.systemManager.notifyComponentAdded(this, component);
             }
             this.entityManager.invalidateCache(componentType);
             return component;
@@ -472,7 +472,7 @@ var gs;
             var component = this.getComponent(componentType);
             if (component) {
                 if (this.entityManager.systemManager) {
-                    this.entityManager.systemManager.notifyComponentRemoved(this);
+                    this.entityManager.systemManager.notifyComponentRemoved(this, component);
                 }
                 manager.remove(this.id);
             }
@@ -721,18 +721,18 @@ var gs;
             var _this = this;
             return entities.filter(function (entity) { return _this.matcher.isInterestedEntity(entity) && _this.entityFilter(entity); });
         };
-        System.prototype.handleComponentChange = function (entity, added) {
-            if (this.matcher.isInterestedEntity(entity)) {
+        System.prototype.handleComponentChange = function (entity, component, added) {
+            if (this.entityFilter(entity)) {
                 if (added) {
-                    this.onComponentAdded(entity);
+                    this.onComponentAdded(entity, component);
                 }
                 else {
-                    this.onComponentRemoved(entity);
+                    this.onComponentRemoved(entity, component);
                 }
             }
         };
-        System.prototype.onComponentAdded = function (entity) { };
-        System.prototype.onComponentRemoved = function (entity) { };
+        System.prototype.onComponentAdded = function (entity, component) { };
+        System.prototype.onComponentRemoved = function (entity, component) { };
         /**
          * 系统注册时的逻辑
          */
@@ -1487,13 +1487,14 @@ var gs;
         /**
          * 通知所有系统组件已添加
          * @param entity
+         * @param component
          */
-        SystemManager.prototype.notifyComponentAdded = function (entity) {
+        SystemManager.prototype.notifyComponentAdded = function (entity, component) {
             var e_20, _a;
             try {
                 for (var _b = __values(this.systems), _c = _b.next(); !_c.done; _c = _b.next()) {
                     var system = _c.value;
-                    system.handleComponentChange(entity, true);
+                    system.handleComponentChange(entity, component, true);
                     this.entityCache.delete(system);
                 }
             }
@@ -1508,13 +1509,14 @@ var gs;
         /**
          * 通知所有系统组件已删除
          * @param entity
+         * @param component
          */
-        SystemManager.prototype.notifyComponentRemoved = function (entity) {
+        SystemManager.prototype.notifyComponentRemoved = function (entity, component) {
             var e_21, _a;
             try {
                 for (var _b = __values(this.systems), _c = _b.next(); !_c.done; _c = _b.next()) {
                     var system = _c.value;
-                    system.handleComponentChange(entity, false);
+                    system.handleComponentChange(entity, component, false);
                     this.entityCache.delete(system);
                 }
             }

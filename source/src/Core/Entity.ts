@@ -68,7 +68,7 @@ module gs {
          * @param componentType 
          * @returns 
          */
-        public addComponent<T extends Component>(componentType: new (entityId: number) => T, ...args: any[]): T {
+        public addComponent<T extends Component>(componentType: ComponentConstructor<T>, ...args: any[]): T {
             const manager = this.componentManagers.get(componentType);
             if (!manager) {
                 throw new Error(`组件类型为 ${componentType.name} 的组件管理器未找到.`);
@@ -81,7 +81,7 @@ module gs {
             this.componentBits.set(componentIndex);
 
             if (this.entityManager.systemManager) {
-                this.entityManager.systemManager.notifyComponentAdded(this);
+                this.entityManager.systemManager.notifyComponentAdded(this, component);
             }
 
             this.entityManager.invalidateCache(componentType);
@@ -94,7 +94,7 @@ module gs {
          * @param componentType 
          * @returns 
          */
-        public getComponent<T extends Component>(componentType: new (entityId: number) => T): T | null {
+        public getComponent<T extends Component>(componentType: ComponentConstructor<T>): T | null {
             // 从缓存中获取组件，如果存在，则直接返回
             const cachedComponent = this.componentCache.get(componentType);
             if (cachedComponent) {
@@ -132,7 +132,7 @@ module gs {
          * @param componentType 
          * @returns 
          */
-        public removeComponent<T extends Component>(componentType: new (entityId: number) => T): void {
+        public removeComponent<T extends Component>(componentType: ComponentConstructor<T>): void {
             const manager = this.componentManagers.get(componentType);
             if (!manager) {
                 return;
@@ -141,7 +141,7 @@ module gs {
             const component = this.getComponent(componentType);
             if (component) {
                 if (this.entityManager.systemManager) {
-                    this.entityManager.systemManager.notifyComponentRemoved(this);
+                    this.entityManager.systemManager.notifyComponentRemoved(this, component);
                 }
                 manager.remove(this.id);
             }

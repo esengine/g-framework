@@ -135,13 +135,13 @@ declare module gs {
          * @param componentType
          * @returns
          */
-        addComponent<T extends Component>(componentType: new (entityId: number) => T, ...args: any[]): T;
+        addComponent<T extends Component>(componentType: ComponentConstructor<T>, ...args: any[]): T;
         /**
          * 获取组件
          * @param componentType
          * @returns
          */
-        getComponent<T extends Component>(componentType: new (entityId: number) => T): T | null;
+        getComponent<T extends Component>(componentType: ComponentConstructor<T>): T | null;
         /**
          * 获取所有组件
          * @returns
@@ -152,7 +152,7 @@ declare module gs {
          * @param componentType
          * @returns
          */
-        removeComponent<T extends Component>(componentType: new (entityId: number) => T): void;
+        removeComponent<T extends Component>(componentType: ComponentConstructor<T>): void;
         /**
          * 是否有组件
          * @param componentType
@@ -270,9 +270,9 @@ declare module gs {
          */
         entityFilter(entity: Entity): boolean;
         filterEntities(entities: Entity[]): Entity[];
-        handleComponentChange(entity: Entity, added: boolean): void;
-        protected onComponentAdded(entity: Entity): void;
-        protected onComponentRemoved(entity: Entity): void;
+        handleComponentChange(entity: Entity, component: Component, added: boolean): void;
+        protected onComponentAdded(entity: Entity, component: Component): void;
+        protected onComponentRemoved(entity: Entity, component: Component): void;
         /**
          * 系统注册时的逻辑
          */
@@ -576,13 +576,15 @@ declare module gs {
         /**
          * 通知所有系统组件已添加
          * @param entity
+         * @param component
          */
-        notifyComponentAdded(entity: Entity): void;
+        notifyComponentAdded(entity: Entity, component: Component): void;
         /**
          * 通知所有系统组件已删除
          * @param entity
+         * @param component
          */
-        notifyComponentRemoved(entity: Entity): void;
+        notifyComponentRemoved(entity: Entity, component: Component): void;
         /**
          * 使特定系统的实体缓存无效。
          * @param system 要使其实体缓存无效的系统

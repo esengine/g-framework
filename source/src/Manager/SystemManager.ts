@@ -72,10 +72,11 @@ module gs {
         /**
          * 通知所有系统组件已添加
          * @param entity 
+         * @param component
          */
-        notifyComponentAdded(entity: Entity): void {
+        notifyComponentAdded(entity: Entity, component: Component): void {
             for (const system of this.systems) {
-                system.handleComponentChange(entity, true);
+                system.handleComponentChange(entity, component, true);
                 this.entityCache.delete(system);
             }
         }
@@ -83,10 +84,11 @@ module gs {
         /**
          * 通知所有系统组件已删除
          * @param entity 
+         * @param component
          */
-        notifyComponentRemoved(entity: Entity): void {
+        notifyComponentRemoved(entity: Entity, component: Component): void {
             for (const system of this.systems) {
-                system.handleComponentChange(entity, false);
+                system.handleComponentChange(entity, component, false);
                 this.entityCache.delete(system);
             }
         }

@@ -95,19 +95,19 @@ module gs {
             return entities.filter(entity => this.matcher.isInterestedEntity(entity) && this.entityFilter(entity));
         }
 
-        public handleComponentChange(entity: Entity, added: boolean): void {
-            if (this.matcher.isInterestedEntity(entity)) {
+        public handleComponentChange(entity: Entity, component: Component, added: boolean): void {
+            if (this.entityFilter(entity)) {
                 if (added) {
-                    this.onComponentAdded(entity);
+                    this.onComponentAdded(entity, component);
                 } else {
-                    this.onComponentRemoved(entity);
+                    this.onComponentRemoved(entity, component);
                 }
             }
         }
 
-        protected onComponentAdded(entity: Entity): void { }
+        protected onComponentAdded(entity: Entity, component: Component): void { }
 
-        protected onComponentRemoved(entity: Entity): void { }
+        protected onComponentRemoved(entity: Entity, component: Component): void { }
 
         /**
          * 系统注册时的逻辑
