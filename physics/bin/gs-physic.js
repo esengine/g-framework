@@ -98,6 +98,12 @@ var gs;
                 return Infinity;
             }
         };
+        AABB.prototype.clone = function () {
+            var cloned = new AABB(this.minX, this.maxX, this.minY, this.maxY);
+            cloned.velocityX = this.velocityX;
+            cloned.velocityY = this.velocityY;
+            return cloned;
+        };
         return AABB;
     }());
     gs.AABB = AABB;
@@ -294,7 +300,10 @@ var gs;
                     var pair = pairs_1_1.value;
                     var aabb1 = pair[0];
                     var aabb2 = pair[1];
-                    if (aabb1.intersects(aabb2)) {
+                    // 用 BVH 树查询可能与 aabb1 相交的所有对象
+                    var candidates = this.query(aabb1);
+                    // 如果 aabb2 在候选对象中，那么 aabb1 和 aabb2 可能会碰撞
+                    if (candidates.indexOf(aabb2) != -1) {
                         filteredPairs.push(pair);
                     }
                 }
@@ -371,7 +380,12 @@ var gs;
                 for (var potentialCollisions_1 = __values(potentialCollisions), potentialCollisions_1_1 = potentialCollisions_1.next(); !potentialCollisions_1_1.done; potentialCollisions_1_1 = potentialCollisions_1.next()) {
                     var pair = potentialCollisions_1_1.value;
                     var _b = __read(pair, 2), aabb1 = _b[0], aabb2 = _b[1];
-                    gs.TimeBaseCollisionDetection.handleCollision(aabb1, aabb2);
+                    var _c = __read(gs.TimeBaseCollisionDetection.handleCollision(aabb1, aabb2), 2), newAabb1 = _c[0], newAabb2 = _c[1];
+                    // 5. 立即更新四叉树和 BVH
+                    this.quadtree.update(aabb1, newAabb1);
+                    this.bvh.update(aabb1, newAabb1);
+                    this.quadtree.update(aabb2, newAabb2);
+                    this.bvh.update(aabb2, newAabb2);
                 }
             }
             catch (e_5_1) { e_5 = { error: e_5_1 }; }
@@ -381,9 +395,6 @@ var gs;
                 }
                 finally { if (e_5) throw e_5.error; }
             }
-            // TODO: 更新四叉树和BVH
-            // this.quadtree.update();
-            // this.bvh.update();
         };
         return PhysicsEngine;
     }());
@@ -741,6 +752,8 @@ var gs;
          */
         TimeBaseCollisionDetection.handleCollision = function (aabb1, aabb2) {
             var collisionTime = aabb1.computeCollisionTime(aabb2);
+            var newAabb1 = aabb1.clone();
+            var newAabb2 = aabb2.clone();
             if (collisionTime < 1) {
                 aabb1.minX += aabb1.velocityX * collisionTime;
                 aabb1.minY += aabb1.velocityY * collisionTime;
@@ -751,6 +764,7 @@ var gs;
                 aabb2.maxX += aabb2.velocityX * collisionTime;
                 aabb2.maxY += aabb2.velocityY * collisionTime;
             }
+            return [newAabb1, newAabb2];
         };
         /**
          * 处理多个碰撞和反弹

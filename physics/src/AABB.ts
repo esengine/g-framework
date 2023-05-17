@@ -85,5 +85,12 @@ module gs {
                 return Infinity;
             }
         }
+
+        clone(): AABB {
+            let cloned = new AABB(this.minX, this.maxX, this.minY, this.maxY);
+            cloned.velocityX = this.velocityX;
+            cloned.velocityY = this.velocityY;
+            return cloned;
+        }
     }
 }

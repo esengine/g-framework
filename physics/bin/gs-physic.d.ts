@@ -30,6 +30,7 @@ declare module gs {
          * @returns
          */
         computeCollisionTime(other: AABB): number;
+        clone(): AABB;
     }
 }
 declare module gs {
@@ -199,7 +200,7 @@ declare module gs {
          * @param aabb1
          * @param aabb2
          */
-        static handleCollision(aabb1: AABB, aabb2: AABB): void;
+        static handleCollision(aabb1: AABB, aabb2: AABB): [AABB, AABB];
         /**
          * 处理多个碰撞和反弹
          * @param aabbs

@@ -181,8 +181,12 @@ module gs {
             for (let pair of pairs) {
                 let aabb1 = pair[0];
                 let aabb2 = pair[1];
-        
-                if (aabb1.intersects(aabb2)) {
+
+                // 用 BVH 树查询可能与 aabb1 相交的所有对象
+                let candidates = this.query(aabb1);
+
+                // 如果 aabb2 在候选对象中，那么 aabb1 和 aabb2 可能会碰撞
+                if (candidates.indexOf(aabb2) != -1) {
                     filteredPairs.push(pair);
                 }
             }

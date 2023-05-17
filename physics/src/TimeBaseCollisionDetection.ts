@@ -8,8 +8,11 @@ module gs {
          * @param aabb1 
          * @param aabb2 
          */
-        public static handleCollision(aabb1: AABB, aabb2: AABB) {
+        public static handleCollision(aabb1: AABB, aabb2: AABB): [AABB, AABB] {
             let collisionTime = aabb1.computeCollisionTime(aabb2);
+            let newAabb1 = aabb1.clone();
+            let newAabb2 = aabb2.clone();
+
             if (collisionTime < 1) {
                 aabb1.minX += aabb1.velocityX * collisionTime;
                 aabb1.minY += aabb1.velocityY * collisionTime;
@@ -21,6 +24,8 @@ module gs {
                 aabb2.maxX += aabb2.velocityX * collisionTime;
                 aabb2.maxY += aabb2.velocityY * collisionTime;
             }
+
+            return [newAabb1, newAabb2];
         }
 
         /**

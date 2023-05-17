@@ -22,12 +22,15 @@ module gs {
             for (let pair of potentialCollisions) {
                 let [aabb1, aabb2] = pair;
 
-                TimeBaseCollisionDetection.handleCollision(aabb1, aabb2);
-            }
+                let [newAabb1, newAabb2] = TimeBaseCollisionDetection.handleCollision(aabb1, aabb2);
 
-            // TODO: 更新四叉树和BVH
-            // this.quadtree.update();
-            // this.bvh.update();
+                // 5. 立即更新四叉树和 BVH
+                this.quadtree.update(aabb1, newAabb1);
+                this.bvh.update(aabb1, newAabb1);
+
+                this.quadtree.update(aabb2, newAabb2);
+                this.bvh.update(aabb2, newAabb2);
+            }
         }
     }
 }
