@@ -672,7 +672,7 @@ var gs;
         function SweepAndPrune() {
         }
         SweepAndPrune.sweepAndPrune = function (pairs) {
-            var e_9, _a;
+            var e_9, _a, e_10, _b;
             // 将 AABB 对象提取到一个数组中
             var aabbs = [];
             try {
@@ -689,22 +689,44 @@ var gs;
                 }
                 finally { if (e_9) throw e_9.error; }
             }
-            // 使用归并排序根据 minX 对 AABB 进行排序
-            aabbs = this.mergeSort(aabbs, function (a, b) { return a.minX - b.minX; });
+            aabbs.sort(function (a, b) { return a.minX - b.minX; });
             var potentialCollisions = [];
-            for (var i = 0; i < aabbs.length; i++) {
-                var a = aabbs[i];
-                for (var j = i + 1; j < aabbs.length; j++) {
-                    var b = aabbs[j];
-                    // 如果 b 的 minX 大于 a 的 maxX，那么 b 和后面的物体都不可能和 a 发生碰撞
-                    if (b.minX > a.maxX) {
-                        break;
-                    }
-                    // 检查 a 和 b 在 y 轴上是否重叠
-                    if (a.minY <= b.maxY && a.maxY >= b.minY) {
-                        potentialCollisions.push([a, b]);
+            var activeList = [];
+            var _loop_1 = function (a) {
+                var e_11, _a;
+                // 从 activeList 中移除 maxX 小于 a.minX 的 AABB
+                activeList = activeList.filter(function (b) { return b.maxX > a.minX; });
+                try {
+                    for (var activeList_1 = __values(activeList), activeList_1_1 = activeList_1.next(); !activeList_1_1.done; activeList_1_1 = activeList_1.next()) {
+                        var b = activeList_1_1.value;
+                        // 检查 a 和 b 是否在 y 轴上重叠
+                        if (a.minY <= b.maxY && a.maxY >= b.minY) {
+                            potentialCollisions.push([a, b]);
+                        }
                     }
                 }
+                catch (e_11_1) { e_11 = { error: e_11_1 }; }
+                finally {
+                    try {
+                        if (activeList_1_1 && !activeList_1_1.done && (_a = activeList_1.return)) _a.call(activeList_1);
+                    }
+                    finally { if (e_11) throw e_11.error; }
+                }
+                // 将 a 添加到 activeList 中
+                activeList.push(a);
+            };
+            try {
+                for (var aabbs_2 = __values(aabbs), aabbs_2_1 = aabbs_2.next(); !aabbs_2_1.done; aabbs_2_1 = aabbs_2.next()) {
+                    var a = aabbs_2_1.value;
+                    _loop_1(a);
+                }
+            }
+            catch (e_10_1) { e_10 = { error: e_10_1 }; }
+            finally {
+                try {
+                    if (aabbs_2_1 && !aabbs_2_1.done && (_b = aabbs_2.return)) _b.call(aabbs_2);
+                }
+                finally { if (e_10) throw e_10.error; }
             }
             return potentialCollisions;
         };
@@ -771,7 +793,7 @@ var gs;
          * @param aabbs
          */
         TimeBaseCollisionDetection.handleCollisions = function (aabbs) {
-            var e_10, _a;
+            var e_12, _a;
             var collisionPairs = [];
             // 计算所有可能的碰撞对
             for (var i = 0; i < aabbs.length; i++) {
@@ -779,8 +801,8 @@ var gs;
                     collisionPairs.push([aabbs[i], aabbs[j]]);
                 }
             }
-            var _loop_1 = function () {
-                var e_11, _a;
+            var _loop_2 = function () {
+                var e_13, _a;
                 // 找出最早的碰撞
                 var earliestCollisionTime = Infinity;
                 var earliestCollisionPair = null;
@@ -794,12 +816,12 @@ var gs;
                         }
                     }
                 }
-                catch (e_11_1) { e_11 = { error: e_11_1 }; }
+                catch (e_13_1) { e_13 = { error: e_13_1 }; }
                 finally {
                     try {
                         if (collisionPairs_1_1 && !collisionPairs_1_1.done && (_a = collisionPairs_1.return)) _a.call(collisionPairs_1);
                     }
-                    finally { if (e_11) throw e_11.error; }
+                    finally { if (e_13) throw e_13.error; }
                 }
                 // 如果没有碰撞，那么我们就完成了
                 if (earliestCollisionPair === null) {
@@ -836,26 +858,26 @@ var gs;
                 collisionPairs = collisionPairs.filter(function (pair) { return pair !== earliestCollisionPair; });
             };
             while (true) {
-                var state_1 = _loop_1();
+                var state_1 = _loop_2();
                 if (state_1 === "break")
                     break;
             }
             try {
                 // 移动剩下的物体
-                for (var aabbs_2 = __values(aabbs), aabbs_2_1 = aabbs_2.next(); !aabbs_2_1.done; aabbs_2_1 = aabbs_2.next()) {
-                    var aabb = aabbs_2_1.value;
+                for (var aabbs_3 = __values(aabbs), aabbs_3_1 = aabbs_3.next(); !aabbs_3_1.done; aabbs_3_1 = aabbs_3.next()) {
+                    var aabb = aabbs_3_1.value;
                     aabb.minX += aabb.velocityX;
                     aabb.minY += aabb.velocityY;
                     aabb.maxX += aabb.velocityX;
                     aabb.maxY += aabb.velocityY;
                 }
             }
-            catch (e_10_1) { e_10 = { error: e_10_1 }; }
+            catch (e_12_1) { e_12 = { error: e_12_1 }; }
             finally {
                 try {
-                    if (aabbs_2_1 && !aabbs_2_1.done && (_a = aabbs_2.return)) _a.call(aabbs_2);
+                    if (aabbs_3_1 && !aabbs_3_1.done && (_a = aabbs_3.return)) _a.call(aabbs_3);
                 }
-                finally { if (e_10) throw e_10.error; }
+                finally { if (e_12) throw e_12.error; }
             }
         };
         return TimeBaseCollisionDetection;

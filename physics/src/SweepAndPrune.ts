@@ -11,27 +11,24 @@ module gs {
                 aabbs.push(pair[1]);
             }
 
-            // 使用归并排序根据 minX 对 AABB 进行排序
-            aabbs = this.mergeSort(aabbs, (a, b) => a.minX - b.minX);
+            aabbs.sort((a, b) => a.minX - b.minX);
 
             let potentialCollisions: [AABB, AABB][] = [];
+            let activeList: AABB[] = [];
 
-            for (let i = 0; i < aabbs.length; i++) {
-                let a = aabbs[i];
+            for (let a of aabbs) {
+                // 从 activeList 中移除 maxX 小于 a.minX 的 AABB
+                activeList = activeList.filter(b => b.maxX > a.minX);
 
-                for (let j = i + 1; j < aabbs.length; j++) {
-                    let b = aabbs[j];
-
-                    // 如果 b 的 minX 大于 a 的 maxX，那么 b 和后面的物体都不可能和 a 发生碰撞
-                    if (b.minX > a.maxX) {
-                        break;
-                    }
-
-                    // 检查 a 和 b 在 y 轴上是否重叠
+                for (let b of activeList) {
+                    // 检查 a 和 b 是否在 y 轴上重叠
                     if (a.minY <= b.maxY && a.maxY >= b.minY) {
                         potentialCollisions.push([a, b]);
                     }
                 }
+
+                // 将 a 添加到 activeList 中
+                activeList.push(a);
             }
 
             return potentialCollisions;
