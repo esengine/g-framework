@@ -69,9 +69,9 @@ module gs {
          * @returns 
          */
         public addComponent<T extends Component>(componentType: ComponentConstructor<T>, ...args: any[]): T {
-            const manager = this.componentManagers.get(componentType);
+            let manager = this.componentManagers.get(componentType);
             if (!manager) {
-                throw new Error(`组件类型为 ${componentType.name} 的组件管理器未找到.`);
+                manager = this.entityManager.addComponentManager(componentType);
             }
 
             const component = manager.create(this.id, this.entityManager) as T;

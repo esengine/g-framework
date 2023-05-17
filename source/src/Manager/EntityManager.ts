@@ -18,7 +18,7 @@ module gs {
         
         public systemManager?: SystemManager;
 
-        constructor(componentClasses: Array<ComponentConstructor<Component>> = null, systemManager?: SystemManager) {
+        constructor(systemManager?: SystemManager) {
             this.entities = new Map();
             this.entityIdAllocator = new EntityIdAllocator();
             this.inputManager = new InputManager(this);
@@ -27,11 +27,6 @@ module gs {
             this.systemManager = systemManager;
 
             this.componentManagers = new Map();
-            if (componentClasses != null)
-                for (const componentClass of componentClasses) {
-                    const componentManager = new ComponentManager(componentClass);
-                    this.componentManagers.set(componentClass, componentManager);
-                }
         }
 
         public setSystemManager(systemManager: SystemManager): void {
@@ -42,9 +37,15 @@ module gs {
          * 添加组件管理器
          * @param componentClass 要添加的组件类
          */
-        public addComponentManager<T extends Component>(componentClass: ComponentConstructor<T>): void {
-            const componentManager = new ComponentManager(componentClass);
-            this.componentManagers.set(componentClass, componentManager);
+        public addComponentManager<T extends Component>(componentClass: ComponentConstructor<T>): ComponentManager<Component> {
+            if (!this.componentManagers.has(componentClass)) {
+                const componentManager = new ComponentManager(componentClass);
+                this.componentManagers.set(componentClass, componentManager);
+
+                return componentManager;
+            }
+
+            return this.componentManagers.get(componentClass);
         }
 
         public updateFrameNumber(): void {

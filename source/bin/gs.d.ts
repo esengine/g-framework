@@ -420,13 +420,13 @@ declare module gs {
         private tagToEntities;
         private prefabs;
         systemManager?: SystemManager;
-        constructor(componentClasses?: Array<ComponentConstructor<Component>>, systemManager?: SystemManager);
+        constructor(systemManager?: SystemManager);
         setSystemManager(systemManager: SystemManager): void;
         /**
          * 添加组件管理器
          * @param componentClass 要添加的组件类
          */
-        addComponentManager<T extends Component>(componentClass: ComponentConstructor<T>): void;
+        addComponentManager<T extends Component>(componentClass: ComponentConstructor<T>): ComponentManager<Component>;
         updateFrameNumber(): void;
         getCurrentFrameNumber(): number;
         getInputManager(): InputManager;
