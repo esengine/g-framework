@@ -2,10 +2,43 @@ module gs {
     export class PhysicsEngine {
         private quadtree: QuadTree;
         private bvh: BVH;
+        private entities: Map<number, AABB>;
 
-        constructor(private aabbs: AABB[], boundary: Rectangle, capacity: number, cellSize: number) {
+        constructor(boundary: Rectangle = new Rectangle(0, 0, 1000, 1000), capacity: number = 4, cellSize: number = 10) {
             this.quadtree = new QuadTree(boundary, capacity, cellSize);
-            this.bvh = new BVH(aabbs);
+            this.bvh = new BVH();
+            this.entities = new Map();
+        }
+
+        addObject(entityId: number, aabb: AABB) {
+            this.entities.set(entityId, aabb);
+            this.quadtree.insert(aabb);
+            this.bvh.insert(aabb);
+        }
+
+        removeObject(entityId: number) {
+            const aabb = this.entities.get(entityId);
+            if (aabb) {
+                this.bvh.remove(aabb);
+                this.quadtree.remove(aabb);
+                this.entities.delete(entityId);
+            }
+        }
+
+        updateObject(entityId: number, newPosition: { minX: number, minY: number, maxX: number, maxY: number }) {
+            const aabb = this.entities.get(entityId);
+            if (aabb) {
+                this.bvh.remove(aabb);
+                this.quadtree.remove(aabb);
+    
+                aabb.minX = newPosition.minX;
+                aabb.minY = newPosition.minY;
+                aabb.maxX = newPosition.maxX;
+                aabb.maxY = newPosition.maxY;
+    
+                this.bvh.insert(aabb);
+                this.quadtree.insert(aabb);
+            }
         }
 
         step(time: number) {

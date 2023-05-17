@@ -78,7 +78,7 @@ declare module gs {
      */
     class BVH {
         root: BVHNode;
-        constructor(objects: AABB[]);
+        constructor();
         /**
          * 插入物体并在必要时重新平衡
          * @param object
@@ -115,12 +115,32 @@ declare module gs {
     }
 }
 declare module gs {
+    class PhysicsComponent extends Component {
+        aabb: AABB;
+    }
+}
+declare module gs {
     class PhysicsEngine {
-        private aabbs;
         private quadtree;
         private bvh;
-        constructor(aabbs: AABB[], boundary: Rectangle, capacity: number, cellSize: number);
+        private entities;
+        constructor(boundary?: Rectangle, capacity?: number, cellSize?: number);
+        addObject(entityId: number, aabb: AABB): void;
+        removeObject(entityId: number): void;
+        updateObject(entityId: number, newPosition: {
+            minX: number;
+            minY: number;
+            maxX: number;
+            maxY: number;
+        }): void;
         step(time: number): void;
+    }
+}
+declare module gs {
+    class PhysicsSystem extends System {
+        engine: PhysicsEngine;
+        constructor(entityManager: EntityManager, engine: PhysicsEngine);
+        update(entities: Entity[]): void;
     }
 }
 declare module gs {
@@ -137,13 +157,16 @@ declare module gs {
     class QuadTree {
         boundary: Rectangle;
         capacity: number;
+        cellSize: number;
         private spatialHash;
         private nw;
         private ne;
         private sw;
         private se;
+        private aabbs;
         constructor(boundary: Rectangle, capacity: number, cellSize: number);
         insert(aabb: AABB): boolean;
+        expandBoundary(aabb: AABB): void;
         subdivide(): void;
         remove(aabb: AABB): any;
         query(range: Rectangle, found?: AABB[]): AABB[];

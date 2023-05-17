@@ -8,18 +8,24 @@ module gs {
         private ne: QuadTree | null = null;
         private sw: QuadTree | null = null;
         private se: QuadTree | null = null;
+        private aabbs: AABB[] = [];
 
-        constructor(public boundary: Rectangle, public capacity: number, cellSize: number) {
+        constructor(public boundary: Rectangle, public capacity: number, public cellSize: number) {
             this.spatialHash = new SpatialHash(cellSize);
         }
 
         insert(aabb: AABB): boolean {
+            // 检查 AABB 是否在边界内
             if (!this.boundary.intersectsAABB(aabb)) {
-                return false;
+                // AABB 不在边界内，需要扩大边界
+                this.expandBoundary(aabb);
             }
 
+            // 插入 AABB 到当前的四叉树节点
             if (this.spatialHash.size() < this.capacity) {
                 this.spatialHash.insert(aabb);
+                // 将 AABB 存储到数组中
+                this.aabbs.push(aabb);
                 return true;
             }
 
@@ -29,6 +35,21 @@ module gs {
 
             return (this.nw.insert(aabb) || this.ne.insert(aabb) ||
                 this.sw.insert(aabb) || this.se.insert(aabb));
+        }
+
+        expandBoundary(aabb: AABB) {
+            // 扩大边界以包含新的 AABB
+            let x = Math.min(this.boundary.x, aabb.minX);
+            let y = Math.min(this.boundary.y, aabb.minY);
+            let width = Math.max(this.boundary.x + this.boundary.width, aabb.maxX) - x;
+            let height = Math.max(this.boundary.y + this.boundary.height, aabb.maxY) - y;
+            this.boundary = new Rectangle(x, y, width, height);
+
+            // 创建一个新的空间哈希表，并将所有的 AABBs 重新插入
+            this.spatialHash = new SpatialHash(this.cellSize);
+            for (let existingAabb of this.aabbs) {
+                this.spatialHash.insert(existingAabb);
+            }
         }
 
         subdivide() {

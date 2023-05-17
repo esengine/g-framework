@@ -138,11 +138,8 @@ module gs {
     export class BVH {
         root: BVHNode;
 
-        constructor(objects: AABB[]) {
+        constructor() {
             this.root = new BVHNode();
-            for (let object of objects) {
-                this.insert(object);
-            }
         }
 
         /**
