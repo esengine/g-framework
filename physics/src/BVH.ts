@@ -1,4 +1,4 @@
-module gs {
+module gs.physics {
     export class BVHNode {
         left: BVHNode | null;
         right: BVHNode | null;

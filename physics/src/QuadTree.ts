@@ -1,4 +1,4 @@
-module gs {
+module gs.physics {
     /**
      * 四叉树
      */

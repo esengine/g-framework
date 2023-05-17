@@ -1,4 +1,4 @@
-module gs {
+module gs.physics {
     export class PhysicsEngine {
         private quadtree: QuadTree;
         private bvh: BVH;

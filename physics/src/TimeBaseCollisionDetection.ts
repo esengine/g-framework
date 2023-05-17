@@ -1,4 +1,4 @@
-module gs {
+module gs.physics {
     /**
      * 基于时间基础的碰撞检测
      */

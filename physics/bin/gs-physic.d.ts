@@ -1,4 +1,4 @@
-declare module gs {
+declare module gs.physics {
     class AABB {
         minX: number;
         maxX: number;
@@ -33,7 +33,7 @@ declare module gs {
         clone(): AABB;
     }
 }
-declare module gs {
+declare module gs.physics {
     class BVHNode {
         left: BVHNode | null;
         right: BVHNode | null;
@@ -114,12 +114,12 @@ declare module gs {
         }): void;
     }
 }
-declare module gs {
+declare module gs.physics {
     class PhysicsComponent extends Component {
         aabb: AABB;
     }
 }
-declare module gs {
+declare module gs.physics {
     class PhysicsEngine {
         private quadtree;
         private bvh;
@@ -136,21 +136,21 @@ declare module gs {
         step(time: number): void;
     }
 }
-declare module gs {
+declare module gs.physics {
     class PhysicsSystem extends System {
         engine: PhysicsEngine;
-        constructor(entityManager: EntityManager, engine: PhysicsEngine);
+        constructor(entityManager: EntityManager);
         update(entities: Entity[]): void;
     }
 }
-declare module gs {
+declare module gs.physics {
     class Point {
         x: number;
         y: number;
         constructor(x: number, y: number);
     }
 }
-declare module gs {
+declare module gs.physics {
     /**
      * 四叉树
      */
@@ -174,7 +174,7 @@ declare module gs {
         update(point: AABB, newPosition: AABB): boolean;
     }
 }
-declare module gs {
+declare module gs.physics {
     class Rectangle {
         x: number;
         y: number;
@@ -186,7 +186,7 @@ declare module gs {
         intersectsAABB(aabb: AABB): boolean;
     }
 }
-declare module gs {
+declare module gs.physics {
     /**
      * 空间哈希
      */
@@ -203,7 +203,7 @@ declare module gs {
         clear(): void;
     }
 }
-declare module gs {
+declare module gs.physics {
     /**
      * 扫描排序
      */
@@ -213,7 +213,7 @@ declare module gs {
         private static merge;
     }
 }
-declare module gs {
+declare module gs.physics {
     /**
      * 基于时间基础的碰撞检测
      */

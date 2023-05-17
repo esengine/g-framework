@@ -1,4 +1,4 @@
-module gs {
+module gs.physics {
     export class AABB {
         minX: number;
         maxX: number;

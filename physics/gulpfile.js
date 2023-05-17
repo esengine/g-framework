@@ -10,8 +10,8 @@ const tsProject = ts.createProject('tsconfig.json');
 function buildJs() {
   return tsProject.src()
     .pipe(tsProject())
-    .js.pipe(inject.replace('var gs;', ''))
-    .pipe(inject.prepend('window.gs = {};\n'))
+    .js.pipe(inject.replace('var gs.physics;', ''))
+    .pipe(inject.prepend('window.gs.physics = {};\n'))
     .pipe(inject.replace('var __extends =', 'window.__extends ='))
     .pipe(minify({ ext: { min: ".min.js" } }))
     .pipe(gulp.dest('./bin'));
