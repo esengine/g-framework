@@ -25,7 +25,7 @@ module gs.physics {
             const minY = Math.min(this.minY, other.minY);
             const width = Math.max(this.maxX, other.maxX) - minX;
             const height = Math.max(this.maxY, other.maxY) - minY;
-        
+
             return new AABB(minX, minY, width, height);
         }
 
@@ -47,6 +47,16 @@ module gs.physics {
                 this.maxX < other.minX ||
                 this.minY > other.maxY ||
                 this.maxY < other.minY);
+        }
+
+        /**
+        * 获取 AABB 的中心点
+        * @returns 
+        */
+        getCenter(): Point {
+            const centerX = (this.minX + this.maxX) / 2;
+            const centerY = (this.minY + this.maxY) / 2;
+            return new Point(centerX, centerY);
         }
 
         /**
@@ -89,11 +99,11 @@ module gs.physics {
         clone(): AABB {
             const width = this.maxX - this.minX;
             const height = this.maxY - this.minY;
-            
+
             let cloned = new AABB(this.minX, this.minY, width, height);
             cloned.velocityX = this.velocityX;
             cloned.velocityY = this.velocityY;
-            
+
             return cloned;
         }
     }

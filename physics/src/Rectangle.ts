@@ -17,10 +17,10 @@ module gs.physics {
         }
 
         containsAABB(aabb: AABB): boolean {
-            return this.x < aabb.maxX &&
-                this.y > aabb.minX &&
-                this.width < aabb.maxY &&
-                this.height > aabb.minY;
+            return this.x <= aabb.minX &&
+                this.x + this.width >= aabb.maxX &&
+                this.y <= aabb.minY &&
+                this.y + this.height >= aabb.maxY;
         }
     }
 }

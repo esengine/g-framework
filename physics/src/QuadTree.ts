@@ -44,21 +44,6 @@ module gs.physics {
             return true;
         }
         
-        expandBoundary(aabb: AABB) {
-            // 扩大边界以包含新的 AABB
-            let x = Math.min(this.boundary.x, aabb.minX);
-            let y = Math.min(this.boundary.y, aabb.minY);
-            let width = Math.max(this.boundary.x + this.boundary.width, aabb.maxX) - x;
-            let height = Math.max(this.boundary.y + this.boundary.height, aabb.maxY) - y;
-            this.boundary = new Rectangle(x, y, width, height);
-
-            // 创建一个新的空间哈希表，并将所有的 AABBs 重新插入
-            this.spatialHash = new SpatialHash(this.cellSize);
-            for (let existingAabb of this.aabbs) {
-                this.spatialHash.insert(existingAabb);
-            }
-        }
-
         subdivide() {
             let x = this.boundary.x;
             let y = this.boundary.y;

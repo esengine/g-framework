@@ -22,25 +22,35 @@ module gs.physics {
             if (!this.left && !this.right) {
                 this.object = object;
                 this.bounds = object;
+                this.createChildNodes();
                 return false;
             }
-
+        
             // 如果这个节点不是叶子节点，那么插入到最小成本的子节点
-            let leftBounds = this.left.bounds.union(object);
-            let rightBounds = this.right.bounds.union(object);
-
-            let leftCost = leftBounds.area() * (this.left.size() + 1) - this.bounds.area() * this.size();
-            let rightCost = rightBounds.area() * (this.right.size() + 1) - this.bounds.area() * this.size();
-
+            let leftBounds = this.left!.bounds.union(object);
+            let rightBounds = this.right!.bounds.union(object);
+        
+            let leftCost = leftBounds.area() * (this.left!.size() + 1) - this.bounds.area() * this.size();
+            let rightCost = rightBounds.area() * (this.right!.size() + 1) - this.bounds.area() * this.size();
+        
             if (leftCost < rightCost) {
-                let rebalance = this.left.insert(object);
+                let rebalance = this.left!.insert(object);
                 this.bounds = this.bounds.union(object);
                 return rebalance;
             } else {
-                let rebalance = this.right.insert(object);
+                let rebalance = this.right!.insert(object);
                 this.bounds = this.bounds.union(object);
                 return rebalance;
             }
+        }
+
+        createChildNodes() {
+            let center = this.bounds.getCenter();
+            let leftBounds = new AABB(this.bounds.minX, this.bounds.minY, center.x, this.bounds.maxY);
+            let rightBounds = new AABB(center.x, this.bounds.minY, this.bounds.maxX, this.bounds.maxY);
+        
+            this.left = new BVHNode(leftBounds);
+            this.right = new BVHNode(rightBounds);
         }
 
         /**

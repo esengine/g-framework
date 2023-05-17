@@ -25,6 +25,11 @@ declare module gs.physics {
          */
         intersects(other: AABB): boolean;
         /**
+        * 获取 AABB 的中心点
+        * @returns
+        */
+        getCenter(): Point;
+        /**
          * 计算与另一个物体的可能碰撞时间
          * @param other
          * @returns
@@ -46,6 +51,7 @@ declare module gs.physics {
          * @returns
          */
         insert(object: AABB): boolean;
+        createChildNodes(): void;
         /**
          * 移除物体并返回是否需要重新平衡
          * @param object
@@ -140,7 +146,7 @@ declare module gs.physics {
 declare module gs.physics {
     class PhysicsSystem extends System {
         engine: PhysicsEngine;
-        constructor(entityManager: EntityManager);
+        constructor(entityManager: EntityManager, boundary?: Rectangle, capacity?: number, cellSize?: number);
         protected onComponentAdded(entity: Entity, component: Component): void;
         protected onComponentRemoved(entity: Entity, component: Component): void;
         update(entities: Entity[]): void;
@@ -169,7 +175,6 @@ declare module gs.physics {
         private aabbs;
         constructor(boundary: Rectangle, capacity: number, cellSize: number);
         insert(aabb: AABB): boolean;
-        expandBoundary(aabb: AABB): void;
         subdivide(): void;
         remove(aabb: AABB): any;
         query(range: Rectangle, found?: AABB[]): AABB[];

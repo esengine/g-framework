@@ -2,9 +2,9 @@ module gs.physics {
     export class PhysicsSystem extends System {
         engine: PhysicsEngine;
 
-        constructor(entityManager: EntityManager) {
+        constructor(entityManager: EntityManager, boundary: Rectangle = new Rectangle(0, 0, 1000, 1000), capacity: number = 4, cellSize: number = 10) {
             super(entityManager, 0, Matcher.empty().all(PhysicsComponent));
-            this.engine = new PhysicsEngine();
+            this.engine = new PhysicsEngine(boundary, capacity, cellSize);
         }
 
         protected onComponentAdded(entity: Entity, component: Component): void {
