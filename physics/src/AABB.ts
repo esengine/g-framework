@@ -5,14 +5,14 @@ module gs.physics {
         minY: number;
         maxY: number;
 
-        velocityX: number;
-        velocityY: number;
+        velocityX: number = 0;
+        velocityY: number = 0;
 
-        constructor(minX: number, maxX: number, minY: number, maxY: number) {
-            this.minX = minX;
-            this.maxX = maxX;
-            this.minY = minY;
-            this.maxY = maxY;
+        constructor(x: number, y: number, width: number, height: number) {
+            this.minX = x;
+            this.maxX = x + width;
+            this.minY = y;
+            this.maxY = y + height;
         }
 
         /**
@@ -21,12 +21,12 @@ module gs.physics {
          * @returns 
          */
         union(other: AABB): AABB {
-            return new AABB(
-                Math.min(this.minX, other.minX),
-                Math.max(this.maxX, other.maxX),
-                Math.min(this.minY, other.minY),
-                Math.max(this.maxY, other.maxY)
-            );
+            const minX = Math.min(this.minX, other.minX);
+            const minY = Math.min(this.minY, other.minY);
+            const width = Math.max(this.maxX, other.maxX) - minX;
+            const height = Math.max(this.maxY, other.maxY) - minY;
+        
+            return new AABB(minX, minY, width, height);
         }
 
         /**
@@ -87,9 +87,13 @@ module gs.physics {
         }
 
         clone(): AABB {
-            let cloned = new AABB(this.minX, this.maxX, this.minY, this.maxY);
+            const width = this.maxX - this.minX;
+            const height = this.maxY - this.minY;
+            
+            let cloned = new AABB(this.minX, this.minY, width, height);
             cloned.velocityX = this.velocityX;
             cloned.velocityY = this.velocityY;
+            
             return cloned;
         }
     }

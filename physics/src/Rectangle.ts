@@ -16,7 +16,7 @@ module gs.physics {
                 range.y + range.height <= this.y);
         }
 
-        intersectsAABB(aabb: AABB): boolean {
+        containsAABB(aabb: AABB): boolean {
             return this.x < aabb.maxX &&
                 this.y > aabb.minX &&
                 this.width < aabb.maxY &&

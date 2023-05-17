@@ -9,7 +9,7 @@ module gs.physics {
             this.left = null;
             this.right = null;
             this.object = object || null;
-            this.bounds = object ? object : new AABB(Infinity, -Infinity, Infinity, -Infinity);
+            this.bounds = object ? object.clone() : new AABB(0, 0, -Infinity, -Infinity);
         }
 
         /**

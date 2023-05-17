@@ -15,28 +15,35 @@ module gs.physics {
         }
 
         insert(aabb: AABB): boolean {
-            // 检查 AABB 是否在边界内
-            if (!this.boundary.intersectsAABB(aabb)) {
-                // AABB 不在边界内，需要扩大边界
-                this.expandBoundary(aabb);
+            if (!this.boundary.containsAABB(aabb)) {
+                return false;
             }
-
-            // 插入 AABB 到当前的四叉树节点
-            if (this.spatialHash.size() < this.capacity) {
-                this.spatialHash.insert(aabb);
-                // 将 AABB 存储到数组中
+            
+            if (this.aabbs.length < this.capacity && this.nw === null) {
                 this.aabbs.push(aabb);
+                this.spatialHash.insert(aabb);
                 return true;
             }
-
+            
             if (this.nw === null) {
                 this.subdivide();
             }
-
-            return (this.nw.insert(aabb) || this.ne.insert(aabb) ||
-                this.sw.insert(aabb) || this.se.insert(aabb));
+            
+            if (this.nw.insert(aabb)) {
+                return true;
+            } else if (this.ne.insert(aabb)) {
+                return true;
+            } else if (this.sw.insert(aabb)) {
+                return true;
+            } else if (this.se.insert(aabb)) {
+                return true;
+            }
+            
+            this.aabbs.push(aabb);
+            this.spatialHash.insert(aabb);
+            return true;
         }
-
+        
         expandBoundary(aabb: AABB) {
             // 扩大边界以包含新的 AABB
             let x = Math.min(this.boundary.x, aabb.minX);
@@ -57,28 +64,30 @@ module gs.physics {
             let y = this.boundary.y;
             let w = this.boundary.width / 2;
             let h = this.boundary.height / 2;
-
+        
             let nw = new Rectangle(x, y, w, h);
             let ne = new Rectangle(x + w, y, w, h);
             let sw = new Rectangle(x, y + h, w, h);
             let se = new Rectangle(x + w, y + h, w, h);
-
+        
             this.nw = new QuadTree(nw, this.capacity, this.spatialHash.cellSize);
             this.ne = new QuadTree(ne, this.capacity, this.spatialHash.cellSize);
             this.sw = new QuadTree(sw, this.capacity, this.spatialHash.cellSize);
             this.se = new QuadTree(se, this.capacity, this.spatialHash.cellSize);
-
-            let aabbs = this.spatialHash.queryPairs().reduce((acc, val) => acc.concat(val), []);
-            for (let aabb of aabbs) {
-                this.nw.insert(aabb) || this.ne.insert(aabb) ||
-                    this.sw.insert(aabb) || this.se.insert(aabb);
+        
+            for (let aabb of this.aabbs) {
+                if(this.nw.boundary.containsAABB(aabb)) this.nw.insert(aabb);
+                if(this.ne.boundary.containsAABB(aabb)) this.ne.insert(aabb);
+                if(this.sw.boundary.containsAABB(aabb)) this.sw.insert(aabb);
+                if(this.se.boundary.containsAABB(aabb)) this.se.insert(aabb);
             }
-
+        
+            this.aabbs = [];
             this.spatialHash.clear();
         }
-
+        
         remove(aabb: AABB) {
-            if (!this.boundary.intersectsAABB(aabb)) {
+            if (!this.boundary.containsAABB(aabb)) {
                 return false;
             }
 

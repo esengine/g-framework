@@ -6,7 +6,7 @@ declare module gs.physics {
         maxY: number;
         velocityX: number;
         velocityY: number;
-        constructor(minX: number, maxX: number, minY: number, maxY: number);
+        constructor(x: number, y: number, width: number, height: number);
         /**
          * 计算两个 AABB 的并集
          * @param other
@@ -117,6 +117,7 @@ declare module gs.physics {
 declare module gs.physics {
     class PhysicsComponent extends Component {
         aabb: AABB;
+        onInitialize(aabb: AABB): void;
     }
 }
 declare module gs.physics {
@@ -140,6 +141,8 @@ declare module gs.physics {
     class PhysicsSystem extends System {
         engine: PhysicsEngine;
         constructor(entityManager: EntityManager);
+        protected onComponentAdded(entity: Entity, component: Component): void;
+        protected onComponentRemoved(entity: Entity, component: Component): void;
         update(entities: Entity[]): void;
     }
 }
@@ -183,7 +186,7 @@ declare module gs.physics {
         constructor(x: number, y: number, width: number, height: number);
         contains(point: Point): boolean;
         intersects(range: Rectangle): boolean;
-        intersectsAABB(aabb: AABB): boolean;
+        containsAABB(aabb: AABB): boolean;
     }
 }
 declare module gs.physics {

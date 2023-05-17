@@ -44,11 +44,13 @@ var gs;
     var physics;
     (function (physics) {
         var AABB = /** @class */ (function () {
-            function AABB(minX, maxX, minY, maxY) {
-                this.minX = minX;
-                this.maxX = maxX;
-                this.minY = minY;
-                this.maxY = maxY;
+            function AABB(x, y, width, height) {
+                this.velocityX = 0;
+                this.velocityY = 0;
+                this.minX = x;
+                this.maxX = x + width;
+                this.minY = y;
+                this.maxY = y + height;
             }
             /**
              * 计算两个 AABB 的并集
@@ -56,7 +58,11 @@ var gs;
              * @returns
              */
             AABB.prototype.union = function (other) {
-                return new AABB(Math.min(this.minX, other.minX), Math.max(this.maxX, other.maxX), Math.min(this.minY, other.minY), Math.max(this.maxY, other.maxY));
+                var minX = Math.min(this.minX, other.minX);
+                var minY = Math.min(this.minY, other.minY);
+                var width = Math.max(this.maxX, other.maxX) - minX;
+                var height = Math.max(this.maxY, other.maxY) - minY;
+                return new AABB(minX, minY, width, height);
             };
             /**
              * 计算 AABB 的面积
@@ -111,7 +117,9 @@ var gs;
                 }
             };
             AABB.prototype.clone = function () {
-                var cloned = new AABB(this.minX, this.maxX, this.minY, this.maxY);
+                var width = this.maxX - this.minX;
+                var height = this.maxY - this.minY;
+                var cloned = new AABB(this.minX, this.minY, width, height);
                 cloned.velocityX = this.velocityX;
                 cloned.velocityY = this.velocityY;
                 return cloned;
@@ -130,7 +138,7 @@ var gs;
                 this.left = null;
                 this.right = null;
                 this.object = object || null;
-                this.bounds = object ? object : new physics.AABB(Infinity, -Infinity, Infinity, -Infinity);
+                this.bounds = object ? object.clone() : new physics.AABB(0, 0, -Infinity, -Infinity);
             }
             /**
              * 插入物体并返回是否需要重新平衡
@@ -370,6 +378,9 @@ var gs;
             function PhysicsComponent() {
                 return _super !== null && _super.apply(this, arguments) || this;
             }
+            PhysicsComponent.prototype.onInitialize = function (aabb) {
+                this.aabb = aabb;
+            };
             return PhysicsComponent;
         }(gs.Component));
         physics.PhysicsComponent = PhysicsComponent;
@@ -459,6 +470,14 @@ var gs;
                 _this.engine = new physics_1.PhysicsEngine();
                 return _this;
             }
+            PhysicsSystem.prototype.onComponentAdded = function (entity, component) {
+                if (component instanceof physics_1.PhysicsComponent) {
+                    this.engine.addObject(entity.getId(), component.aabb);
+                }
+            };
+            PhysicsSystem.prototype.onComponentRemoved = function (entity, component) {
+                this.engine.removeObject(entity.getId());
+            };
             PhysicsSystem.prototype.update = function (entities) {
                 var e_5, _a;
                 try {
@@ -519,23 +538,32 @@ var gs;
                 this.spatialHash = new physics.SpatialHash(cellSize);
             }
             QuadTree.prototype.insert = function (aabb) {
-                // 检查 AABB 是否在边界内
-                if (!this.boundary.intersectsAABB(aabb)) {
-                    // AABB 不在边界内，需要扩大边界
-                    this.expandBoundary(aabb);
+                if (!this.boundary.containsAABB(aabb)) {
+                    return false;
                 }
-                // 插入 AABB 到当前的四叉树节点
-                if (this.spatialHash.size() < this.capacity) {
-                    this.spatialHash.insert(aabb);
-                    // 将 AABB 存储到数组中
+                if (this.aabbs.length < this.capacity && this.nw === null) {
                     this.aabbs.push(aabb);
+                    this.spatialHash.insert(aabb);
                     return true;
                 }
                 if (this.nw === null) {
                     this.subdivide();
                 }
-                return (this.nw.insert(aabb) || this.ne.insert(aabb) ||
-                    this.sw.insert(aabb) || this.se.insert(aabb));
+                if (this.nw.insert(aabb)) {
+                    return true;
+                }
+                else if (this.ne.insert(aabb)) {
+                    return true;
+                }
+                else if (this.sw.insert(aabb)) {
+                    return true;
+                }
+                else if (this.se.insert(aabb)) {
+                    return true;
+                }
+                this.aabbs.push(aabb);
+                this.spatialHash.insert(aabb);
+                return true;
             };
             QuadTree.prototype.expandBoundary = function (aabb) {
                 var e_6, _a;
@@ -575,25 +603,31 @@ var gs;
                 this.ne = new QuadTree(ne, this.capacity, this.spatialHash.cellSize);
                 this.sw = new QuadTree(sw, this.capacity, this.spatialHash.cellSize);
                 this.se = new QuadTree(se, this.capacity, this.spatialHash.cellSize);
-                var aabbs = this.spatialHash.queryPairs().reduce(function (acc, val) { return acc.concat(val); }, []);
                 try {
-                    for (var aabbs_1 = __values(aabbs), aabbs_1_1 = aabbs_1.next(); !aabbs_1_1.done; aabbs_1_1 = aabbs_1.next()) {
-                        var aabb = aabbs_1_1.value;
-                        this.nw.insert(aabb) || this.ne.insert(aabb) ||
-                            this.sw.insert(aabb) || this.se.insert(aabb);
+                    for (var _b = __values(this.aabbs), _c = _b.next(); !_c.done; _c = _b.next()) {
+                        var aabb = _c.value;
+                        if (this.nw.boundary.containsAABB(aabb))
+                            this.nw.insert(aabb);
+                        if (this.ne.boundary.containsAABB(aabb))
+                            this.ne.insert(aabb);
+                        if (this.sw.boundary.containsAABB(aabb))
+                            this.sw.insert(aabb);
+                        if (this.se.boundary.containsAABB(aabb))
+                            this.se.insert(aabb);
                     }
                 }
                 catch (e_7_1) { e_7 = { error: e_7_1 }; }
                 finally {
                     try {
-                        if (aabbs_1_1 && !aabbs_1_1.done && (_a = aabbs_1.return)) _a.call(aabbs_1);
+                        if (_c && !_c.done && (_a = _b.return)) _a.call(_b);
                     }
                     finally { if (e_7) throw e_7.error; }
                 }
+                this.aabbs = [];
                 this.spatialHash.clear();
             };
             QuadTree.prototype.remove = function (aabb) {
-                if (!this.boundary.intersectsAABB(aabb)) {
+                if (!this.boundary.containsAABB(aabb)) {
                     return false;
                 }
                 if (this.spatialHash.remove(aabb)) {
@@ -688,7 +722,7 @@ var gs;
                     range.y >= this.y + this.height ||
                     range.y + range.height <= this.y);
             };
-            Rectangle.prototype.intersectsAABB = function (aabb) {
+            Rectangle.prototype.containsAABB = function (aabb) {
                 return this.x < aabb.maxX &&
                     this.y > aabb.minX &&
                     this.width < aabb.maxY &&
@@ -846,15 +880,15 @@ var gs;
                     activeList.push(a);
                 };
                 try {
-                    for (var aabbs_2 = __values(aabbs), aabbs_2_1 = aabbs_2.next(); !aabbs_2_1.done; aabbs_2_1 = aabbs_2.next()) {
-                        var a = aabbs_2_1.value;
+                    for (var aabbs_1 = __values(aabbs), aabbs_1_1 = aabbs_1.next(); !aabbs_1_1.done; aabbs_1_1 = aabbs_1.next()) {
+                        var a = aabbs_1_1.value;
                         _loop_1(a);
                     }
                 }
                 catch (e_11_1) { e_11 = { error: e_11_1 }; }
                 finally {
                     try {
-                        if (aabbs_2_1 && !aabbs_2_1.done && (_b = aabbs_2.return)) _b.call(aabbs_2);
+                        if (aabbs_1_1 && !aabbs_1_1.done && (_b = aabbs_1.return)) _b.call(aabbs_1);
                     }
                     finally { if (e_11) throw e_11.error; }
                 }
@@ -997,8 +1031,8 @@ var gs;
                 }
                 try {
                     // 移动剩下的物体
-                    for (var aabbs_3 = __values(aabbs), aabbs_3_1 = aabbs_3.next(); !aabbs_3_1.done; aabbs_3_1 = aabbs_3.next()) {
-                        var aabb = aabbs_3_1.value;
+                    for (var aabbs_2 = __values(aabbs), aabbs_2_1 = aabbs_2.next(); !aabbs_2_1.done; aabbs_2_1 = aabbs_2.next()) {
+                        var aabb = aabbs_2_1.value;
                         aabb.minX += aabb.velocityX;
                         aabb.minY += aabb.velocityY;
                         aabb.maxX += aabb.velocityX;
@@ -1008,7 +1042,7 @@ var gs;
                 catch (e_13_1) { e_13 = { error: e_13_1 }; }
                 finally {
                     try {
-                        if (aabbs_3_1 && !aabbs_3_1.done && (_a = aabbs_3.return)) _a.call(aabbs_3);
+                        if (aabbs_2_1 && !aabbs_2_1.done && (_a = aabbs_2.return)) _a.call(aabbs_2);
                     }
                     finally { if (e_13) throw e_13.error; }
                 }
