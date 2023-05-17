@@ -1,0 +1,29 @@
+{
+  "compilerOptions": {
+    "downlevelIteration": true,
+    "importHelpers": true,
+    "pretty": true,
+    "preserveConstEnums": true,
+    "alwaysStrict": true,
+    "module": "system",
+    "target": "es5",
+    "declaration": true,
+    "sourceMap": false,
+    "removeComments": false,
+    "experimentalDecorators": true,
+    "outFile": "./gs-physic.js",
+    "lib": [
+      "es5",
+      "dom",
+      "es2015.promise",
+      "es6"
+    ]
+  },
+  "include": [
+    "src",
+    "lib"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
+}
