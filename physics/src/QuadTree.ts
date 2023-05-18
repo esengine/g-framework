@@ -29,13 +29,7 @@ module gs.physics {
                 this.subdivide();
             }
             
-            if (this.nw.insert(aabb)) {
-                return true;
-            } else if (this.ne.insert(aabb)) {
-                return true;
-            } else if (this.sw.insert(aabb)) {
-                return true;
-            } else if (this.se.insert(aabb)) {
+            if (this.nw.insert(aabb) || this.ne.insert(aabb) || this.sw.insert(aabb) || this.se.insert(aabb)) {
                 return true;
             }
             
@@ -109,26 +103,27 @@ module gs.physics {
 
         queryPairs(): [AABB, AABB][] {
             let pairs: [AABB, AABB][] = [];
-
-            // 如果这个节点没有被分割，那么直接从空间哈希中查询
-            if (!this.nw) {
-                let potentialCollisions = this.spatialHash.queryPairs();
-                for (let pair of potentialCollisions) {
-                    pairs.push(pair);
-                }
-            } else {
-                // 如果这个节点已经被分割，那么从四个子节点中查询
+        
+            // 对于本节点中的 AABB 对象，使用 SpatialHash 获取可能的碰撞对
+            let potentialCollisions = this.spatialHash.queryPairs();
+            for (let pair of potentialCollisions) {
+                pairs.push(pair);
+            }
+        
+            // 如果这个节点已经被分割，那么从四个子节点中查询
+            if (this.nw) {
                 let northwestPairs = this.nw.queryPairs();
                 let northeastPairs = this.ne.queryPairs();
                 let southwestPairs = this.sw.queryPairs();
                 let southeastPairs = this.se.queryPairs();
-
+        
                 pairs = pairs.concat(northwestPairs, northeastPairs, southwestPairs, southeastPairs);
             }
-
+        
             return pairs;
         }
-
+        
+        
         update(point: AABB, newPosition: AABB): boolean {
             if (!this.remove(point)) {
                 return false;

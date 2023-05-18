@@ -1,5 +1,8 @@
 module gs.physics {
     export class AABB {
+        static nextId = 0;
+        id: number;
+
         minX: number;
         maxX: number;
         minY: number;
@@ -8,7 +11,10 @@ module gs.physics {
         velocityX: number = 0;
         velocityY: number = 0;
 
+        colliding: boolean = false;
+
         constructor(x: number, y: number, width: number, height: number) {
+            this.id = AABB.nextId++;
             this.minX = x;
             this.maxX = x + width;
             this.minY = y;
@@ -105,6 +111,10 @@ module gs.physics {
             cloned.velocityY = this.velocityY;
 
             return cloned;
+        }
+
+        toString(): string {
+            return `minX:${this.minX} maxX:${this.maxX} minY:${this.minY} maxY${this.maxY}`;
         }
     }
 }

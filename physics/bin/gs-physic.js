@@ -47,6 +47,8 @@ var gs;
             function AABB(x, y, width, height) {
                 this.velocityX = 0;
                 this.velocityY = 0;
+                this.colliding = false;
+                this.id = AABB.nextId++;
                 this.minX = x;
                 this.maxX = x + width;
                 this.minY = y;
@@ -133,6 +135,10 @@ var gs;
                 cloned.velocityY = this.velocityY;
                 return cloned;
             };
+            AABB.prototype.toString = function () {
+                return "minX:" + this.minX + " maxX:" + this.maxX + " minY:" + this.minY + " maxY" + this.maxY;
+            };
+            AABB.nextId = 0;
             return AABB;
         }());
         physics.AABB = AABB;
@@ -414,18 +420,18 @@ var gs;
                 if (capacity === void 0) { capacity = 4; }
                 if (cellSize === void 0) { cellSize = 10; }
                 this.quadtree = new physics.QuadTree(boundary, capacity, cellSize);
-                this.bvh = new physics.BVH();
                 this.entities = new Map();
             }
             PhysicsEngine.prototype.addObject = function (entityId, aabb) {
                 this.entities.set(entityId, aabb);
                 this.quadtree.insert(aabb);
-                this.bvh.insert(aabb);
+            };
+            PhysicsEngine.prototype.getObject = function (entityId) {
+                return this.entities.get(entityId);
             };
             PhysicsEngine.prototype.removeObject = function (entityId) {
                 var aabb = this.entities.get(entityId);
                 if (aabb) {
-                    this.bvh.remove(aabb);
                     this.quadtree.remove(aabb);
                     this.entities.delete(entityId);
                 }
@@ -433,35 +439,23 @@ var gs;
             PhysicsEngine.prototype.updateObject = function (entityId, newPosition) {
                 var aabb = this.entities.get(entityId);
                 if (aabb) {
-                    this.bvh.remove(aabb);
                     this.quadtree.remove(aabb);
                     aabb.minX = newPosition.minX;
                     aabb.minY = newPosition.minY;
                     aabb.maxX = newPosition.maxX;
                     aabb.maxY = newPosition.maxY;
-                    this.bvh.insert(aabb);
                     this.quadtree.insert(aabb);
                 }
             };
             PhysicsEngine.prototype.step = function (time) {
                 var e_4, _a;
-                // 1. 利用四叉树找出可能碰撞的物体对
                 var potentialCollisions = this.quadtree.queryPairs();
-                // 2. 利用扫描排序缩小可能碰撞的范围
-                potentialCollisions = physics.SweepAndPrune.sweepAndPrune(potentialCollisions);
-                // 3. 使用BVH进一步减少物体对数量
-                potentialCollisions = this.bvh.filterPairs(potentialCollisions);
                 try {
-                    // 4. 使用基于时间的碰撞检测进行碰撞预测和处理
                     for (var potentialCollisions_1 = __values(potentialCollisions), potentialCollisions_1_1 = potentialCollisions_1.next(); !potentialCollisions_1_1.done; potentialCollisions_1_1 = potentialCollisions_1.next()) {
                         var pair = potentialCollisions_1_1.value;
                         var _b = __read(pair, 2), aabb1 = _b[0], aabb2 = _b[1];
-                        var _c = __read(physics.TimeBaseCollisionDetection.handleCollision(aabb1, aabb2), 2), newAabb1 = _c[0], newAabb2 = _c[1];
-                        // 5. 立即更新四叉树和 BVH
-                        this.quadtree.update(aabb1, newAabb1);
-                        this.bvh.update(aabb1, newAabb1);
-                        this.quadtree.update(aabb2, newAabb2);
-                        this.bvh.update(aabb2, newAabb2);
+                        aabb1.colliding = true;
+                        aabb2.colliding = true;
                     }
                 }
                 catch (e_4_1) { e_4 = { error: e_4_1 }; }
@@ -480,19 +474,19 @@ var gs;
 var gs;
 (function (gs) {
     var physics;
-    (function (physics_1) {
+    (function (physics) {
         var PhysicsSystem = /** @class */ (function (_super) {
             __extends(PhysicsSystem, _super);
             function PhysicsSystem(entityManager, boundary, capacity, cellSize) {
-                if (boundary === void 0) { boundary = new physics_1.Rectangle(0, 0, 1000, 1000); }
+                if (boundary === void 0) { boundary = new physics.Rectangle(0, 0, 1000, 1000); }
                 if (capacity === void 0) { capacity = 4; }
                 if (cellSize === void 0) { cellSize = 10; }
-                var _this = _super.call(this, entityManager, 0, gs.Matcher.empty().all(physics_1.PhysicsComponent)) || this;
-                _this.engine = new physics_1.PhysicsEngine(boundary, capacity, cellSize);
+                var _this = _super.call(this, entityManager, 0, gs.Matcher.empty().all(physics.PhysicsComponent)) || this;
+                _this.engine = new physics.PhysicsEngine(boundary, capacity, cellSize);
                 return _this;
             }
             PhysicsSystem.prototype.onComponentAdded = function (entity, component) {
-                if (component instanceof physics_1.PhysicsComponent) {
+                if (component instanceof physics.PhysicsComponent) {
                     this.engine.addObject(entity.getId(), component.aabb);
                 }
             };
@@ -500,29 +494,13 @@ var gs;
                 this.engine.removeObject(entity.getId());
             };
             PhysicsSystem.prototype.update = function (entities) {
-                var e_5, _a;
-                try {
-                    for (var entities_1 = __values(entities), entities_1_1 = entities_1.next(); !entities_1_1.done; entities_1_1 = entities_1.next()) {
-                        var entity = entities_1_1.value;
-                        var physics_2 = entity.getComponent(physics_1.PhysicsComponent);
-                        if (physics_2) {
-                        }
-                    }
-                }
-                catch (e_5_1) { e_5 = { error: e_5_1 }; }
-                finally {
-                    try {
-                        if (entities_1_1 && !entities_1_1.done && (_a = entities_1.return)) _a.call(entities_1);
-                    }
-                    finally { if (e_5) throw e_5.error; }
-                }
                 // 运行物理引擎
                 var dt = gs.TimeManager.getInstance().deltaTime;
                 this.engine.step(dt);
             };
             return PhysicsSystem;
         }(gs.System));
-        physics_1.PhysicsSystem = PhysicsSystem;
+        physics.PhysicsSystem = PhysicsSystem;
     })(physics = gs.physics || (gs.physics = {}));
 })(gs || (gs = {}));
 var gs;
@@ -570,16 +548,7 @@ var gs;
                 if (this.nw === null) {
                     this.subdivide();
                 }
-                if (this.nw.insert(aabb)) {
-                    return true;
-                }
-                else if (this.ne.insert(aabb)) {
-                    return true;
-                }
-                else if (this.sw.insert(aabb)) {
-                    return true;
-                }
-                else if (this.se.insert(aabb)) {
+                if (this.nw.insert(aabb) || this.ne.insert(aabb) || this.sw.insert(aabb) || this.se.insert(aabb)) {
                     return true;
                 }
                 this.aabbs.push(aabb);
@@ -587,7 +556,7 @@ var gs;
                 return true;
             };
             QuadTree.prototype.subdivide = function () {
-                var e_6, _a;
+                var e_5, _a;
                 var x = this.boundary.x;
                 var y = this.boundary.y;
                 var w = this.boundary.width / 2;
@@ -613,12 +582,12 @@ var gs;
                             this.se.insert(aabb);
                     }
                 }
-                catch (e_6_1) { e_6 = { error: e_6_1 }; }
+                catch (e_5_1) { e_5 = { error: e_5_1 }; }
                 finally {
                     try {
                         if (_c && !_c.done && (_a = _b.return)) _a.call(_b);
                     }
-                    finally { if (e_6) throw e_6.error; }
+                    finally { if (e_5) throw e_5.error; }
                 }
                 this.aabbs = [];
                 this.spatialHash.clear();
@@ -652,27 +621,25 @@ var gs;
                 return found;
             };
             QuadTree.prototype.queryPairs = function () {
-                var e_7, _a;
+                var e_6, _a;
                 var pairs = [];
-                // 如果这个节点没有被分割，那么直接从空间哈希中查询
-                if (!this.nw) {
-                    var potentialCollisions = this.spatialHash.queryPairs();
-                    try {
-                        for (var potentialCollisions_2 = __values(potentialCollisions), potentialCollisions_2_1 = potentialCollisions_2.next(); !potentialCollisions_2_1.done; potentialCollisions_2_1 = potentialCollisions_2.next()) {
-                            var pair = potentialCollisions_2_1.value;
-                            pairs.push(pair);
-                        }
-                    }
-                    catch (e_7_1) { e_7 = { error: e_7_1 }; }
-                    finally {
-                        try {
-                            if (potentialCollisions_2_1 && !potentialCollisions_2_1.done && (_a = potentialCollisions_2.return)) _a.call(potentialCollisions_2);
-                        }
-                        finally { if (e_7) throw e_7.error; }
+                // 对于本节点中的 AABB 对象，使用 SpatialHash 获取可能的碰撞对
+                var potentialCollisions = this.spatialHash.queryPairs();
+                try {
+                    for (var potentialCollisions_2 = __values(potentialCollisions), potentialCollisions_2_1 = potentialCollisions_2.next(); !potentialCollisions_2_1.done; potentialCollisions_2_1 = potentialCollisions_2.next()) {
+                        var pair = potentialCollisions_2_1.value;
+                        pairs.push(pair);
                     }
                 }
-                else {
-                    // 如果这个节点已经被分割，那么从四个子节点中查询
+                catch (e_6_1) { e_6 = { error: e_6_1 }; }
+                finally {
+                    try {
+                        if (potentialCollisions_2_1 && !potentialCollisions_2_1.done && (_a = potentialCollisions_2.return)) _a.call(potentialCollisions_2);
+                    }
+                    finally { if (e_6) throw e_6.error; }
+                }
+                // 如果这个节点已经被分割，那么从四个子节点中查询
+                if (this.nw) {
                     var northwestPairs = this.nw.queryPairs();
                     var northeastPairs = this.ne.queryPairs();
                     var southwestPairs = this.sw.queryPairs();
@@ -743,7 +710,7 @@ var gs;
                 this.buckets = new Map();
             }
             SpatialHash.prototype.size = function () {
-                var e_8, _a;
+                var e_7, _a;
                 var size = 0;
                 try {
                     for (var _b = __values(this.buckets.values()), _c = _b.next(); !_c.done; _c = _b.next()) {
@@ -751,12 +718,12 @@ var gs;
                         size += bucket.length;
                     }
                 }
-                catch (e_8_1) { e_8 = { error: e_8_1 }; }
+                catch (e_7_1) { e_7 = { error: e_7_1 }; }
                 finally {
                     try {
                         if (_c && !_c.done && (_a = _b.return)) _a.call(_b);
                     }
-                    finally { if (e_8) throw e_8.error; }
+                    finally { if (e_7) throw e_7.error; }
                 }
                 return size;
             };
@@ -804,12 +771,19 @@ var gs;
             };
             SpatialHash.prototype.queryPairs = function () {
                 var pairs = [];
+                var checkedPairs = new Set();
                 // 遍历每个 bucket
                 this.buckets.forEach(function (bucket, key) {
                     // 在每个 bucket 中，对所有物体进行两两对比
                     for (var i = 0; i < bucket.length; i++) {
                         for (var j = i + 1; j < bucket.length; j++) {
-                            pairs.push([bucket[i], bucket[j]]);
+                            // 生成一个由两个 AABB 的 id 组成的唯一字符串，保证 id 小的 AABB 总是在前
+                            var pairId = bucket[i].id < bucket[j].id ? bucket[i].id + "," + bucket[j].id : bucket[j].id + "," + bucket[i].id;
+                            // 如果这个 AABB 对还没有被检查过，就添加到结果中
+                            if (!checkedPairs.has(pairId)) {
+                                pairs.push([bucket[i], bucket[j]]);
+                                checkedPairs.add(pairId);
+                            }
                         }
                     }
                 });
@@ -833,101 +807,38 @@ var gs;
         var SweepAndPrune = /** @class */ (function () {
             function SweepAndPrune() {
             }
-            SweepAndPrune.sweepAndPrune = function (pairs) {
-                var e_9, _a, e_10, _b;
-                // 将 AABB 对象提取到一个数组中
+            SweepAndPrune.filterPairs = function (pairs) {
+                // 将所有的 AABB 对平铺到一个数组中
                 var aabbs = [];
-                try {
-                    for (var pairs_2 = __values(pairs), pairs_2_1 = pairs_2.next(); !pairs_2_1.done; pairs_2_1 = pairs_2.next()) {
-                        var pair = pairs_2_1.value;
-                        aabbs.push(pair[0]);
-                        aabbs.push(pair[1]);
-                    }
-                }
-                catch (e_9_1) { e_9 = { error: e_9_1 }; }
-                finally {
-                    try {
-                        if (pairs_2_1 && !pairs_2_1.done && (_a = pairs_2.return)) _a.call(pairs_2);
-                    }
-                    finally { if (e_9) throw e_9.error; }
-                }
+                pairs.forEach(function (pair) {
+                    aabbs.push(pair[0]);
+                    aabbs.push(pair[1]);
+                });
+                // 去重
+                aabbs = __spread(new Set(aabbs));
+                // 应用扫描排序
+                var result = this.scanSort(aabbs);
+                return result;
+            };
+            SweepAndPrune.scanSort = function (aabbs) {
+                // Step 1: 对 AABB 进行排序
                 aabbs.sort(function (a, b) { return a.minX - b.minX; });
-                var potentialCollisions = [];
-                var activeList = [];
-                var _loop_1 = function (i) {
-                    var e_11, _a;
-                    var a = aabbs[i];
-                    var nextA = aabbs[i + 1];
-                    // 获取 activeList 中 maxX 大于 a.minX 的 AABB
-                    var overlappingList = activeList.filter(function (b) { return b.maxX > a.minX; });
-                    try {
-                        for (var overlappingList_1 = __values(overlappingList), overlappingList_1_1 = overlappingList_1.next(); !overlappingList_1_1.done; overlappingList_1_1 = overlappingList_1.next()) {
-                            var b = overlappingList_1_1.value;
-                            // 检查 a 和 b 是否在 y 轴上重叠
-                            if (a.minY <= b.maxY && a.maxY >= b.minY) {
-                                potentialCollisions.push([a, b]);
-                            }
+                // Step 2: 从左到右扫描 AABB 列表
+                var pairs = [];
+                for (var i = 0; i < aabbs.length; i++) {
+                    for (var j = i + 1; j < aabbs.length; j++) {
+                        // 如果当前 AABB 的 maxX 小于下一个 AABB 的 minX，则结束循环
+                        // 因为后面的 AABB 不可能与当前 AABB 相交
+                        if (aabbs[i].maxX < aabbs[j].minX) {
+                            break;
                         }
-                    }
-                    catch (e_11_1) { e_11 = { error: e_11_1 }; }
-                    finally {
-                        try {
-                            if (overlappingList_1_1 && !overlappingList_1_1.done && (_a = overlappingList_1.return)) _a.call(overlappingList_1);
-                        }
-                        finally { if (e_11) throw e_11.error; }
-                    }
-                    // 将 a 添加到 activeList 中
-                    activeList.push(a);
-                    // 从 activeList 中移除 maxX 小于 nextA.minX 的 AABB
-                    activeList = activeList.filter(function (b) { return b.maxX > nextA.minX; });
-                };
-                for (var i = 0; i < aabbs.length - 1; i++) {
-                    _loop_1(i);
-                }
-                // 处理最后一个元素
-                var lastA = aabbs[aabbs.length - 1];
-                var lastOverlappingList = activeList.filter(function (b) { return b.maxX > lastA.minX; });
-                try {
-                    for (var lastOverlappingList_1 = __values(lastOverlappingList), lastOverlappingList_1_1 = lastOverlappingList_1.next(); !lastOverlappingList_1_1.done; lastOverlappingList_1_1 = lastOverlappingList_1.next()) {
-                        var b = lastOverlappingList_1_1.value;
-                        if (lastA.minY <= b.maxY && lastA.maxY >= b.minY) {
-                            potentialCollisions.push([lastA, b]);
+                        // Step 3: 检查 AABB 是否相交，并将碰撞对添加到列表中
+                        if (aabbs[i].intersects(aabbs[j])) {
+                            pairs.push([aabbs[i], aabbs[j]]);
                         }
                     }
                 }
-                catch (e_10_1) { e_10 = { error: e_10_1 }; }
-                finally {
-                    try {
-                        if (lastOverlappingList_1_1 && !lastOverlappingList_1_1.done && (_b = lastOverlappingList_1.return)) _b.call(lastOverlappingList_1);
-                    }
-                    finally { if (e_10) throw e_10.error; }
-                }
-                return potentialCollisions;
-            };
-            SweepAndPrune.mergeSort = function (aabbs, compareFn) {
-                if (aabbs.length <= 1) {
-                    return aabbs;
-                }
-                var middle = Math.floor(aabbs.length / 2);
-                var left = this.mergeSort(aabbs.slice(0, middle), compareFn);
-                var right = this.mergeSort(aabbs.slice(middle), compareFn);
-                return this.merge(left, right, compareFn);
-            };
-            SweepAndPrune.merge = function (left, right, compareFn) {
-                var result = [];
-                var indexLeft = 0;
-                var indexRight = 0;
-                while (indexLeft < left.length && indexRight < right.length) {
-                    if (compareFn(left[indexLeft], right[indexRight]) <= 0) {
-                        result.push(left[indexLeft]);
-                        indexLeft++;
-                    }
-                    else {
-                        result.push(right[indexRight]);
-                        indexRight++;
-                    }
-                }
-                return result.concat(left.slice(indexLeft)).concat(right.slice(indexRight));
+                return pairs;
             };
             return SweepAndPrune;
         }());
@@ -970,7 +881,7 @@ var gs;
              * @param aabbs
              */
             TimeBaseCollisionDetection.handleCollisions = function (aabbs) {
-                var e_12, _a;
+                var e_8, _a;
                 var collisionPairs = [];
                 // 计算所有可能的碰撞对
                 for (var i = 0; i < aabbs.length; i++) {
@@ -978,8 +889,8 @@ var gs;
                         collisionPairs.push([aabbs[i], aabbs[j]]);
                     }
                 }
-                var _loop_2 = function () {
-                    var e_13, _a;
+                var _loop_1 = function () {
+                    var e_9, _a;
                     // 找出最早的碰撞
                     var earliestCollisionTime = Infinity;
                     var earliestCollisionPair = null;
@@ -993,12 +904,12 @@ var gs;
                             }
                         }
                     }
-                    catch (e_13_1) { e_13 = { error: e_13_1 }; }
+                    catch (e_9_1) { e_9 = { error: e_9_1 }; }
                     finally {
                         try {
                             if (collisionPairs_1_1 && !collisionPairs_1_1.done && (_a = collisionPairs_1.return)) _a.call(collisionPairs_1);
                         }
-                        finally { if (e_13) throw e_13.error; }
+                        finally { if (e_9) throw e_9.error; }
                     }
                     // 如果没有碰撞，那么我们就完成了
                     if (earliestCollisionPair === null) {
@@ -1035,7 +946,7 @@ var gs;
                     collisionPairs = collisionPairs.filter(function (pair) { return pair !== earliestCollisionPair; });
                 };
                 while (true) {
-                    var state_1 = _loop_2();
+                    var state_1 = _loop_1();
                     if (state_1 === "break")
                         break;
                 }
@@ -1049,12 +960,12 @@ var gs;
                         aabb.maxY += aabb.velocityY;
                     }
                 }
-                catch (e_12_1) { e_12 = { error: e_12_1 }; }
+                catch (e_8_1) { e_8 = { error: e_8_1 }; }
                 finally {
                     try {
                         if (aabbs_1_1 && !aabbs_1_1.done && (_a = aabbs_1.return)) _a.call(aabbs_1);
                     }
-                    finally { if (e_12) throw e_12.error; }
+                    finally { if (e_8) throw e_8.error; }
                 }
             };
             return TimeBaseCollisionDetection;

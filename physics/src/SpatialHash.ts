@@ -65,18 +65,26 @@ module gs.physics {
 
         queryPairs(): [AABB, AABB][] {
             let pairs: [AABB, AABB][] = [];
-
+            let checkedPairs: Set<string> = new Set();
+        
             // 遍历每个 bucket
             this.buckets.forEach((bucket, key) => {
-
+        
                 // 在每个 bucket 中，对所有物体进行两两对比
                 for (let i = 0; i < bucket.length; i++) {
                     for (let j = i + 1; j < bucket.length; j++) {
-                        pairs.push([bucket[i], bucket[j]]);
+                        // 生成一个由两个 AABB 的 id 组成的唯一字符串，保证 id 小的 AABB 总是在前
+                        let pairId = bucket[i].id < bucket[j].id ? `${bucket[i].id},${bucket[j].id}` : `${bucket[j].id},${bucket[i].id}`;
+        
+                        // 如果这个 AABB 对还没有被检查过，就添加到结果中
+                        if (!checkedPairs.has(pairId)) {
+                            pairs.push([bucket[i], bucket[j]]);
+                            checkedPairs.add(pairId);
+                        }
                     }
                 }
             });
-
+        
             return pairs;
         }
 

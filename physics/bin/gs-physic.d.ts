@@ -1,11 +1,14 @@
 declare module gs.physics {
     class AABB {
+        static nextId: number;
+        id: number;
         minX: number;
         maxX: number;
         minY: number;
         maxY: number;
         velocityX: number;
         velocityY: number;
+        colliding: boolean;
         constructor(x: number, y: number, width: number, height: number);
         /**
          * 计算两个 AABB 的并集
@@ -36,6 +39,7 @@ declare module gs.physics {
          */
         computeCollisionTime(other: AABB): number;
         clone(): AABB;
+        toString(): string;
     }
 }
 declare module gs.physics {
@@ -129,10 +133,10 @@ declare module gs.physics {
 declare module gs.physics {
     class PhysicsEngine {
         private quadtree;
-        private bvh;
         private entities;
         constructor(boundary?: Rectangle, capacity?: number, cellSize?: number);
         addObject(entityId: number, aabb: AABB): void;
+        getObject(entityId: number): AABB;
         removeObject(entityId: number): void;
         updateObject(entityId: number, newPosition: {
             minX: number;
@@ -216,9 +220,8 @@ declare module gs.physics {
      * 扫描排序
      */
     class SweepAndPrune {
-        static sweepAndPrune(pairs: [AABB, AABB][]): [AABB, AABB][];
-        private static mergeSort;
-        private static merge;
+        static filterPairs(pairs: [AABB, AABB][]): [AABB, AABB][];
+        static scanSort(aabbs: AABB[]): [AABB, AABB][];
     }
 }
 declare module gs.physics {
