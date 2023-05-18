@@ -25,14 +25,14 @@ module gs.physics {
                 this.createChildNodes();
                 return false;
             }
-        
+
             // 如果这个节点不是叶子节点，那么插入到最小成本的子节点
             let leftBounds = this.left!.bounds.union(object);
             let rightBounds = this.right!.bounds.union(object);
-        
+
             let leftCost = leftBounds.area() * (this.left!.size() + 1) - this.bounds.area() * this.size();
             let rightCost = rightBounds.area() * (this.right!.size() + 1) - this.bounds.area() * this.size();
-        
+
             if (leftCost < rightCost) {
                 let rebalance = this.left!.insert(object);
                 this.bounds = this.bounds.union(object);
@@ -46,9 +46,12 @@ module gs.physics {
 
         createChildNodes() {
             let center = this.bounds.getCenter();
-            let leftBounds = new AABB(this.bounds.minX, this.bounds.minY, center.x, this.bounds.maxY);
-            let rightBounds = new AABB(center.x, this.bounds.minY, this.bounds.maxX, this.bounds.maxY);
-        
+
+            // 在 createChildNodes 中
+            let leftBounds = new AABB(this.bounds.minX, this.bounds.minY, center.x - this.bounds.minX, this.bounds.maxY - this.bounds.minY);
+            let rightBounds = new AABB(center.x, this.bounds.minY, this.bounds.maxX - center.x, this.bounds.maxY - this.bounds.minY);
+
+
             this.left = new BVHNode(leftBounds);
             this.right = new BVHNode(rightBounds);
         }

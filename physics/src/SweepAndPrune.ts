@@ -16,20 +16,35 @@ module gs.physics {
             let potentialCollisions: [AABB, AABB][] = [];
             let activeList: AABB[] = [];
 
-            for (let a of aabbs) {
-                // 从 activeList 中移除 maxX 小于 a.minX 的 AABB
-                activeList = activeList.filter(b => b.maxX > a.minX);
-
-                for (let b of activeList) {
+            for (let i = 0; i < aabbs.length - 1; i++) {
+                let a = aabbs[i];
+                let nextA = aabbs[i + 1];
+            
+                // 获取 activeList 中 maxX 大于 a.minX 的 AABB
+                let overlappingList = activeList.filter(b => b.maxX > a.minX);
+            
+                for (let b of overlappingList) {
                     // 检查 a 和 b 是否在 y 轴上重叠
                     if (a.minY <= b.maxY && a.maxY >= b.minY) {
                         potentialCollisions.push([a, b]);
                     }
                 }
-
+            
                 // 将 a 添加到 activeList 中
                 activeList.push(a);
+                // 从 activeList 中移除 maxX 小于 nextA.minX 的 AABB
+                activeList = activeList.filter(b => b.maxX > nextA.minX);
             }
+            
+            // 处理最后一个元素
+            let lastA = aabbs[aabbs.length - 1];
+            let lastOverlappingList = activeList.filter(b => b.maxX > lastA.minX);
+            for (let b of lastOverlappingList) {
+                if (lastA.minY <= b.maxY && lastA.maxY >= b.minY) {
+                    potentialCollisions.push([lastA, b]);
+                }
+            }
+            
 
             return potentialCollisions;
         }

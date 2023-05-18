@@ -180,8 +180,9 @@ var gs;
             };
             BVHNode.prototype.createChildNodes = function () {
                 var center = this.bounds.getCenter();
-                var leftBounds = new physics.AABB(this.bounds.minX, this.bounds.minY, center.x, this.bounds.maxY);
-                var rightBounds = new physics.AABB(center.x, this.bounds.minY, this.bounds.maxX, this.bounds.maxY);
+                // 在 createChildNodes 中
+                var leftBounds = new physics.AABB(this.bounds.minX, this.bounds.minY, center.x - this.bounds.minX, this.bounds.maxY - this.bounds.minY);
+                var rightBounds = new physics.AABB(center.x, this.bounds.minY, this.bounds.maxX - center.x, this.bounds.maxY - this.bounds.minY);
                 this.left = new BVHNode(leftBounds);
                 this.right = new BVHNode(rightBounds);
             };
@@ -448,9 +449,9 @@ var gs;
                 var potentialCollisions = this.quadtree.queryPairs();
                 // 2. 利用扫描排序缩小可能碰撞的范围
                 potentialCollisions = physics.SweepAndPrune.sweepAndPrune(potentialCollisions);
+                // 3. 使用BVH进一步减少物体对数量
+                potentialCollisions = this.bvh.filterPairs(potentialCollisions);
                 try {
-                    // 3. 使用BVH进一步减少物体对数量
-                    // potentialCollisions = this.bvh.filterPairs(potentialCollisions);
                     // 4. 使用基于时间的碰撞检测进行碰撞预测和处理
                     for (var potentialCollisions_1 = __values(potentialCollisions), potentialCollisions_1_1 = potentialCollisions_1.next(); !potentialCollisions_1_1.done; potentialCollisions_1_1 = potentialCollisions_1.next()) {
                         var pair = potentialCollisions_1_1.value;
@@ -778,6 +779,7 @@ var gs;
             };
             SpatialHash.prototype.remove = function (aabb) {
                 var minX = aabb.minX, minY = aabb.minY, maxX = aabb.maxX, maxY = aabb.maxY;
+                var removed = false;
                 for (var x = minX; x <= maxX; x += this.cellSize) {
                     for (var y = minY; y <= maxY; y += this.cellSize) {
                         var key = this.hash(x, y);
@@ -789,12 +791,12 @@ var gs;
                                 if (bucket.length === 0) {
                                     this.buckets.delete(key);
                                 }
-                                return true;
+                                removed = true;
                             }
                         }
                     }
                 }
-                return false;
+                return removed;
             };
             SpatialHash.prototype.query = function (x, y) {
                 var key = this.hash(x, y);
@@ -852,13 +854,15 @@ var gs;
                 aabbs.sort(function (a, b) { return a.minX - b.minX; });
                 var potentialCollisions = [];
                 var activeList = [];
-                var _loop_1 = function (a) {
+                var _loop_1 = function (i) {
                     var e_11, _a;
-                    // 从 activeList 中移除 maxX 小于 a.minX 的 AABB
-                    activeList = activeList.filter(function (b) { return b.maxX > a.minX; });
+                    var a = aabbs[i];
+                    var nextA = aabbs[i + 1];
+                    // 获取 activeList 中 maxX 大于 a.minX 的 AABB
+                    var overlappingList = activeList.filter(function (b) { return b.maxX > a.minX; });
                     try {
-                        for (var activeList_1 = __values(activeList), activeList_1_1 = activeList_1.next(); !activeList_1_1.done; activeList_1_1 = activeList_1.next()) {
-                            var b = activeList_1_1.value;
+                        for (var overlappingList_1 = __values(overlappingList), overlappingList_1_1 = overlappingList_1.next(); !overlappingList_1_1.done; overlappingList_1_1 = overlappingList_1.next()) {
+                            var b = overlappingList_1_1.value;
                             // 检查 a 和 b 是否在 y 轴上重叠
                             if (a.minY <= b.maxY && a.maxY >= b.minY) {
                                 potentialCollisions.push([a, b]);
@@ -868,23 +872,33 @@ var gs;
                     catch (e_11_1) { e_11 = { error: e_11_1 }; }
                     finally {
                         try {
-                            if (activeList_1_1 && !activeList_1_1.done && (_a = activeList_1.return)) _a.call(activeList_1);
+                            if (overlappingList_1_1 && !overlappingList_1_1.done && (_a = overlappingList_1.return)) _a.call(overlappingList_1);
                         }
                         finally { if (e_11) throw e_11.error; }
                     }
                     // 将 a 添加到 activeList 中
                     activeList.push(a);
+                    // 从 activeList 中移除 maxX 小于 nextA.minX 的 AABB
+                    activeList = activeList.filter(function (b) { return b.maxX > nextA.minX; });
                 };
+                for (var i = 0; i < aabbs.length - 1; i++) {
+                    _loop_1(i);
+                }
+                // 处理最后一个元素
+                var lastA = aabbs[aabbs.length - 1];
+                var lastOverlappingList = activeList.filter(function (b) { return b.maxX > lastA.minX; });
                 try {
-                    for (var aabbs_1 = __values(aabbs), aabbs_1_1 = aabbs_1.next(); !aabbs_1_1.done; aabbs_1_1 = aabbs_1.next()) {
-                        var a = aabbs_1_1.value;
-                        _loop_1(a);
+                    for (var lastOverlappingList_1 = __values(lastOverlappingList), lastOverlappingList_1_1 = lastOverlappingList_1.next(); !lastOverlappingList_1_1.done; lastOverlappingList_1_1 = lastOverlappingList_1.next()) {
+                        var b = lastOverlappingList_1_1.value;
+                        if (lastA.minY <= b.maxY && lastA.maxY >= b.minY) {
+                            potentialCollisions.push([lastA, b]);
+                        }
                     }
                 }
                 catch (e_10_1) { e_10 = { error: e_10_1 }; }
                 finally {
                     try {
-                        if (aabbs_1_1 && !aabbs_1_1.done && (_b = aabbs_1.return)) _b.call(aabbs_1);
+                        if (lastOverlappingList_1_1 && !lastOverlappingList_1_1.done && (_b = lastOverlappingList_1.return)) _b.call(lastOverlappingList_1);
                     }
                     finally { if (e_10) throw e_10.error; }
                 }
@@ -1027,8 +1041,8 @@ var gs;
                 }
                 try {
                     // 移动剩下的物体
-                    for (var aabbs_2 = __values(aabbs), aabbs_2_1 = aabbs_2.next(); !aabbs_2_1.done; aabbs_2_1 = aabbs_2.next()) {
-                        var aabb = aabbs_2_1.value;
+                    for (var aabbs_1 = __values(aabbs), aabbs_1_1 = aabbs_1.next(); !aabbs_1_1.done; aabbs_1_1 = aabbs_1.next()) {
+                        var aabb = aabbs_1_1.value;
                         aabb.minX += aabb.velocityX;
                         aabb.minY += aabb.velocityY;
                         aabb.maxX += aabb.velocityX;
@@ -1038,7 +1052,7 @@ var gs;
                 catch (e_12_1) { e_12 = { error: e_12_1 }; }
                 finally {
                     try {
-                        if (aabbs_2_1 && !aabbs_2_1.done && (_a = aabbs_2.return)) _a.call(aabbs_2);
+                        if (aabbs_1_1 && !aabbs_1_1.done && (_a = aabbs_1.return)) _a.call(aabbs_1);
                     }
                     finally { if (e_12) throw e_12.error; }
                 }

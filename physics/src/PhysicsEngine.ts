@@ -16,6 +16,10 @@ module gs.physics {
             this.bvh.insert(aabb);
         }
 
+        getObject(entityId: number): AABB {
+            return this.entities.get(entityId);
+        }
+
         removeObject(entityId: number) {
             const aabb = this.entities.get(entityId);
             if (aabb) {

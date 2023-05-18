@@ -36,6 +36,8 @@ module gs.physics {
 
         remove(aabb: AABB) {
             const { minX, minY, maxX, maxY } = aabb;
+            let removed = false;
+            
             for (let x = minX; x <= maxX; x += this.cellSize) {
                 for (let y = minY; y <= maxY; y += this.cellSize) {
                     const key = this.hash(x, y);
@@ -47,13 +49,13 @@ module gs.physics {
                             if (bucket.length === 0) {
                                 this.buckets.delete(key);
                             }
-
-                            return true;
+        
+                            removed = true;
                         }
                     }
                 }
             }
-            return false;
+            return removed;
         }
 
         query(x: number, y: number): AABB[] {
