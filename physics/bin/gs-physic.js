@@ -97,8 +97,8 @@ var gs;
         var CollisionResponseSystem = /** @class */ (function (_super) {
             __extends(CollisionResponseSystem, _super);
             function CollisionResponseSystem(entityManager) {
-                var _this = _super.call(this, entityManager, 0, gs.Matcher.empty().all(physics.RigidBody).one(physics.BoxCollider)) || this;
-                _this.quadTree = new physics.QuadTree(0, { x: new physics.FixedPoint(0), y: new physics.FixedPoint(0), width: new physics.FixedPoint(1000), height: new physics.FixedPoint(1000) }); //初始化四叉树的大小
+                var _this = _super.call(this, entityManager, 0, gs.Matcher.empty().all(physics.RigidBody, physics.Collider)) || this;
+                _this.quadTree = new physics.QuadTree(0, { position: new physics.Vector2(0, 0), width: new physics.FixedPoint(1000), height: new physics.FixedPoint(1000) }); //初始化四叉树的大小
                 return _this;
             }
             CollisionResponseSystem.prototype.update = function (entities) {
@@ -106,9 +106,10 @@ var gs;
                 try {
                     for (var entities_1 = __values(entities), entities_1_1 = entities_1.next(); !entities_1_1.done; entities_1_1 = entities_1.next()) {
                         var entity = entities_1_1.value;
-                        var collider = entity.getComponent(physics.BoxCollider);
+                        var collider = entity.getComponent(physics.Collider);
                         if (collider) {
                             this.quadTree.insert(collider.getBounds());
+                            collider.isColliding = false;
                         }
                     }
                 }
@@ -122,18 +123,23 @@ var gs;
                 try {
                     for (var entities_2 = __values(entities), entities_2_1 = entities_2.next(); !entities_2_1.done; entities_2_1 = entities_2.next()) {
                         var entity = entities_2_1.value;
-                        var collider1 = entity.getComponent(physics.BoxCollider);
+                        var collider1 = entity.getComponent(physics.Collider);
                         if (!collider1)
                             continue;
                         var bounds1 = collider1.getBounds();
-                        var candidates = [];
+                        var candidates = new Set();
                         this.quadTree.retrieve(candidates, bounds1);
                         try {
-                            for (var candidates_1 = __values(candidates), candidates_1_1 = candidates_1.next(); !candidates_1_1.done; candidates_1_1 = candidates_1.next()) {
-                                var candidate = candidates_1_1.value;
-                                var collider2 = candidate.entity.getComponent(physics.BoxCollider);
+                            for (var _d = __values(Array.from(candidates)), _e = _d.next(); !_e.done; _e = _d.next()) {
+                                var candidate = _e.value;
+                                if (candidate.entity.getId() === entity.getId()) {
+                                    continue;
+                                }
+                                var collider2 = candidate.entity.getComponent(physics.Collider);
                                 var bounds2 = collider2.getBounds();
                                 if (this.isColliding(bounds1, bounds2)) {
+                                    collider1.isColliding = true;
+                                    collider2.isColliding = true;
                                     var velocityAfterCollision = this.calculateVelocityAfterCollision(entity.getComponent(physics.RigidBody), candidate.entity.getComponent(physics.RigidBody));
                                     entity.getComponent(physics.RigidBody).velocity = velocityAfterCollision.v1;
                                     candidate.entity.getComponent(physics.RigidBody).velocity = velocityAfterCollision.v2;
@@ -145,7 +151,7 @@ var gs;
                         catch (e_3_1) { e_3 = { error: e_3_1 }; }
                         finally {
                             try {
-                                if (candidates_1_1 && !candidates_1_1.done && (_c = candidates_1.return)) _c.call(candidates_1);
+                                if (_e && !_e.done && (_c = _d.return)) _c.call(_d);
                             }
                             finally { if (e_3) throw e_3.error; }
                         }
@@ -161,11 +167,11 @@ var gs;
                 this.quadTree.clear();
             };
             CollisionResponseSystem.prototype.calculateVelocityAfterCollision = function (body1, body2) {
-                var massSum = body1.mass.add(body2.mass);
-                var massDiff1 = body1.mass.sub(body2.mass);
-                var massDiff2 = body2.mass.sub(body1.mass);
-                var massDouble1 = body1.mass.mul(2);
-                var massDouble2 = body2.mass.mul(2);
+                var massSum = physics.FixedPoint.add(body1.mass, body2.mass);
+                var massDiff1 = physics.FixedPoint.sub(body1.mass, body2.mass);
+                var massDiff2 = physics.FixedPoint.sub(body2.mass, body1.mass);
+                var massDouble1 = physics.FixedPoint.mul(body1.mass, 2);
+                var massDouble2 = physics.FixedPoint.mul(body2.mass, 2);
                 var v1 = body1.velocity.multiplyScalar(massDiff1.toFloat()).divideScalar(massSum.toFloat())
                     .add(body2.velocity.multiplyScalar(massDouble2.toFloat()).divideScalar(massSum.toFloat()));
                 var v2 = body1.velocity.multiplyScalar(massDouble1.toFloat()).divideScalar(massSum.toFloat())
@@ -175,10 +181,10 @@ var gs;
             CollisionResponseSystem.prototype.isColliding = function (bounds1, bounds2) {
                 var position1 = bounds1.position, width1 = bounds1.width, height1 = bounds1.height;
                 var position2 = bounds2.position, width2 = bounds2.width, height2 = bounds2.height;
-                return !(position2.x.gt(position1.x.add(width1)) ||
-                    position2.x.add(width2).lt(position1.x) ||
-                    position2.y.gt(position1.y.add(height1)) ||
-                    position2.y.add(height2).lt(position1.y));
+                return !(position2.x.gt(physics.FixedPoint.add(position1.x, width1)) ||
+                    physics.FixedPoint.add(position2.x, width2).lt(position1.x) ||
+                    position2.y.gt(physics.FixedPoint.add(position1.y, height1)) ||
+                    physics.FixedPoint.add(position2.y, height2).lt(position1.y));
             };
             return CollisionResponseSystem;
         }(gs.System));
@@ -216,7 +222,7 @@ var gs;
             };
             FixedPoint.prototype.mul = function (other) {
                 if (other instanceof FixedPoint) {
-                    this.rawValue = Math.round((this.rawValue * other.rawValue) / this.precision);
+                    this.rawValue = Math.round((this.rawValue * other.rawValue) / other.precision);
                 }
                 else {
                     this.rawValue = Math.round(this.rawValue * other);
@@ -228,7 +234,7 @@ var gs;
                     this.rawValue = Math.round((this.rawValue / other.rawValue) * this.precision);
                 }
                 else {
-                    this.rawValue = Math.round((this.rawValue / other) * this.precision);
+                    this.rawValue = Math.round(this.rawValue / other);
                 }
                 return this;
             };
@@ -246,6 +252,22 @@ var gs;
                 }
                 else {
                     return this.rawValue > Math.round(other * this.precision);
+                }
+            };
+            FixedPoint.prototype.gte = function (other) {
+                if (other instanceof FixedPoint) {
+                    return this.rawValue >= other.rawValue;
+                }
+                else {
+                    return this.rawValue >= Math.round(other * this.precision);
+                }
+            };
+            FixedPoint.prototype.lte = function (other) {
+                if (other instanceof FixedPoint) {
+                    return this.rawValue <= other.rawValue;
+                }
+                else {
+                    return this.rawValue <= Math.round(other * this.precision);
                 }
             };
             FixedPoint.prototype.neg = function () {
@@ -266,7 +288,7 @@ var gs;
                 }
                 return result;
             };
-            FixedPoint.subtract = function (a, b) {
+            FixedPoint.sub = function (a, b) {
                 var result = new FixedPoint();
                 if (b instanceof FixedPoint) {
                     result.rawValue = a.rawValue - b.rawValue;
@@ -276,23 +298,23 @@ var gs;
                 }
                 return result;
             };
-            FixedPoint.multiply = function (a, b) {
+            FixedPoint.mul = function (a, b) {
                 var result = new FixedPoint();
                 if (b instanceof FixedPoint) {
-                    result.rawValue = Math.round((a.rawValue * b.rawValue) / a.precision);
+                    result.rawValue = Math.round((a.rawValue * b.rawValue) / b.precision);
                 }
                 else {
                     result.rawValue = Math.round(a.rawValue * b);
                 }
                 return result;
             };
-            FixedPoint.divide = function (a, b) {
+            FixedPoint.div = function (a, b) {
                 var result = new FixedPoint();
                 if (b instanceof FixedPoint) {
                     result.rawValue = Math.round((a.rawValue / b.rawValue) * a.precision);
                 }
                 else {
-                    result.rawValue = Math.round((a.rawValue / b) * a.precision);
+                    result.rawValue = Math.round(a.rawValue / b);
                 }
                 return result;
             };
@@ -322,14 +344,14 @@ var gs;
             }
             // 将物体分配到四个象限中
             QuadTree.prototype.split = function () {
-                var subWidth = this.bounds.width.div(2);
-                var subHeight = this.bounds.height.div(2);
-                var x = this.bounds.x;
-                var y = this.bounds.y;
-                this.nodes[0] = new QuadTree(this.level + 1, { x: x.add(subWidth), y: y, width: subWidth, height: subHeight });
-                this.nodes[1] = new QuadTree(this.level + 1, { x: x, y: y, width: subWidth, height: subHeight });
-                this.nodes[2] = new QuadTree(this.level + 1, { x: x, y: y.add(subHeight), width: subWidth, height: subHeight });
-                this.nodes[3] = new QuadTree(this.level + 1, { x: x.add(subWidth), y: y.add(subHeight), width: subWidth, height: subHeight });
+                var subWidth = physics.FixedPoint.div(this.bounds.width, 2);
+                var subHeight = physics.FixedPoint.div(this.bounds.height, 2);
+                var x = this.bounds.position.x;
+                var y = this.bounds.position.y;
+                this.nodes[0] = new QuadTree(this.level + 1, { position: new physics.Vector2(x.toFloat(), y.toFloat()), width: subWidth, height: subHeight });
+                this.nodes[1] = new QuadTree(this.level + 1, { position: new physics.Vector2(physics.FixedPoint.add(x, subWidth).toFloat(), y.toFloat()), width: subWidth, height: subHeight });
+                this.nodes[2] = new QuadTree(this.level + 1, { position: new physics.Vector2(x.toFloat(), physics.FixedPoint.add(y, subHeight).toFloat()), width: subWidth, height: subHeight });
+                this.nodes[3] = new QuadTree(this.level + 1, { position: new physics.Vector2(physics.FixedPoint.add(x, subWidth).toFloat(), physics.FixedPoint.add(y, subHeight).toFloat()), width: subWidth, height: subHeight });
             };
             // 将物体插入到四叉树中
             QuadTree.prototype.insert = function (obj) {
@@ -360,11 +382,11 @@ var gs;
             // 获取物体应该位于哪个象限
             QuadTree.prototype.getIndex = function (obj) {
                 var index = -1;
-                var verticalMidpoint = this.bounds.x.add(this.bounds.width.div(2));
-                var horizontalMidpoint = this.bounds.y.add(this.bounds.height.div(2));
-                var topQuadrant = (obj.y.lt(horizontalMidpoint) && obj.y.add(obj.height).lt(horizontalMidpoint));
-                var bottomQuadrant = obj.y.gt(horizontalMidpoint);
-                if (obj.x.lt(verticalMidpoint) && obj.x.add(obj.width).lt(verticalMidpoint)) {
+                var verticalMidpoint = physics.FixedPoint.add(this.bounds.position.x, physics.FixedPoint.div(this.bounds.width, 2));
+                var horizontalMidpoint = physics.FixedPoint.add(this.bounds.position.y, physics.FixedPoint.div(this.bounds.height, 2));
+                var topQuadrant = (obj.position.y.lt(horizontalMidpoint) && physics.FixedPoint.add(obj.position.y, obj.height).lt(horizontalMidpoint));
+                var bottomQuadrant = obj.position.y.gt(horizontalMidpoint);
+                if (obj.position.x.lt(verticalMidpoint) && physics.FixedPoint.add(obj.position.x, obj.width).lt(verticalMidpoint)) {
                     if (topQuadrant) {
                         index = 1;
                     }
@@ -372,7 +394,7 @@ var gs;
                         index = 2;
                     }
                 }
-                else if (obj.x.gt(verticalMidpoint)) {
+                else if (obj.position.x.gt(verticalMidpoint)) {
                     if (topQuadrant) {
                         index = 0;
                     }
@@ -384,11 +406,24 @@ var gs;
             };
             // 返回所有可能与给定物体发生碰撞的物体
             QuadTree.prototype.retrieve = function (returnObjects, obj) {
+                var e_4, _a;
                 var index = this.getIndex(obj);
                 if (index != -1 && this.nodes[0] != null) {
                     this.nodes[index].retrieve(returnObjects, obj);
                 }
-                returnObjects.push.apply(returnObjects, __spread(this.objects));
+                try {
+                    for (var _b = __values(this.objects), _c = _b.next(); !_c.done; _c = _b.next()) {
+                        var object = _c.value;
+                        returnObjects.add(object);
+                    }
+                }
+                catch (e_4_1) { e_4 = { error: e_4_1 }; }
+                finally {
+                    try {
+                        if (_c && !_c.done && (_a = _b.return)) _a.call(_b);
+                    }
+                    finally { if (e_4) throw e_4.error; }
+                }
                 return returnObjects;
             };
             QuadTree.prototype.clear = function () {
@@ -432,6 +467,8 @@ var gs;
     (function (physics) {
         var Size = /** @class */ (function () {
             function Size(width, height) {
+                if (width === void 0) { width = 0; }
+                if (height === void 0) { height = 0; }
                 this.width = new physics.FixedPoint(width);
                 this.height = new physics.FixedPoint(height);
             }
@@ -450,6 +487,62 @@ var gs;
             return Size;
         }());
         physics.Size = Size;
+    })(physics = gs.physics || (gs.physics = {}));
+})(gs || (gs = {}));
+var gs;
+(function (gs) {
+    var physics;
+    (function (physics) {
+        var SpatialHash = /** @class */ (function () {
+            function SpatialHash(cellSize) {
+                this.cellSize = cellSize;
+                this.hashTable = new Map();
+            }
+            SpatialHash.prototype.hash = function (x, y) {
+                var cellX = Math.floor(x / this.cellSize);
+                var cellY = Math.floor(y / this.cellSize);
+                return cellY * 1000000 + cellX;
+            };
+            SpatialHash.prototype.insert = function (obj) {
+                var minX = Math.floor(obj.position.x.toFloat() / this.cellSize);
+                var minY = Math.floor(obj.position.y.toFloat() / this.cellSize);
+                var maxX = Math.floor((obj.position.x.toFloat() + obj.width.toFloat()) / this.cellSize);
+                var maxY = Math.floor((obj.position.y.toFloat() + obj.height.toFloat()) / this.cellSize);
+                for (var x = minX; x <= maxX; x++) {
+                    for (var y = minY; y <= maxY; y++) {
+                        var key = this.hash(x, y);
+                        var bucket = this.hashTable.get(key);
+                        if (bucket === undefined) {
+                            bucket = [];
+                            this.hashTable.set(key, bucket);
+                        }
+                        bucket.push(obj);
+                    }
+                }
+            };
+            SpatialHash.prototype.retrieve = function (obj) {
+                var minX = Math.floor(obj.position.x.toFloat() / this.cellSize);
+                var minY = Math.floor(obj.position.y.toFloat() / this.cellSize);
+                var maxX = Math.floor((obj.position.x.toFloat() + obj.width.toFloat()) / this.cellSize);
+                var maxY = Math.floor((obj.position.y.toFloat() + obj.height.toFloat()) / this.cellSize);
+                var result = [];
+                for (var x = minX; x <= maxX; x++) {
+                    for (var y = minY; y <= maxY; y++) {
+                        var key = this.hash(x, y);
+                        var bucket = this.hashTable.get(key);
+                        if (bucket !== undefined) {
+                            result.push.apply(result, __spread(bucket));
+                        }
+                    }
+                }
+                return result;
+            };
+            SpatialHash.prototype.clear = function () {
+                this.hashTable.clear();
+            };
+            return SpatialHash;
+        }());
+        physics.SpatialHash = SpatialHash;
     })(physics = gs.physics || (gs.physics = {}));
 })(gs || (gs = {}));
 var gs;
@@ -479,8 +572,8 @@ var gs;
             function Vector2(x, y) {
                 if (x === void 0) { x = 0; }
                 if (y === void 0) { y = 0; }
-                this.x = new physics.FixedPoint(x);
-                this.y = new physics.FixedPoint(y);
+                this.x = x instanceof physics.FixedPoint ? x : new physics.FixedPoint(x);
+                this.y = y instanceof physics.FixedPoint ? y : new physics.FixedPoint(y);
             }
             Vector2.prototype.add = function (other) {
                 return new Vector2(this.x.toFloat() + other.x.toFloat(), this.y.toFloat() + other.y.toFloat());
@@ -500,6 +593,33 @@ var gs;
             Vector2.prototype.divideScalar = function (scalar) {
                 return new Vector2(this.x.toFloat() / scalar, this.y.toFloat() / scalar);
             };
+            /** 计算向量的长度 */
+            Vector2.prototype.length = function () {
+                return new physics.FixedPoint(Math.sqrt(this.x.toFloat() * this.x.toFloat() + this.y.toFloat() * this.y.toFloat()));
+            };
+            /** 计算向量的平方长度 */
+            Vector2.prototype.lengthSquared = function () {
+                return new physics.FixedPoint(this.x.toFloat() * this.x.toFloat() + this.y.toFloat() * this.y.toFloat());
+            };
+            /** 归一化向量 */
+            Vector2.prototype.normalize = function () {
+                var len = this.length();
+                return new Vector2(this.x.div(len), this.y.div(len));
+            };
+            /** 计算两个向量的点积 */
+            Vector2.prototype.dot = function (other) {
+                return new physics.FixedPoint(this.x.toFloat() * other.x.toFloat() + this.y.toFloat() * other.y.toFloat());
+            };
+            /** 计算两个向量的叉积 */
+            Vector2.prototype.cross = function (other) {
+                return new physics.FixedPoint(this.x.toFloat() * other.y.toFloat() - this.y.toFloat() * other.x.toFloat());
+            };
+            /** 计算到另一个向量的距离 */
+            Vector2.prototype.distanceTo = function (other) {
+                var dx = this.x.sub(other.x);
+                var dy = this.y.sub(other.y);
+                return new physics.FixedPoint(Math.sqrt(dx.toFloat() * dx.toFloat() + dy.toFloat() * dy.toFloat()));
+            };
             return Vector2;
         }());
         physics.Vector2 = Vector2;
@@ -511,16 +631,26 @@ var gs;
     (function (physics) {
         var World = /** @class */ (function () {
             function World(gravity, timeStep, initialSize) {
+                if (gravity === void 0) { gravity = new physics.FixedPoint(0, -9.81); }
+                if (timeStep === void 0) { timeStep = new physics.FixedPoint(1, 60); }
+                if (initialSize === void 0) { initialSize = new physics.Size(1000, 1000); }
+                this.name = "PhysicsPlugin";
                 this.gravity = gravity;
                 this.timeStep = timeStep;
                 this.bodies = [];
                 this.size = initialSize;
             }
+            World.prototype.onInit = function (core) {
+                core.systemManager.registerSystem(new physics.CollisionResponseSystem(core.entityManager));
+            };
+            World.prototype.onUpdate = function (deltaTime) {
+                this.step();
+            };
             World.prototype.addBody = function (body) {
                 this.bodies.push(body);
             };
             World.prototype.updateSize = function () {
-                var e_4, _a;
+                var e_5, _a;
                 try {
                     for (var _b = __values(this.bodies), _c = _b.next(); !_c.done; _c = _b.next()) {
                         var body = _c.value;
@@ -528,12 +658,12 @@ var gs;
                         this.size.height = physics.FixedPoint.max(this.size.height, physics.FixedPoint.add(body.position.y, body.size.y));
                     }
                 }
-                catch (e_4_1) { e_4 = { error: e_4_1 }; }
+                catch (e_5_1) { e_5 = { error: e_5_1 }; }
                 finally {
                     try {
                         if (_c && !_c.done && (_a = _b.return)) _a.call(_b);
                     }
-                    finally { if (e_4) throw e_4.error; }
+                    finally { if (e_5) throw e_5.error; }
                 }
             };
             World.prototype.handleBorderCollision = function (body) {
@@ -546,25 +676,25 @@ var gs;
                 }
             };
             World.prototype.step = function () {
-                var e_5, _a;
+                var e_6, _a;
                 try {
                     for (var _b = __values(this.bodies), _c = _b.next(); !_c.done; _c = _b.next()) {
                         var body = _c.value;
                         // 更新速度
-                        body.velocity.y = physics.FixedPoint.add(body.velocity.y, physics.FixedPoint.multiply(this.gravity, this.timeStep));
+                        body.velocity.y = physics.FixedPoint.add(body.velocity.y, physics.FixedPoint.mul(this.gravity, this.timeStep));
                         // 更新位置
-                        body.position.x = physics.FixedPoint.add(body.position.x, physics.FixedPoint.multiply(body.velocity.x, this.timeStep));
-                        body.position.y = physics.FixedPoint.add(body.position.y, physics.FixedPoint.multiply(body.velocity.y, this.timeStep));
+                        body.position.x = physics.FixedPoint.add(body.position.x, physics.FixedPoint.mul(body.velocity.x, this.timeStep));
+                        body.position.y = physics.FixedPoint.add(body.position.y, physics.FixedPoint.mul(body.velocity.y, this.timeStep));
                         // 处理边界碰撞
                         this.handleBorderCollision(body);
                     }
                 }
-                catch (e_5_1) { e_5 = { error: e_5_1 }; }
+                catch (e_6_1) { e_6 = { error: e_6_1 }; }
                 finally {
                     try {
                         if (_c && !_c.done && (_a = _b.return)) _a.call(_b);
                     }
-                    finally { if (e_5) throw e_5.error; }
+                    finally { if (e_6) throw e_6.error; }
                 }
                 // 更新世界尺寸
                 this.updateSize();
@@ -583,6 +713,9 @@ var gs;
             function Collider() {
                 return _super !== null && _super.apply(this, arguments) || this;
             }
+            Collider.prototype.getBounds = function () {
+                return { position: new physics.Vector2(), width: new physics.FixedPoint(), height: new physics.FixedPoint(), entity: this.entity };
+            };
             return Collider;
         }(gs.Component));
         physics.Collider = Collider;
@@ -597,7 +730,11 @@ var gs;
         var BoxCollider = /** @class */ (function (_super) {
             __extends(BoxCollider, _super);
             function BoxCollider() {
-                return _super !== null && _super.apply(this, arguments) || this;
+                var _this = _super !== null && _super.apply(this, arguments) || this;
+                _this.dependencies = [
+                    physics.Transform
+                ];
+                return _this;
             }
             BoxCollider.prototype.onInitialize = function (size) {
                 this.size = size;
@@ -608,10 +745,108 @@ var gs;
                     position: this.transform.position,
                     width: this.size.width,
                     height: this.size.height,
+                    entity: this.entity
                 };
             };
             return BoxCollider;
         }(physics.Collider));
         physics.BoxCollider = BoxCollider;
+    })(physics = gs.physics || (gs.physics = {}));
+})(gs || (gs = {}));
+var gs;
+(function (gs) {
+    var physics;
+    (function (physics) {
+        var Circle = /** @class */ (function () {
+            function Circle() {
+            }
+            Object.defineProperty(Circle.prototype, "width", {
+                get: function () {
+                    return this.radius.mul(2);
+                },
+                enumerable: true,
+                configurable: true
+            });
+            Object.defineProperty(Circle.prototype, "height", {
+                get: function () {
+                    return this.radius.mul(2);
+                },
+                enumerable: true,
+                configurable: true
+            });
+            /**
+             * 计算圆形面积
+             * @returns
+             */
+            Circle.prototype.area = function () {
+                return this.radius.mul(this.radius).mul(Math.PI);
+            };
+            /**
+             * 计算圆形周长
+             * @returns
+             */
+            Circle.prototype.circumference = function () {
+                return this.radius.mul(2).mul(Math.PI);
+            };
+            /**
+             * 判断点是否在圆内
+             * @param point
+             * @returns
+             */
+            Circle.prototype.containsPoint = function (point) {
+                return this.position.distanceTo(point).lte(this.radius);
+            };
+            /**
+             * 判断两个圆是否相交
+             * @param other
+             * @returns
+             */
+            Circle.prototype.intersects = function (other) {
+                return this.position.distanceTo(other.position).lte(this.radius.add(other.radius));
+            };
+            return Circle;
+        }());
+        physics.Circle = Circle;
+    })(physics = gs.physics || (gs.physics = {}));
+})(gs || (gs = {}));
+var gs;
+(function (gs) {
+    var physics;
+    (function (physics) {
+        var Rectangle = /** @class */ (function () {
+            function Rectangle() {
+            }
+            /**
+             * 计算矩形面积
+             * @returns
+             */
+            Rectangle.prototype.area = function () {
+                return this.width.mul(this.height);
+            };
+            /**
+             * 判断点是否在矩形内
+             * @param point
+             * @returns
+             */
+            Rectangle.prototype.containsPoint = function (point) {
+                return point.x.gte(this.position.x) &&
+                    point.x.lte(this.position.x.add(this.width)) &&
+                    point.y.gte(this.position.y) &&
+                    point.y.lte(this.position.y.add(this.height));
+            };
+            /**
+             * 判断两个矩形是否相交
+             * @param rect
+             * @returns
+             */
+            Rectangle.prototype.intersects = function (rect) {
+                return !(rect.position.x.add(rect.width).lt(this.position.x) ||
+                    rect.position.y.add(rect.height).lt(this.position.y) ||
+                    rect.position.x.gt(this.position.x.add(this.width)) ||
+                    rect.position.y.gt(this.position.y.add(this.height)));
+            };
+            return Rectangle;
+        }());
+        physics.Rectangle = Rectangle;
     })(physics = gs.physics || (gs.physics = {}));
 })(gs || (gs = {}));

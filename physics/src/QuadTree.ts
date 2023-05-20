@@ -2,13 +2,13 @@ module gs.physics {
     const MAX_OBJECTS = 10;
     const MAX_LEVELS = 5;
 
-    export class QuadTree {
+    export class QuadTree<T extends Bounds> {
         level: number;
-        bounds: { x: FixedPoint, y: FixedPoint, width: FixedPoint, height: FixedPoint };
-        objects: any[];
-        nodes: QuadTree[];
+        bounds: {position: Vector2, width: FixedPoint, height: FixedPoint};
+        objects: T[];
+        nodes: QuadTree<T>[];
 
-        constructor(level: number, bounds: { x: FixedPoint, y: FixedPoint, width: FixedPoint, height: FixedPoint }) {
+        constructor(level: number, bounds: {position: Vector2, width: FixedPoint, height: FixedPoint}) {
             this.level = level;
             this.bounds = bounds;
             this.objects = [];
@@ -17,19 +17,19 @@ module gs.physics {
 
         // 将物体分配到四个象限中
         split(): void {
-            let subWidth = this.bounds.width.div(2);
-            let subHeight = this.bounds.height.div(2);
-            let x = this.bounds.x;
-            let y = this.bounds.y;
+            let subWidth = FixedPoint.div(this.bounds.width, 2);
+            let subHeight = FixedPoint.div(this.bounds.height, 2);
+            let x = this.bounds.position.x;
+            let y = this.bounds.position.y;
 
-            this.nodes[0] = new QuadTree(this.level + 1, { x: x.add(subWidth), y: y, width: subWidth, height: subHeight });
-            this.nodes[1] = new QuadTree(this.level + 1, { x: x, y: y, width: subWidth, height: subHeight });
-            this.nodes[2] = new QuadTree(this.level + 1, { x: x, y: y.add(subHeight), width: subWidth, height: subHeight });
-            this.nodes[3] = new QuadTree(this.level + 1, { x: x.add(subWidth), y: y.add(subHeight), width: subWidth, height: subHeight });
+            this.nodes[0] = new QuadTree<T>(this.level + 1, { position: new Vector2(x.toFloat(), y.toFloat()), width: subWidth, height: subHeight });
+            this.nodes[1] = new QuadTree<T>(this.level + 1, { position: new Vector2(FixedPoint.add(x, subWidth).toFloat(), y.toFloat()), width: subWidth, height: subHeight });
+            this.nodes[2] = new QuadTree<T>(this.level + 1, { position: new Vector2(x.toFloat(), FixedPoint.add(y, subHeight).toFloat()), width: subWidth, height: subHeight });
+            this.nodes[3] = new QuadTree<T>(this.level + 1, { position: new Vector2(FixedPoint.add(x, subWidth).toFloat(), FixedPoint.add(y, subHeight).toFloat()), width: subWidth, height: subHeight });
         }
 
         // 将物体插入到四叉树中
-        insert(obj: any): void {
+        insert(obj: T): void {
             if (this.nodes[0] != null) {
                 let index = this.getIndex(obj);
 
@@ -59,21 +59,21 @@ module gs.physics {
         }
 
         // 获取物体应该位于哪个象限
-        getIndex(obj: any): number {
+        getIndex(obj: T): number {
             let index = -1;
-            let verticalMidpoint = this.bounds.x.add(this.bounds.width.div(2));
-            let horizontalMidpoint = this.bounds.y.add(this.bounds.height.div(2));
+            let verticalMidpoint = FixedPoint.add(this.bounds.position.x, FixedPoint.div( this.bounds.width, 2));
+            let horizontalMidpoint = FixedPoint.add(this.bounds.position.y, FixedPoint.div(this.bounds.height, 2));
 
-            let topQuadrant = (obj.y.lt(horizontalMidpoint) && obj.y.add(obj.height).lt(horizontalMidpoint));
-            let bottomQuadrant = obj.y.gt(horizontalMidpoint);
+            let topQuadrant = (obj.position.y.lt(horizontalMidpoint) && FixedPoint.add(obj.position.y, obj.height).lt(horizontalMidpoint));
+            let bottomQuadrant = obj.position.y.gt(horizontalMidpoint);
 
-            if (obj.x.lt(verticalMidpoint) && obj.x.add(obj.width).lt(verticalMidpoint)) {
+            if (obj.position.x.lt(verticalMidpoint) && FixedPoint.add(obj.position.x, obj.width).lt(verticalMidpoint)) {
                 if (topQuadrant) {
                     index = 1;
                 } else if (bottomQuadrant) {
                     index = 2;
                 }
-            } else if (obj.x.gt(verticalMidpoint)) {
+            } else if (obj.position.x.gt(verticalMidpoint)) {
                 if (topQuadrant) {
                     index = 0;
                 } else if (bottomQuadrant) {
@@ -85,14 +85,16 @@ module gs.physics {
         }
 
         // 返回所有可能与给定物体发生碰撞的物体
-        retrieve(returnObjects: any[], obj: any): any[] {
+        retrieve(returnObjects: Set<T>, obj: T): Set<T> {
             let index = this.getIndex(obj);
             if (index != -1 && this.nodes[0] != null) {
                 this.nodes[index].retrieve(returnObjects, obj);
             }
-
-            returnObjects.push(...this.objects);
-
+        
+            for(let object of this.objects) {
+                returnObjects.add(object);
+            }
+        
             return returnObjects;
         }
 

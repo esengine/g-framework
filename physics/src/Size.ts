@@ -3,7 +3,7 @@ module gs.physics {
         public width: FixedPoint;
         public height: FixedPoint;
 
-        constructor(width: number, height: number) {
+        constructor(width: number = 0, height: number = 0) {
             this.width = new FixedPoint(width);
             this.height = new FixedPoint(height);
         }

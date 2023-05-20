@@ -4,6 +4,10 @@ module gs.physics {
         private size: Size;
         private transform: Transform;
 
+        dependencies: ComponentConstructor<Component>[] = [
+            Transform
+        ];
+
         public onInitialize(size: Size): void {
             this.size = size;
             this.transform = this.entity.getComponent(Transform);
@@ -14,6 +18,7 @@ module gs.physics {
                 position: this.transform.position,
                 width: this.size.width,
                 height: this.size.height,
+                entity: this.entity
             };
         }
     }

@@ -1,15 +1,25 @@
 module gs.physics {
-    export class World {
+    export class World implements IPlugin {
         gravity: FixedPoint;
         timeStep: FixedPoint;
         bodies: RigidBody[];
         size: Size;
 
-        constructor(gravity: FixedPoint, timeStep: FixedPoint, initialSize: Size) {
+        name = "PhysicsPlugin";
+
+        constructor(gravity: FixedPoint = new FixedPoint(0, -9.81), timeStep: FixedPoint = new FixedPoint(1, 60), initialSize: Size = new Size(1000, 1000)) {
             this.gravity = gravity;
             this.timeStep = timeStep;
             this.bodies = [];
             this.size = initialSize;
+        }
+
+        onInit(core: Core): void { 
+            core.systemManager.registerSystem(new CollisionResponseSystem(core.entityManager));
+        }
+
+        onUpdate(deltaTime: number): void {
+            this.step();
         }
 
         addBody(body: RigidBody): void {
@@ -36,10 +46,10 @@ module gs.physics {
         step(): void {
             for (let body of this.bodies) {
                 // 更新速度
-                body.velocity.y = FixedPoint.add(body.velocity.y, FixedPoint.multiply(this.gravity, this.timeStep));
+                body.velocity.y = FixedPoint.add(body.velocity.y, FixedPoint.mul(this.gravity, this.timeStep));
                 // 更新位置
-                body.position.x = FixedPoint.add(body.position.x, FixedPoint.multiply(body.velocity.x, this.timeStep));
-                body.position.y = FixedPoint.add(body.position.y, FixedPoint.multiply(body.velocity.y, this.timeStep));
+                body.position.x = FixedPoint.add(body.position.x, FixedPoint.mul(body.velocity.x, this.timeStep));
+                body.position.y = FixedPoint.add(body.position.y, FixedPoint.mul(body.velocity.y, this.timeStep));
                 // 处理边界碰撞
                 this.handleBorderCollision(body);
             }

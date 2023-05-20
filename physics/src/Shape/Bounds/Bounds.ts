@@ -1,6 +1,8 @@
 module gs.physics {
-    export interface BoxBounds extends Bounds {
+    export interface Bounds {
+        position: Vector2;
         width: FixedPoint;
         height: FixedPoint;
+        entity: Entity;
     }
 }

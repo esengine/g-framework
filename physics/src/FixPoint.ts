@@ -28,18 +28,18 @@ module gs.physics {
 
         mul(other: FixedPoint | number) {
             if (other instanceof FixedPoint) {
-                this.rawValue = Math.round((this.rawValue * other.rawValue) / this.precision);
+                this.rawValue = Math.round((this.rawValue * other.rawValue) / other.precision);
             } else {
                 this.rawValue = Math.round(this.rawValue * other);
             }
             return this;
         }
-
+        
         div(other: FixedPoint | number) {
             if (other instanceof FixedPoint) {
                 this.rawValue = Math.round((this.rawValue / other.rawValue) * this.precision);
             } else {
-                this.rawValue = Math.round((this.rawValue / other) * this.precision);
+                this.rawValue = Math.round(this.rawValue / other);
             }
             return this;
         }
@@ -57,6 +57,22 @@ module gs.physics {
                 return this.rawValue > other.rawValue;
             } else {
                 return this.rawValue > Math.round(other * this.precision);
+            }
+        }
+
+        gte(other: FixedPoint | number): boolean {
+            if (other instanceof FixedPoint) {
+                return this.rawValue >= other.rawValue;
+            } else {
+                return this.rawValue >= Math.round(other * this.precision);
+            }
+        }
+
+        lte(other: FixedPoint | number): boolean {
+            if (other instanceof FixedPoint) {
+                return this.rawValue <= other.rawValue;
+            } else {
+                return this.rawValue <= Math.round(other * this.precision);
             }
         }
 
@@ -80,7 +96,7 @@ module gs.physics {
             return result;
         }
 
-        static subtract(a: FixedPoint, b: FixedPoint | number): FixedPoint {
+        static sub(a: FixedPoint, b: FixedPoint | number): FixedPoint {
             const result = new FixedPoint();
             if (b instanceof FixedPoint) {
                 result.rawValue = a.rawValue - b.rawValue;
@@ -90,22 +106,22 @@ module gs.physics {
             return result;
         }
 
-        static multiply(a: FixedPoint, b: FixedPoint | number): FixedPoint {
+        static mul(a: FixedPoint, b: FixedPoint | number): FixedPoint {
             const result = new FixedPoint();
             if (b instanceof FixedPoint) {
-                result.rawValue = Math.round((a.rawValue * b.rawValue) / a.precision);
+                result.rawValue = Math.round((a.rawValue * b.rawValue) / b.precision);
             } else {
                 result.rawValue = Math.round(a.rawValue * b);
             }
             return result;
         }
-
-        static divide(a: FixedPoint, b: FixedPoint | number): FixedPoint {
+        
+        static div(a: FixedPoint, b: FixedPoint | number): FixedPoint {
             const result = new FixedPoint();
             if (b instanceof FixedPoint) {
                 result.rawValue = Math.round((a.rawValue / b.rawValue) * a.precision);
             } else {
-                result.rawValue = Math.round((a.rawValue / b) * a.precision);
+                result.rawValue = Math.round(a.rawValue / b);
             }
             return result;
         }

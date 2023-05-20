@@ -1,4 +1,20 @@
 declare module gs {
+    class Core {
+        private _entityManager;
+        private _systemManager;
+        private _timeManager;
+        private _plugins;
+        readonly entityManager: EntityManager;
+        readonly systemManager: SystemManager;
+        private static _instance;
+        static readonly instance: Core;
+        private constructor();
+        private onInit;
+        registerPlugin(plugin: IPlugin): void;
+        update(deltaTime: number): void;
+    }
+}
+declare module gs {
     class ObjectPool<T> {
         private createFn;
         private resetFn;
@@ -401,10 +417,19 @@ declare module gs {
     }
 }
 declare module gs {
+    class ComponentTypeInfo {
+        readonly index: number;
+        readonly type: new (...args: any[]) => Component;
+        readonly parents: ComponentTypeInfo[];
+        readonly allAncestors: number[];
+        constructor(index: number, type: new (...args: any[]) => Component);
+    }
+}
+declare module gs {
     class ComponentTypeManager {
         private static componentTypes;
         private static nextIndex;
-        static getIndexFor(componentType: new (...args: any[]) => Component): number;
+        static getIndexFor(componentType: new (...args: any[]) => Component): ComponentTypeInfo;
     }
 }
 declare module gs {
@@ -756,6 +781,13 @@ declare module gs {
          * @param strategy - 新的同步策略实现
          */
         setStrategy(strategy: ISyncStrategy): void;
+    }
+}
+declare module gs {
+    interface IPlugin {
+        name: string;
+        onInit(core: Core): void;
+        onUpdate(deltaTime: number): void;
     }
 }
 declare module gs {
