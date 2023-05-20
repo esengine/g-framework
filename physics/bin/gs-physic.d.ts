@@ -1,241 +1,164 @@
 declare module gs.physics {
-    class AABB {
-        minX: number;
-        maxX: number;
-        minY: number;
-        maxY: number;
-        velocityX: number;
-        velocityY: number;
-        constructor(x: number, y: number, width: number, height: number);
-        /**
-         * 计算两个 AABB 的并集
-         * @param other
-         * @returns
-         */
-        union(other: AABB): AABB;
-        /**
-         * 计算 AABB 的面积
-         * @returns
-         */
-        area(): number;
-        /**
-         * 检查两个 AABB 是否相交
-         * @param other
-         * @returns
-         */
-        intersects(other: AABB): boolean;
-        /**
-        * 获取 AABB 的中心点
-        * @returns
-        */
-        getCenter(): Point;
-        /**
-         * 计算与另一个物体的可能碰撞时间
-         * @param other
-         * @returns
-         */
-        computeCollisionTime(other: AABB): number;
-        clone(): AABB;
+    class CollisionEvent extends Event {
+        entity1: Entity;
+        entity2: Entity;
+        velocities: {
+            v1: Vector2;
+            v2: Vector2;
+        };
+        constructor(type: string, entity1: Entity, entity2: Entity, velocities: {
+            v1: Vector2;
+            v2: Vector2;
+        });
+        reset(): void;
+        getEntity1(): Entity;
+        getEntity2(): Entity;
+        getVelocities(): {
+            v1: Vector2;
+            v2: Vector2;
+        };
     }
 }
 declare module gs.physics {
-    class BVHNode {
-        left: BVHNode | null;
-        right: BVHNode | null;
-        object: AABB | null;
-        bounds: AABB;
-        constructor(object?: AABB);
-        /**
-         * 插入物体并返回是否需要重新平衡
-         * @param object
-         * @returns
-         */
-        insert(object: AABB): boolean;
-        createChildNodes(): void;
-        /**
-         * 移除物体并返回是否需要重新平衡
-         * @param object
-         * @returns
-         */
-        remove(object: AABB): boolean;
-        /**
-         * 更新边界
-         */
-        updateBounds(): void;
-        /**
-         * 查询与给定的AABB相交的所有物体
-         * @param aabb
-         * @returns
-         */
-        query(aabb: AABB): AABB[];
-        /**
-         * 计算节点所包含的物体数量
-         * @returns
-         */
-        size(): number;
-        /**
-         * 获取节点中的所有物体
-         * @returns
-         */
-        getObjects(): AABB[];
-    }
-    /**
-     * 包围体层次结构
-     */
-    class BVH {
-        root: BVHNode;
+    class CollisionHandlerSystem {
         constructor();
-        /**
-         * 插入物体并在必要时重新平衡
-         * @param object
-         */
-        insert(object: AABB): void;
-        /**
-         * 查询与给定的AABB相交的所有物体
-         * @param aabb
-         * @returns
-         */
-        query(aabb: AABB): AABB[];
-        /**
-         * 过滤碰撞对
-         * @param pairs
-         * @returns
-         */
-        filterPairs(pairs: [AABB, AABB][]): [AABB, AABB][];
-        /**
-         * 移除物体并在必要时重新平衡
-         * @param object
-         */
-        remove(object: AABB): void;
-        /**
-         * 更新物体位置
-         * @param object
-         * @param newPosition
-         */
-        update(object: AABB, newPosition: {
-            minX: number;
-            minY: number;
-            maxX: number;
-            maxY: number;
-        }): void;
+        handleCollision(event: Event): void;
     }
 }
 declare module gs.physics {
-    class PhysicsComponent extends Component {
-        aabb: AABB;
-        onInitialize(aabb: AABB): void;
-    }
-}
-declare module gs.physics {
-    class PhysicsEngine {
-        private quadtree;
-        private bvh;
-        private entities;
-        constructor(boundary?: Rectangle, capacity?: number, cellSize?: number);
-        addObject(entityId: number, aabb: AABB): void;
-        removeObject(entityId: number): void;
-        updateObject(entityId: number, newPosition: {
-            minX: number;
-            minY: number;
-            maxX: number;
-            maxY: number;
-        }): void;
-        step(time: number): void;
-    }
-}
-declare module gs.physics {
-    class PhysicsSystem extends System {
-        engine: PhysicsEngine;
-        constructor(entityManager: EntityManager, boundary?: Rectangle, capacity?: number, cellSize?: number);
-        protected onComponentAdded(entity: Entity, component: Component): void;
-        protected onComponentRemoved(entity: Entity, component: Component): void;
+    class CollisionResponseSystem extends System {
+        quadTree: QuadTree;
+        constructor(entityManager: EntityManager);
         update(entities: Entity[]): void;
+        calculateVelocityAfterCollision(body1: RigidBody, body2: RigidBody): {
+            v1: Vector2;
+            v2: Vector2;
+        };
+        isColliding(bounds1: BoxBounds, bounds2: BoxBounds): boolean;
     }
 }
 declare module gs.physics {
-    class Point {
-        x: number;
-        y: number;
-        constructor(x: number, y: number);
+    class FixedPoint {
+        rawValue: number;
+        precision: number;
+        constructor(value?: number, precision?: number);
+        add(other: FixedPoint | number): this;
+        sub(other: FixedPoint | number): this;
+        mul(other: FixedPoint | number): this;
+        div(other: FixedPoint | number): this;
+        lt(other: FixedPoint | number): boolean;
+        gt(other: FixedPoint | number): boolean;
+        neg(): FixedPoint;
+        toFloat(): number;
+        static add(a: FixedPoint, b: FixedPoint | number): FixedPoint;
+        static subtract(a: FixedPoint, b: FixedPoint | number): FixedPoint;
+        static multiply(a: FixedPoint, b: FixedPoint | number): FixedPoint;
+        static divide(a: FixedPoint, b: FixedPoint | number): FixedPoint;
+        static max(a: FixedPoint, b: FixedPoint): FixedPoint;
+        static min(a: FixedPoint, b: FixedPoint): FixedPoint;
     }
 }
 declare module gs.physics {
-    /**
-     * 四叉树
-     */
     class QuadTree {
-        boundary: Rectangle;
-        capacity: number;
-        cellSize: number;
-        private spatialHash;
-        private nw;
-        private ne;
-        private sw;
-        private se;
-        private aabbs;
-        constructor(boundary: Rectangle, capacity: number, cellSize: number);
-        insert(aabb: AABB): boolean;
-        subdivide(): void;
-        remove(aabb: AABB): any;
-        query(range: Rectangle, found?: AABB[]): AABB[];
-        queryPairs(): [AABB, AABB][];
-        update(point: AABB, newPosition: AABB): boolean;
-    }
-}
-declare module gs.physics {
-    class Rectangle {
-        x: number;
-        y: number;
-        width: number;
-        height: number;
-        constructor(x: number, y: number, width: number, height: number);
-        contains(point: Point): boolean;
-        intersects(range: Rectangle): boolean;
-        containsAABB(aabb: AABB): boolean;
-    }
-}
-declare module gs.physics {
-    /**
-     * 空间哈希
-     */
-    class SpatialHash {
-        cellSize: number;
-        private buckets;
-        constructor(cellSize: number);
-        size(): number;
-        private hash;
-        insert(aabb: AABB): void;
-        remove(aabb: AABB): boolean;
-        query(x: number, y: number): AABB[];
-        queryPairs(): [AABB, AABB][];
+        level: number;
+        bounds: {
+            x: FixedPoint;
+            y: FixedPoint;
+            width: FixedPoint;
+            height: FixedPoint;
+        };
+        objects: any[];
+        nodes: QuadTree[];
+        constructor(level: number, bounds: {
+            x: FixedPoint;
+            y: FixedPoint;
+            width: FixedPoint;
+            height: FixedPoint;
+        });
+        split(): void;
+        insert(obj: any): void;
+        getIndex(obj: any): number;
+        retrieve(returnObjects: any[], obj: any): any[];
         clear(): void;
     }
 }
 declare module gs.physics {
-    /**
-     * 扫描排序
-     */
-    class SweepAndPrune {
-        static sweepAndPrune(pairs: [AABB, AABB][]): [AABB, AABB][];
-        private static mergeSort;
-        private static merge;
+    class RigidBody extends Component {
+        position: Vector2;
+        velocity: Vector2;
+        mass: FixedPoint;
+        size: Vector2;
     }
 }
 declare module gs.physics {
-    /**
-     * 基于时间基础的碰撞检测
-     */
-    class TimeBaseCollisionDetection {
-        /**
-         * 用于处理物体的速度和方向以预测并阻止碰撞
-         * @param aabb1
-         * @param aabb2
-         */
-        static handleCollision(aabb1: AABB, aabb2: AABB): [AABB, AABB];
-        /**
-         * 处理多个碰撞和反弹
-         * @param aabbs
-         */
-        static handleCollisions(aabbs: AABB[]): void;
+    class Size {
+        width: FixedPoint;
+        height: FixedPoint;
+        constructor(width: number, height: number);
+        add(other: Size): Size;
+        subtract(other: Size): Size;
+        multiply(scalar: number): Size;
+        divide(scalar: number): Size;
+    }
+}
+declare module gs.physics {
+    class Transform extends Component {
+        position: Vector2;
+        onInitialize(x?: number, y?: number): void;
+    }
+}
+declare module gs.physics {
+    class Vector2 {
+        x: FixedPoint;
+        y: FixedPoint;
+        constructor(x?: number, y?: number);
+        add(other: Vector2): Vector2;
+        subtract(other: Vector2): Vector2;
+        multiply(scalar: number): Vector2;
+        divide(scalar: number): Vector2;
+        multiplyScalar(scalar: number): Vector2;
+        divideScalar(scalar: number): Vector2;
+    }
+}
+declare module gs.physics {
+    class World {
+        gravity: FixedPoint;
+        timeStep: FixedPoint;
+        bodies: RigidBody[];
+        size: Size;
+        constructor(gravity: FixedPoint, timeStep: FixedPoint, initialSize: Size);
+        addBody(body: RigidBody): void;
+        updateSize(): void;
+        handleBorderCollision(body: RigidBody): void;
+        step(): void;
+    }
+}
+declare module gs.physics {
+    interface Bounds {
+        position: Vector2;
+    }
+}
+declare module gs.physics {
+    interface BoxBounds extends Bounds {
+        width: FixedPoint;
+        height: FixedPoint;
+    }
+}
+declare module gs.physics {
+    interface CircleBounds extends Bounds {
+        radius: FixedPoint;
+    }
+}
+declare module gs.physics {
+    abstract class Collider extends Component {
+        abstract getBounds(): Bounds;
+    }
+}
+declare module gs.physics {
+    class BoxCollider extends Collider {
+        private size;
+        private transform;
+        onInitialize(size: Size): void;
+        getBounds(): BoxBounds;
     }
 }

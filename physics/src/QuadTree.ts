@@ -1,145 +1,112 @@
 module gs.physics {
-    /**
-     * 四叉树
-     */
+    const MAX_OBJECTS = 10;
+    const MAX_LEVELS = 5;
+
     export class QuadTree {
-        private spatialHash: SpatialHash;
-        private nw: QuadTree | null = null;
-        private ne: QuadTree | null = null;
-        private sw: QuadTree | null = null;
-        private se: QuadTree | null = null;
-        private aabbs: AABB[] = [];
+        level: number;
+        bounds: { x: FixedPoint, y: FixedPoint, width: FixedPoint, height: FixedPoint };
+        objects: any[];
+        nodes: QuadTree[];
 
-        constructor(public boundary: Rectangle, public capacity: number, public cellSize: number) {
-            this.spatialHash = new SpatialHash(cellSize);
+        constructor(level: number, bounds: { x: FixedPoint, y: FixedPoint, width: FixedPoint, height: FixedPoint }) {
+            this.level = level;
+            this.bounds = bounds;
+            this.objects = [];
+            this.nodes = [];
         }
 
-        insert(aabb: AABB): boolean {
-            if (!this.boundary.containsAABB(aabb)) {
-                return false;
-            }
-            
-            if (this.aabbs.length < this.capacity && this.nw === null) {
-                this.aabbs.push(aabb);
-                this.spatialHash.insert(aabb);
-                return true;
-            }
-            
-            if (this.nw === null) {
-                this.subdivide();
-            }
-            
-            if (this.nw.insert(aabb)) {
-                return true;
-            } else if (this.ne.insert(aabb)) {
-                return true;
-            } else if (this.sw.insert(aabb)) {
-                return true;
-            } else if (this.se.insert(aabb)) {
-                return true;
-            }
-            
-            this.aabbs.push(aabb);
-            this.spatialHash.insert(aabb);
-            return true;
-        }
-        
-        subdivide() {
-            let x = this.boundary.x;
-            let y = this.boundary.y;
-            let w = this.boundary.width / 2;
-            let h = this.boundary.height / 2;
-        
-            let nw = new Rectangle(x, y, w, h);
-            let ne = new Rectangle(x + w, y, w, h);
-            let sw = new Rectangle(x, y + h, w, h);
-            let se = new Rectangle(x + w, y + h, w, h);
-        
-            this.nw = new QuadTree(nw, this.capacity, this.spatialHash.cellSize);
-            this.ne = new QuadTree(ne, this.capacity, this.spatialHash.cellSize);
-            this.sw = new QuadTree(sw, this.capacity, this.spatialHash.cellSize);
-            this.se = new QuadTree(se, this.capacity, this.spatialHash.cellSize);
-        
-            for (let aabb of this.aabbs) {
-                if(this.nw.boundary.containsAABB(aabb)) this.nw.insert(aabb);
-                if(this.ne.boundary.containsAABB(aabb)) this.ne.insert(aabb);
-                if(this.sw.boundary.containsAABB(aabb)) this.sw.insert(aabb);
-                if(this.se.boundary.containsAABB(aabb)) this.se.insert(aabb);
-            }
-        
-            this.aabbs = [];
-            this.spatialHash.clear();
-        }
-        
-        remove(aabb: AABB) {
-            if (!this.boundary.containsAABB(aabb)) {
-                return false;
-            }
+        // 将物体分配到四个象限中
+        split(): void {
+            let subWidth = this.bounds.width.div(2);
+            let subHeight = this.bounds.height.div(2);
+            let x = this.bounds.x;
+            let y = this.bounds.y;
 
-            if (this.spatialHash.remove(aabb)) {
-                return true;
-            }
-
-            if (this.nw === null) {
-                return false;
-            }
-
-            return (this.nw.remove(aabb) || this.ne.remove(aabb) ||
-                this.sw.remove(aabb) || this.se.remove(aabb));
+            this.nodes[0] = new QuadTree(this.level + 1, { x: x.add(subWidth), y: y, width: subWidth, height: subHeight });
+            this.nodes[1] = new QuadTree(this.level + 1, { x: x, y: y, width: subWidth, height: subHeight });
+            this.nodes[2] = new QuadTree(this.level + 1, { x: x, y: y.add(subHeight), width: subWidth, height: subHeight });
+            this.nodes[3] = new QuadTree(this.level + 1, { x: x.add(subWidth), y: y.add(subHeight), width: subWidth, height: subHeight });
         }
 
-        query(range: Rectangle, found: AABB[] = []): AABB[] {
-            if (!this.boundary.intersects(range)) {
-                return found;
-            }
+        // 将物体插入到四叉树中
+        insert(obj: any): void {
+            if (this.nodes[0] != null) {
+                let index = this.getIndex(obj);
 
-            found.push(...this.spatialHash.query(range.x, range.y));
-
-            if (this.nw === null) {
-                return found;
-            }
-
-            this.nw.query(range, found);
-            this.ne.query(range, found);
-            this.sw.query(range, found);
-            this.se.query(range, found);
-
-            return found;
-        }
-
-        queryPairs(): [AABB, AABB][] {
-            let pairs: [AABB, AABB][] = [];
-
-            // 如果这个节点没有被分割，那么直接从空间哈希中查询
-            if (!this.nw) {
-                let potentialCollisions = this.spatialHash.queryPairs();
-                for (let pair of potentialCollisions) {
-                    pairs.push(pair);
+                if (index != -1) {
+                    this.nodes[index].insert(obj);
+                    return;
                 }
-            } else {
-                // 如果这个节点已经被分割，那么从四个子节点中查询
-                let northwestPairs = this.nw.queryPairs();
-                let northeastPairs = this.ne.queryPairs();
-                let southwestPairs = this.sw.queryPairs();
-                let southeastPairs = this.se.queryPairs();
-
-                pairs = pairs.concat(northwestPairs, northeastPairs, southwestPairs, southeastPairs);
             }
 
-            return pairs;
+            this.objects.push(obj);
+
+            if (this.objects.length > MAX_OBJECTS && this.level < MAX_LEVELS) {
+                if (this.nodes[0] == null) {
+                    this.split();
+                }
+
+                let i = 0;
+                while (i < this.objects.length) {
+                    let index = this.getIndex(this.objects[i]);
+                    if (index != -1) {
+                        this.nodes[index].insert(this.objects.splice(i, 1)[0]);
+                    } else {
+                        i++;
+                    }
+                }
+            }
         }
 
-        update(point: AABB, newPosition: AABB): boolean {
-            if (!this.remove(point)) {
-                return false;
+        // 获取物体应该位于哪个象限
+        getIndex(obj: any): number {
+            let index = -1;
+            let verticalMidpoint = this.bounds.x.add(this.bounds.width.div(2));
+            let horizontalMidpoint = this.bounds.y.add(this.bounds.height.div(2));
+
+            let topQuadrant = (obj.y.lt(horizontalMidpoint) && obj.y.add(obj.height).lt(horizontalMidpoint));
+            let bottomQuadrant = obj.y.gt(horizontalMidpoint);
+
+            if (obj.x.lt(verticalMidpoint) && obj.x.add(obj.width).lt(verticalMidpoint)) {
+                if (topQuadrant) {
+                    index = 1;
+                } else if (bottomQuadrant) {
+                    index = 2;
+                }
+            } else if (obj.x.gt(verticalMidpoint)) {
+                if (topQuadrant) {
+                    index = 0;
+                } else if (bottomQuadrant) {
+                    index = 3;
+                }
             }
 
-            point.minX = newPosition.minX;
-            point.maxX = newPosition.maxX;
-            point.minY = newPosition.minY;
-            point.maxY = newPosition.maxY;
+            return index;
+        }
 
-            return this.insert(point);
+        // 返回所有可能与给定物体发生碰撞的物体
+        retrieve(returnObjects: any[], obj: any): any[] {
+            let index = this.getIndex(obj);
+            if (index != -1 && this.nodes[0] != null) {
+                this.nodes[index].retrieve(returnObjects, obj);
+            }
+
+            returnObjects.push(...this.objects);
+
+            return returnObjects;
+        }
+
+        clear(): void {
+            // 清空当前节点的对象数组
+            this.objects = [];
+            
+            // 递归清空所有子节点
+            for(let i = 0; i < this.nodes.length; i++) {
+                if (this.nodes[i] != null) {
+                    this.nodes[i].clear();
+                    this.nodes[i] = null;
+                }
+            }
         }
     }
 }
