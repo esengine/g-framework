@@ -33,7 +33,8 @@ module gs {
 
         private checkAllSet(components: Bits): boolean {
             for (const type of this.allSet) {
-                if (!components.get(ComponentTypeManager.getIndexFor(type))) {
+                const info = ComponentTypeManager.getIndexFor(type);
+                if (!info.allAncestors.some(index => components.get(index))) {
                     return false;
                 }
             }
@@ -42,20 +43,24 @@ module gs {
     
         private checkExclusionSet(components: Bits): boolean {
             for (const type of this.exclusionSet) {
-                if (components.get(ComponentTypeManager.getIndexFor(type))) {
+                const info = ComponentTypeManager.getIndexFor(type);
+                // 如果有任何一个祖先类型的组件被拥有，就返回false
+                if (info.allAncestors.some(index => components.get(index))) {
                     return false;
                 }
             }
             return true;
         }
-    
+        
         private checkOneSet(components: Bits): boolean {
             if (this.oneSet.length === 0) {
                 return true;
             }
-    
+        
             for (const type of this.oneSet) {
-                if (components.get(ComponentTypeManager.getIndexFor(type))) {
+                const info = ComponentTypeManager.getIndexFor(type);
+                // 如果有任何一个祖先类型的组件被拥有，就返回true
+                if (info.allAncestors.some(index => components.get(index))) {
                     return true;
                 }
             }

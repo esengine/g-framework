@@ -77,8 +77,10 @@ module gs {
             const component = manager.create(this.id, this.entityManager) as T;
             component.onInitialize(...args);
 
-            const componentIndex = ComponentTypeManager.getIndexFor(componentType);
-            this.componentBits.set(componentIndex);
+            const componentInfo = ComponentTypeManager.getIndexFor(componentType);
+            for (const index of componentInfo.allAncestors) {
+                this.componentBits.set(index);
+            }
 
             if (this.entityManager.systemManager) {
                 this.entityManager.systemManager.notifyComponentAdded(this, component);
@@ -95,24 +97,28 @@ module gs {
          * @returns 
          */
         public getComponent<T extends Component>(componentType: ComponentConstructor<T>): T | null {
-            // 从缓存中获取组件，如果存在，则直接返回
-            const cachedComponent = this.componentCache.get(componentType);
-            if (cachedComponent) {
-                return cachedComponent as T;
+            // 获取组件类型信息
+            const componentInfo = ComponentTypeManager.getIndexFor(componentType);
+            
+            // 首先尝试直接从缓存中获取
+            for (const index of componentInfo.allAncestors) {
+                const cachedComponentType = ComponentTypeManager.getComponentTypeFor(index);
+                const cachedComponent = this.componentCache.get(cachedComponentType);
+                if (cachedComponent) {
+                    return cachedComponent as T;
+                }
             }
-
-            // 如果缓存中不存在，则从组件管理器中获取
-            const manager = this.componentManagers.get(componentType);
-            if (!manager) {
-                return null;
+            
+            // 如果缓存中没有找到，那么从组件管理器中获取
+            for (const manager of this.componentManagers.values()) {
+                const component = manager.get(this.id);
+                if (component && (component instanceof componentType)) {
+                    this.componentCache.set(componentType, component);
+                    return component as T;
+                }
             }
-
-            const component = manager.get(this.id);
-            if (component) {
-                this.componentCache.set(componentType, component);
-            }
-
-            return component as T;
+            
+            return null;
         }
 
         /**
@@ -146,8 +152,10 @@ module gs {
                 manager.remove(this.id);
             }
 
-            const componentIndex = ComponentTypeManager.getIndexFor(componentType);
-            this.componentBits.clear(componentIndex);
+            const componentInfo = ComponentTypeManager.getIndexFor(componentType);
+            for (const index of componentInfo.allAncestors) {
+                this.componentBits.clear(index);
+            }
 
             // 移除组件缓存
             this.componentCache.delete(componentType);
