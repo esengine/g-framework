@@ -18,6 +18,7 @@ module gs {
             if (!this.listeners.has(eventType)) {
                 this.listeners.set(eventType, []);
             }
+
             const eventListeners = this.listeners.get(eventType) as EventListener[];
             if (eventListeners)
                 eventListeners.push(listener);
@@ -52,16 +53,14 @@ module gs {
             }
         }
 
-        /**
+         /**
          * 用于触发事件。该方法将遍历所有订阅给定事件类型的侦听器，并调用它们
          * @param event 
          */
-        emit(type: string, data: any): void {
-            const event = this.eventPool.acquire();
-            event.type = type;
-            event.data = data;
+         emitEvent(event: Event): void {
+            const eventType = event.getType();
+            const listeners = this.listeners.get(eventType);
 
-            const listeners = this.listeners[type];
             if (listeners) {
                 for (const listener of listeners) {
                     listener(event);

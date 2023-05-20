@@ -37,10 +37,10 @@ declare module gs {
          */
         off(eventType: string, listener: EventListener): void;
         /**
-         * 用于触发事件。该方法将遍历所有订阅给定事件类型的侦听器，并调用它们
-         * @param event
-         */
-        emit(type: string, data: any): void;
+        * 用于触发事件。该方法将遍历所有订阅给定事件类型的侦听器，并调用它们
+        * @param event
+        */
+        emitEvent(event: Event): void;
     }
 }
 declare module gs {
@@ -212,7 +212,7 @@ declare module gs {
         on(eventType: string, listener: EventListener): void;
         once(eventType: string, callback: (event: Event) => void): void;
         off(eventType: string, listener: EventListener): void;
-        emit(type: string, data: any): void;
+        emit(event: Event): void;
     }
 }
 declare module gs {
@@ -288,6 +288,9 @@ declare module gs {
         type: string;
         data: any;
         constructor(type: string, data?: any);
+        reset(): void;
+        getType(): string;
+        getData(): any;
     }
 }
 declare module gs {
@@ -361,8 +364,8 @@ declare module gs {
      */
     class ComponentManager<T extends Component> {
         private components;
-        private componentType;
         private componentPool;
+        componentType: ComponentConstructor<T>;
         /**
          * ComponentManager 构造函数
          * @param componentType - 用于创建和管理的组件类型。

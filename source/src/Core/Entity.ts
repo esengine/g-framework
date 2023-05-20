@@ -310,8 +310,8 @@ module gs {
             this.eventEmitter.off(eventType, listener);
         }
 
-        public emit(type: string, data: any): void {
-            this.eventEmitter.emit(type, data);
+        public emit(event: Event): void {
+            this.eventEmitter.emitEvent(event);
         }
     }
 }

@@ -6,8 +6,8 @@ module gs {
      */
     export class ComponentManager<T extends Component> {
         private components: SparseSet<T>;
-        private componentType: ComponentConstructor<T>;
         private componentPool: T[] = [];
+        public componentType: ComponentConstructor<T>;
 
         /**
          * ComponentManager 构造函数

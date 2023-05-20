@@ -4,10 +4,7 @@ module gs {
         constructor() {
             super(
                 () => new Event("", null),
-                (event: Event) => {
-                    event.type = "";
-                    event.data = null;
-                }
+                (event: Event) => event.reset()
             );
         }
     }

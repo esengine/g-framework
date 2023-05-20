@@ -71,10 +71,7 @@ var gs;
     var EventPool = /** @class */ (function (_super) {
         __extends(EventPool, _super);
         function EventPool() {
-            return _super.call(this, function () { return new gs.Event("", null); }, function (event) {
-                event.type = "";
-                event.data = null;
-            }) || this;
+            return _super.call(this, function () { return new gs.Event("", null); }, function (event) { return event.reset(); }) || this;
         }
         return EventPool;
     }(gs.ObjectPool));
@@ -131,15 +128,13 @@ var gs;
             }
         };
         /**
-         * 用于触发事件。该方法将遍历所有订阅给定事件类型的侦听器，并调用它们
-         * @param event
-         */
-        EventEmitter.prototype.emit = function (type, data) {
+        * 用于触发事件。该方法将遍历所有订阅给定事件类型的侦听器，并调用它们
+        * @param event
+        */
+        EventEmitter.prototype.emitEvent = function (event) {
             var e_1, _a;
-            var event = this.eventPool.acquire();
-            event.type = type;
-            event.data = data;
-            var listeners = this.listeners[type];
+            var eventType = event.getType();
+            var listeners = this.listeners.get(eventType);
             if (listeners) {
                 try {
                     for (var listeners_1 = __values(listeners), listeners_1_1 = listeners_1.next(); !listeners_1_1.done; listeners_1_1 = listeners_1.next()) {
@@ -650,8 +645,8 @@ var gs;
         Entity.prototype.off = function (eventType, listener) {
             this.eventEmitter.off(eventType, listener);
         };
-        Entity.prototype.emit = function (type, data) {
-            this.eventEmitter.emit(type, data);
+        Entity.prototype.emit = function (event) {
+            this.eventEmitter.emitEvent(event);
         };
         return Entity;
     }());
@@ -752,6 +747,16 @@ var gs;
             this.type = type;
             this.data = data;
         }
+        Event.prototype.reset = function () {
+            this.type = "";
+            this.data = null;
+        };
+        Event.prototype.getType = function () {
+            return this.type;
+        };
+        Event.prototype.getData = function () {
+            return this.data;
+        };
         return Event;
     }());
     gs.Event = Event;
