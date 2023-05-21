@@ -1,6 +1,6 @@
 module gs.physics {
     const MAX_OBJECTS = 50;
-    const MAX_LEVELS = 10;
+    const MAX_LEVELS = 5;
 
     export class QuadTree<T extends Bounds> {
         level: number;

@@ -27,10 +27,9 @@ declare module gs.physics {
 }
 declare module gs.physics {
     class CollisionResponseSystem extends System {
-        quadTree: QuadTree<Bounds>;
+        spatialHash: SpatialHash<Bounds>;
         private processed;
-        private candidates;
-        constructor(entityManager: EntityManager, position: Vector2, width: FixedPoint, height: FixedPoint);
+        constructor(entityManager: EntityManager, cellSize?: number);
         update(entities: Entity[]): void;
         calculateVelocityAfterCollision(body1: RigidBody, body2: RigidBody): {
             v1: Vector2;
@@ -60,6 +59,15 @@ declare module gs.physics {
         static div(a: FixedPoint, b: FixedPoint | number): FixedPoint;
         static max(a: FixedPoint, b: FixedPoint): FixedPoint;
         static min(a: FixedPoint, b: FixedPoint): FixedPoint;
+    }
+}
+declare module gs.physics {
+    class Grid<T extends Bounds> {
+        grid: Map<string, Set<T>>;
+        getKey(position: Vector2): string;
+        insert(obj: T): void;
+        retrieve(obj: T): Set<T>;
+        clear(): void;
     }
 }
 declare module gs.physics {
@@ -112,6 +120,7 @@ declare module gs.physics {
     class SpatialHash<T extends Bounds> {
         private cellSize;
         private hashTable;
+        private objectTable;
         constructor(cellSize: number);
         private hash;
         insert(obj: T): void;

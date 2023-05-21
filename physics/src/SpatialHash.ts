@@ -1,50 +1,54 @@
 module gs.physics {
     export class SpatialHash<T extends Bounds> {
         private cellSize: number;
-        private hashTable: Map<string, T[]>;
+        private hashTable: Map<number, Set<T>>;
+        private objectTable: Map<T, number[]>;
 
         constructor(cellSize: number) {
             this.cellSize = cellSize;
             this.hashTable = new Map();
+            this.objectTable = new Map();
         }
 
-        private hash(x: number, y: number): string {
-            let cellX = Math.floor(x / this.cellSize);
-            let cellY = Math.floor(y / this.cellSize);
-            return `${cellY},${cellX}`;
+        private hash(x: number, y: number): number {
+            const prime1 = 73856093, prime2 = 19349663;
+            return x * prime1 ^ y * prime2;
         }
 
         public insert(obj: T): void {
-            let minX = Math.floor(obj.position.x.toFloat() / this.cellSize);
-            let minY = Math.floor(obj.position.y.toFloat() / this.cellSize);
-            let maxX = Math.floor((obj.position.x.toFloat() + obj.width.toFloat()) / this.cellSize);
-            let maxY = Math.floor((obj.position.y.toFloat() + obj.height.toFloat()) / this.cellSize);
+            const minX = Math.floor(obj.position.x.toFloat() / this.cellSize);
+            const minY = Math.floor(obj.position.y.toFloat() / this.cellSize);
+            const maxX = Math.floor((obj.position.x.toFloat() + obj.width.toFloat()) / this.cellSize);
+            const maxY = Math.floor((obj.position.y.toFloat() + obj.height.toFloat()) / this.cellSize);
 
+            let keys: number[] = [];
             for (let x = minX; x <= maxX; x++) {
                 for (let y = minY; y <= maxY; y++) {
                     let key = this.hash(x, y);
+                    keys.push(key);
                     let bucket = this.hashTable.get(key);
-                    if (bucket === undefined) {
-                        bucket = [];
+                    if (!bucket) {
+                        bucket = new Set();
                         this.hashTable.set(key, bucket);
                     }
-                    bucket.push(obj);
+                    bucket.add(obj);
                 }
             }
+            this.objectTable.set(obj, keys);
         }
 
         public retrieve(obj: T): T[] {
-            let minX = Math.floor(obj.position.x.toFloat() / this.cellSize);
-            let minY = Math.floor(obj.position.y.toFloat() / this.cellSize);
-            let maxX = Math.floor((obj.position.x.toFloat() + obj.width.toFloat()) / this.cellSize);
-            let maxY = Math.floor((obj.position.y.toFloat() + obj.height.toFloat()) / this.cellSize);
+            const minX = Math.floor(obj.position.x.toFloat() / this.cellSize);
+            const minY = Math.floor(obj.position.y.toFloat() / this.cellSize);
+            const maxX = Math.floor((obj.position.x.toFloat() + obj.width.toFloat()) / this.cellSize);
+            const maxY = Math.floor((obj.position.y.toFloat() + obj.height.toFloat()) / this.cellSize);
 
             let result: T[] = [];
             for (let x = minX; x <= maxX; x++) {
                 for (let y = minY; y <= maxY; y++) {
                     let key = this.hash(x, y);
                     let bucket = this.hashTable.get(key);
-                    if (bucket !== undefined) {
+                    if (bucket) {
                         result.push(...bucket);
                     }
                 }
@@ -59,29 +63,23 @@ module gs.physics {
             }
             return result;
         }
-    
-        public remove(obj: T): void {
-        let minX = Math.floor(obj.position.x.toFloat() / this.cellSize);
-        let minY = Math.floor(obj.position.y.toFloat() / this.cellSize);
-        let maxX = Math.floor((obj.position.x.toFloat() + obj.width.toFloat()) / this.cellSize);
-        let maxY = Math.floor((obj.position.y.toFloat() + obj.height.toFloat()) / this.cellSize);
 
-        for (let x = minX; x <= maxX; x++) {
-            for (let y = minY; y <= maxY; y++) {
-                let key = this.hash(x, y);
-                let bucket = this.hashTable.get(key);
-                if (bucket !== undefined) {
-                    let index = bucket.indexOf(obj);
-                    if (index !== -1) {
-                        bucket.splice(index, 1);
+        public remove(obj: T): void {
+            let keys = this.objectTable.get(obj);
+            if (keys) {
+                for (let key of keys) {
+                    let bucket = this.hashTable.get(key);
+                    if (bucket) {
+                        bucket.delete(obj);
                     }
                 }
+                this.objectTable.delete(obj);
             }
         }
-    }
 
         public clear(): void {
             this.hashTable.clear();
+            this.objectTable.clear();
         }
     }
 }

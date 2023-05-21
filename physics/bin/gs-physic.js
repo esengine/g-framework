@@ -96,33 +96,63 @@ var gs;
     (function (physics) {
         var CollisionResponseSystem = /** @class */ (function (_super) {
             __extends(CollisionResponseSystem, _super);
-            function CollisionResponseSystem(entityManager, position, width, height) {
+            function CollisionResponseSystem(entityManager, cellSize) {
+                if (cellSize === void 0) { cellSize = 100; }
                 var _this = _super.call(this, entityManager, 0, gs.Matcher.empty().all(physics.RigidBody, physics.Collider)) || this;
                 _this.processed = new Map();
-                _this.candidates = new Set();
-                _this.quadTree = new physics.QuadTree(0, { position: position, width: width, height: height });
+                _this.spatialHash = new physics.SpatialHash(cellSize);
                 return _this;
             }
             CollisionResponseSystem.prototype.update = function (entities) {
-                var e_1, _a, e_2, _b, e_3, _c;
-                var _d = this, quadTree = _d.quadTree, processed = _d.processed, candidates = _d.candidates;
+                var e_1, _a, e_2, _b;
+                var _c = this, spatialHash = _c.spatialHash, processed = _c.processed;
+                spatialHash.clear();
+                processed.clear();
                 try {
                     for (var entities_1 = __values(entities), entities_1_1 = entities_1.next(); !entities_1_1.done; entities_1_1 = entities_1.next()) {
                         var entity = entities_1_1.value;
                         var collider = entity.getComponent(physics.Collider);
-                        if (collider) {
-                            quadTree.insert(collider.getBounds());
-                            collider.isColliding = false;
-                        }
+                        if (!collider)
+                            continue;
+                        var bounds = collider.getBounds();
+                        spatialHash.insert(bounds);
+                        collider.isColliding = false;
                         var entityId = entity.getId();
-                        var processedPairs = this.processed.get(entityId);
-                        if (processedPairs) {
-                            processedPairs.clear();
+                        var processedPairs = processed.get(entityId);
+                        if (!processedPairs) {
+                            processedPairs = new Set();
+                            processed.set(entityId, processedPairs);
                         }
-                        else {
-                            this.processed.set(entityId, new Set());
+                        processedPairs.add(entityId);
+                        var spatialHashCandidates = spatialHash.retrieve(bounds);
+                        try {
+                            for (var spatialHashCandidates_1 = __values(spatialHashCandidates), spatialHashCandidates_1_1 = spatialHashCandidates_1.next(); !spatialHashCandidates_1_1.done; spatialHashCandidates_1_1 = spatialHashCandidates_1.next()) {
+                                var candidate = spatialHashCandidates_1_1.value;
+                                var candidateId = candidate.entity.getId();
+                                if (entityId === candidateId || processedPairs.has(candidateId)) {
+                                    continue;
+                                }
+                                var collider2 = candidate.entity.getComponent(physics.Collider);
+                                var bounds2 = collider2.getBounds();
+                                if (this.isColliding(bounds, bounds2)) {
+                                    collider.isColliding = true;
+                                    collider2.isColliding = true;
+                                    // let body1 = entity.getComponent(RigidBody);
+                                    // let body2 = candidate.entity.getComponent(RigidBody);
+                                    // const velocityAfterCollision = this.calculateVelocityAfterCollision(body1, body2);
+                                    // body1.velocity = velocityAfterCollision.v1;
+                                    // body2.velocity = velocityAfterCollision.v2;
+                                }
+                                processedPairs.add(candidateId);
+                            }
                         }
-                        this.processed.get(entityId).add(entityId);
+                        catch (e_2_1) { e_2 = { error: e_2_1 }; }
+                        finally {
+                            try {
+                                if (spatialHashCandidates_1_1 && !spatialHashCandidates_1_1.done && (_b = spatialHashCandidates_1.return)) _b.call(spatialHashCandidates_1);
+                            }
+                            finally { if (e_2) throw e_2.error; }
+                        }
                     }
                 }
                 catch (e_1_1) { e_1 = { error: e_1_1 }; }
@@ -132,60 +162,6 @@ var gs;
                     }
                     finally { if (e_1) throw e_1.error; }
                 }
-                try {
-                    for (var entities_2 = __values(entities), entities_2_1 = entities_2.next(); !entities_2_1.done; entities_2_1 = entities_2.next()) {
-                        var entity = entities_2_1.value;
-                        var collider1 = entity.getComponent(physics.Collider);
-                        if (!collider1)
-                            continue;
-                        var entityId = entity.getId();
-                        var bounds1 = collider1.getBounds();
-                        candidates.clear();
-                        quadTree.retrieve(candidates, bounds1);
-                        try {
-                            for (var candidates_1 = __values(candidates), candidates_1_1 = candidates_1.next(); !candidates_1_1.done; candidates_1_1 = candidates_1.next()) {
-                                var candidate = candidates_1_1.value;
-                                var candidateId = candidate.entity.getId();
-                                if (entityId === candidateId) {
-                                    continue;
-                                }
-                                if (this.processed.has(entityId) && this.processed.get(entityId).has(candidateId)) {
-                                    continue;
-                                }
-                                var collider2 = candidate.entity.getComponent(physics.Collider);
-                                var bounds2 = collider2.getBounds();
-                                if (this.isColliding(bounds1, bounds2)) {
-                                    collider1.isColliding = true;
-                                    collider2.isColliding = true;
-                                    // let body1 = entity.getComponent(RigidBody);
-                                    // let body2 = candidate.entity.getComponent(RigidBody);
-                                    // const velocityAfterCollision = this.calculateVelocityAfterCollision(body1, body2);
-                                    // body1.velocity = velocityAfterCollision.v1;
-                                    // body2.velocity = velocityAfterCollision.v2;
-                                }
-                                if (!this.processed.has(entityId)) {
-                                    this.processed.set(entityId, new Set());
-                                }
-                                this.processed.get(entityId).add(candidateId);
-                            }
-                        }
-                        catch (e_3_1) { e_3 = { error: e_3_1 }; }
-                        finally {
-                            try {
-                                if (candidates_1_1 && !candidates_1_1.done && (_c = candidates_1.return)) _c.call(candidates_1);
-                            }
-                            finally { if (e_3) throw e_3.error; }
-                        }
-                    }
-                }
-                catch (e_2_1) { e_2 = { error: e_2_1 }; }
-                finally {
-                    try {
-                        if (entities_2_1 && !entities_2_1.done && (_b = entities_2.return)) _b.call(entities_2);
-                    }
-                    finally { if (e_2) throw e_2.error; }
-                }
-                quadTree.clear();
             };
             CollisionResponseSystem.prototype.calculateVelocityAfterCollision = function (body1, body2) {
                 var massSum = physics.FixedPoint.add(body1.mass, body2.mass);
@@ -354,8 +330,77 @@ var gs;
 (function (gs) {
     var physics;
     (function (physics) {
+        var GRID_SIZE = 100;
+        var Grid = /** @class */ (function () {
+            function Grid() {
+                this.grid = new Map();
+            }
+            Grid.prototype.getKey = function (position) {
+                var gridX = Math.floor(position.x.toFloat() / GRID_SIZE);
+                var gridY = Math.floor(position.y.toFloat() / GRID_SIZE);
+                return gridX + "," + gridY;
+            };
+            // 将物体插入到网格中
+            Grid.prototype.insert = function (obj) {
+                var minX = Math.floor(obj.position.x.toFloat() / GRID_SIZE);
+                var minY = Math.floor(obj.position.y.toFloat() / GRID_SIZE);
+                var maxX = Math.floor((obj.position.x.toFloat() + obj.width.toFloat()) / GRID_SIZE);
+                var maxY = Math.floor((obj.position.y.toFloat() + obj.height.toFloat()) / GRID_SIZE);
+                for (var x = minX; x <= maxX; x++) {
+                    for (var y = minY; y <= maxY; y++) {
+                        var key = x + "," + y;
+                        if (!this.grid.has(key)) {
+                            this.grid.set(key, new Set());
+                        }
+                        this.grid.get(key).add(obj);
+                    }
+                }
+            };
+            // 返回所有可能与给定物体发生碰撞的物体
+            Grid.prototype.retrieve = function (obj) {
+                var e_3, _a;
+                var returnObjects = new Set();
+                var minX = Math.floor(obj.position.x.toFloat() / GRID_SIZE);
+                var minY = Math.floor(obj.position.y.toFloat() / GRID_SIZE);
+                var maxX = Math.floor((obj.position.x.toFloat() + obj.width.toFloat()) / GRID_SIZE);
+                var maxY = Math.floor((obj.position.y.toFloat() + obj.height.toFloat()) / GRID_SIZE);
+                for (var x = minX; x <= maxX; x++) {
+                    for (var y = minY; y <= maxY; y++) {
+                        var key = x + "," + y;
+                        if (this.grid.has(key)) {
+                            try {
+                                for (var _b = __values(this.grid.get(key)), _c = _b.next(); !_c.done; _c = _b.next()) {
+                                    var object = _c.value;
+                                    returnObjects.add(object);
+                                }
+                            }
+                            catch (e_3_1) { e_3 = { error: e_3_1 }; }
+                            finally {
+                                try {
+                                    if (_c && !_c.done && (_a = _b.return)) _a.call(_b);
+                                }
+                                finally { if (e_3) throw e_3.error; }
+                            }
+                        }
+                    }
+                }
+                return returnObjects;
+            };
+            // 清空网格
+            Grid.prototype.clear = function () {
+                this.grid.clear();
+            };
+            return Grid;
+        }());
+        physics.Grid = Grid;
+    })(physics = gs.physics || (gs.physics = {}));
+})(gs || (gs = {}));
+var gs;
+(function (gs) {
+    var physics;
+    (function (physics) {
         var MAX_OBJECTS = 50;
-        var MAX_LEVELS = 10;
+        var MAX_LEVELS = 5;
         var QuadTree = /** @class */ (function () {
             function QuadTree(level, bounds, cellSize) {
                 if (cellSize === void 0) { cellSize = 100; }
@@ -613,28 +658,31 @@ var gs;
             function SpatialHash(cellSize) {
                 this.cellSize = cellSize;
                 this.hashTable = new Map();
+                this.objectTable = new Map();
             }
             SpatialHash.prototype.hash = function (x, y) {
-                var cellX = Math.floor(x / this.cellSize);
-                var cellY = Math.floor(y / this.cellSize);
-                return cellY + "," + cellX;
+                var prime1 = 73856093, prime2 = 19349663;
+                return x * prime1 ^ y * prime2;
             };
             SpatialHash.prototype.insert = function (obj) {
                 var minX = Math.floor(obj.position.x.toFloat() / this.cellSize);
                 var minY = Math.floor(obj.position.y.toFloat() / this.cellSize);
                 var maxX = Math.floor((obj.position.x.toFloat() + obj.width.toFloat()) / this.cellSize);
                 var maxY = Math.floor((obj.position.y.toFloat() + obj.height.toFloat()) / this.cellSize);
+                var keys = [];
                 for (var x = minX; x <= maxX; x++) {
                     for (var y = minY; y <= maxY; y++) {
                         var key = this.hash(x, y);
+                        keys.push(key);
                         var bucket = this.hashTable.get(key);
-                        if (bucket === undefined) {
-                            bucket = [];
+                        if (!bucket) {
+                            bucket = new Set();
                             this.hashTable.set(key, bucket);
                         }
-                        bucket.push(obj);
+                        bucket.add(obj);
                     }
                 }
+                this.objectTable.set(obj, keys);
             };
             SpatialHash.prototype.retrieve = function (obj) {
                 var minX = Math.floor(obj.position.x.toFloat() / this.cellSize);
@@ -646,7 +694,7 @@ var gs;
                     for (var y = minY; y <= maxY; y++) {
                         var key = this.hash(x, y);
                         var bucket = this.hashTable.get(key);
-                        if (bucket !== undefined) {
+                        if (bucket) {
                             result.push.apply(result, __spread(bucket));
                         }
                     }
@@ -672,25 +720,31 @@ var gs;
                 return result;
             };
             SpatialHash.prototype.remove = function (obj) {
-                var minX = Math.floor(obj.position.x.toFloat() / this.cellSize);
-                var minY = Math.floor(obj.position.y.toFloat() / this.cellSize);
-                var maxX = Math.floor((obj.position.x.toFloat() + obj.width.toFloat()) / this.cellSize);
-                var maxY = Math.floor((obj.position.y.toFloat() + obj.height.toFloat()) / this.cellSize);
-                for (var x = minX; x <= maxX; x++) {
-                    for (var y = minY; y <= maxY; y++) {
-                        var key = this.hash(x, y);
-                        var bucket = this.hashTable.get(key);
-                        if (bucket !== undefined) {
-                            var index = bucket.indexOf(obj);
-                            if (index !== -1) {
-                                bucket.splice(index, 1);
+                var e_9, _a;
+                var keys = this.objectTable.get(obj);
+                if (keys) {
+                    try {
+                        for (var keys_1 = __values(keys), keys_1_1 = keys_1.next(); !keys_1_1.done; keys_1_1 = keys_1.next()) {
+                            var key = keys_1_1.value;
+                            var bucket = this.hashTable.get(key);
+                            if (bucket) {
+                                bucket.delete(obj);
                             }
                         }
                     }
+                    catch (e_9_1) { e_9 = { error: e_9_1 }; }
+                    finally {
+                        try {
+                            if (keys_1_1 && !keys_1_1.done && (_a = keys_1.return)) _a.call(keys_1);
+                        }
+                        finally { if (e_9) throw e_9.error; }
+                    }
+                    this.objectTable.delete(obj);
                 }
             };
             SpatialHash.prototype.clear = function () {
                 this.hashTable.clear();
+                this.objectTable.clear();
             };
             return SpatialHash;
         }());
@@ -795,7 +849,7 @@ var gs;
                 this.size = initialSize;
             }
             World.prototype.onInit = function (core) {
-                core.systemManager.registerSystem(new physics.CollisionResponseSystem(core.entityManager, this.initialPos, this.size.width, this.size.height));
+                core.systemManager.registerSystem(new physics.CollisionResponseSystem(core.entityManager));
             };
             World.prototype.onUpdate = function (deltaTime) {
                 this.step();
@@ -804,7 +858,7 @@ var gs;
                 this.bodies.push(body);
             };
             World.prototype.updateSize = function () {
-                var e_9, _a;
+                var e_10, _a;
                 try {
                     for (var _b = __values(this.bodies), _c = _b.next(); !_c.done; _c = _b.next()) {
                         var body = _c.value;
@@ -812,12 +866,12 @@ var gs;
                         this.size.height = physics.FixedPoint.max(this.size.height, physics.FixedPoint.add(body.position.y, body.size.y));
                     }
                 }
-                catch (e_9_1) { e_9 = { error: e_9_1 }; }
+                catch (e_10_1) { e_10 = { error: e_10_1 }; }
                 finally {
                     try {
                         if (_c && !_c.done && (_a = _b.return)) _a.call(_b);
                     }
-                    finally { if (e_9) throw e_9.error; }
+                    finally { if (e_10) throw e_10.error; }
                 }
             };
             World.prototype.handleBorderCollision = function (body) {
