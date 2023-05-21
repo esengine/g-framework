@@ -34,7 +34,7 @@ module gs.physics {
             }
             return this;
         }
-        
+
         div(other: FixedPoint | number) {
             if (other instanceof FixedPoint) {
                 this.rawValue = Math.round((this.rawValue / other.rawValue) * this.precision);
@@ -81,7 +81,7 @@ module gs.physics {
             result.rawValue = -this.rawValue;
             return result;
         }
-        
+
         toFloat() {
             return this.rawValue / this.precision;
         }
@@ -115,7 +115,7 @@ module gs.physics {
             }
             return result;
         }
-        
+
         static div(a: FixedPoint, b: FixedPoint | number): FixedPoint {
             const result = new FixedPoint();
             if (b instanceof FixedPoint) {
@@ -132,6 +132,11 @@ module gs.physics {
 
         static min(a: FixedPoint, b: FixedPoint): FixedPoint {
             return a.lt(b) ? a : b;
+        }
+
+        static from(value: number | string): FixedPoint {
+            const parsedValue: number = typeof value === 'number' ? value : parseFloat(value);
+            return new FixedPoint(parsedValue);
         }
     }
 }

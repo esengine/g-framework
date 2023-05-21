@@ -3,6 +3,7 @@ module gs.physics {
         private cellSize: number;
         private hashTable: Map<number, Set<T>>;
         private objectTable: Map<T, number[]>;
+        private setPool: Set<T>[] = [];
 
         constructor(cellSize: number) {
             this.cellSize = cellSize;
@@ -15,20 +16,33 @@ module gs.physics {
             return x * prime1 ^ y * prime2;
         }
 
+        private getSetFromPool(): Set<T> {
+            if (this.setPool.length > 0) {
+                return this.setPool.pop()!;
+            } else {
+                return new Set();
+            }
+        }
+
+        private returnSetToPool(set: Set<T>): void {
+            set.clear();
+            this.setPool.push(set);
+        }
+
         public insert(obj: T): void {
             const minX = Math.floor(obj.position.x.toFloat() / this.cellSize);
             const minY = Math.floor(obj.position.y.toFloat() / this.cellSize);
             const maxX = Math.floor((obj.position.x.toFloat() + obj.width.toFloat()) / this.cellSize);
             const maxY = Math.floor((obj.position.y.toFloat() + obj.height.toFloat()) / this.cellSize);
 
-            let keys: number[] = [];
+            const keys: number[] = [];
             for (let x = minX; x <= maxX; x++) {
                 for (let y = minY; y <= maxY; y++) {
-                    let key = this.hash(x, y);
+                    const key = this.hash(x, y);
                     keys.push(key);
                     let bucket = this.hashTable.get(key);
                     if (!bucket) {
-                        bucket = new Set();
+                        bucket = this.getSetFromPool();
                         this.hashTable.set(key, bucket);
                     }
                     bucket.add(obj);
@@ -37,40 +51,39 @@ module gs.physics {
             this.objectTable.set(obj, keys);
         }
 
-        public retrieve(obj: T): T[] {
-            const minX = Math.floor(obj.position.x.toFloat() / this.cellSize);
-            const minY = Math.floor(obj.position.y.toFloat() / this.cellSize);
-            const maxX = Math.floor((obj.position.x.toFloat() + obj.width.toFloat()) / this.cellSize);
-            const maxY = Math.floor((obj.position.y.toFloat() + obj.height.toFloat()) / this.cellSize);
-
-            let result: T[] = [];
-            for (let x = minX; x <= maxX; x++) {
-                for (let y = minY; y <= maxY; y++) {
-                    let key = this.hash(x, y);
-                    let bucket = this.hashTable.get(key);
+        public retrieve(obj: T, callback: (obj: T) => void): void {
+            const keys = this.objectTable.get(obj);
+            if (keys) {
+                for (const key of keys) {
+                    const bucket = this.hashTable.get(key);
                     if (bucket) {
-                        result.push(...bucket);
+                        for (const obj of bucket) {
+                            callback(obj);
+                        }
                     }
                 }
             }
-            return result;
         }
 
         public retrieveAll(): T[] {
-            let result: T[] = [];
-            for (let bucket of this.hashTable.values()) {
+            const result: T[] = [];
+            for (const bucket of this.hashTable.values()) {
                 result.push(...bucket);
             }
             return result;
         }
 
         public remove(obj: T): void {
-            let keys = this.objectTable.get(obj);
+            const keys = this.objectTable.get(obj);
             if (keys) {
-                for (let key of keys) {
-                    let bucket = this.hashTable.get(key);
+                for (const key of keys) {
+                    const bucket = this.hashTable.get(key);
                     if (bucket) {
                         bucket.delete(obj);
+                        if (bucket.size === 0) {
+                            this.returnSetToPool(bucket);
+                            this.hashTable.delete(key);
+                        }
                     }
                 }
                 this.objectTable.delete(obj);
@@ -78,6 +91,9 @@ module gs.physics {
         }
 
         public clear(): void {
+            for (const bucket of this.hashTable.values()) {
+                this.returnSetToPool(bucket);
+            }
             this.hashTable.clear();
             this.objectTable.clear();
         }

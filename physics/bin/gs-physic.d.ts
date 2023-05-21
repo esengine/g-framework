@@ -29,12 +29,9 @@ declare module gs.physics {
     class CollisionResponseSystem extends System {
         spatialHash: SpatialHash<Bounds>;
         private processed;
+        private collisionPairs;
         constructor(entityManager: EntityManager, cellSize?: number);
         update(entities: Entity[]): void;
-        calculateVelocityAfterCollision(body1: RigidBody, body2: RigidBody): {
-            v1: Vector2;
-            v2: Vector2;
-        };
         isColliding(bounds1: BoxBounds, bounds2: BoxBounds): boolean;
     }
 }
@@ -59,42 +56,7 @@ declare module gs.physics {
         static div(a: FixedPoint, b: FixedPoint | number): FixedPoint;
         static max(a: FixedPoint, b: FixedPoint): FixedPoint;
         static min(a: FixedPoint, b: FixedPoint): FixedPoint;
-    }
-}
-declare module gs.physics {
-    class Grid<T extends Bounds> {
-        grid: Map<string, Set<T>>;
-        getKey(position: Vector2): string;
-        insert(obj: T): void;
-        retrieve(obj: T): Set<T>;
-        clear(): void;
-    }
-}
-declare module gs.physics {
-    class QuadTree<T extends Bounds> {
-        cellSize: number;
-        level: number;
-        bounds: {
-            position: Vector2;
-            width: FixedPoint;
-            height: FixedPoint;
-        };
-        spatialHash: SpatialHash<T>;
-        nodes: QuadTree<T>[];
-        constructor(level: number, bounds: {
-            position: Vector2;
-            width: FixedPoint;
-            height: FixedPoint;
-        }, cellSize?: number);
-        split(): void;
-        insert(obj: T): void;
-        getIndex(obj: T): number;
-        getIndexes(obj: T): number[];
-        retrieve(returnObjects: Set<T>, obj: T): Set<T>;
-        collidesWith(obj1: T, obj2: T): boolean;
-        retrieveAll(): T[];
-        boundsIntersects(obj: T): boolean;
-        clear(): void;
+        static from(value: number | string): FixedPoint;
     }
 }
 declare module gs.physics {
@@ -121,10 +83,13 @@ declare module gs.physics {
         private cellSize;
         private hashTable;
         private objectTable;
+        private setPool;
         constructor(cellSize: number);
         private hash;
+        private getSetFromPool;
+        private returnSetToPool;
         insert(obj: T): void;
-        retrieve(obj: T): T[];
+        retrieve(obj: T, callback: (obj: T) => void): void;
         retrieveAll(): T[];
         remove(obj: T): void;
         clear(): void;
@@ -163,18 +128,15 @@ declare module gs.physics {
 }
 declare module gs.physics {
     class World implements IPlugin {
+        private cellSize;
         gravity: FixedPoint;
         timeStep: FixedPoint;
         bodies: RigidBody[];
-        size: Size;
-        initialPos: Vector2;
         name: string;
-        constructor(gravity?: FixedPoint, timeStep?: FixedPoint, initialPos?: Vector2, initialSize?: Size);
+        constructor(gravity: FixedPoint, timeStep: FixedPoint, cellSize: number);
         onInit(core: Core): void;
         onUpdate(deltaTime: number): void;
         addBody(body: RigidBody): void;
-        updateSize(): void;
-        handleBorderCollision(body: RigidBody): void;
         step(): void;
     }
 }
@@ -246,7 +208,7 @@ declare module gs.physics {
          * @param rect
          * @returns
          */
-        intersects(rect: Rectangle): boolean;
+        intersects(rect: Bounds): boolean;
     }
 }
 declare module gs.physics {

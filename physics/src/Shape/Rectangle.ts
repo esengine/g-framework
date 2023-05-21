@@ -30,7 +30,7 @@ module gs.physics {
          * @param rect 
          * @returns 
          */
-        intersects(rect: Rectangle): boolean {
+        intersects(rect: Bounds): boolean {
             return !(rect.position.x.add(rect.width).lt(this.position.x) ||
                      rect.position.y.add(rect.height).lt(this.position.y) ||
                      rect.position.x.gt(this.position.x.add(this.width)) ||
