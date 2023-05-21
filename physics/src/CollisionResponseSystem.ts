@@ -1,31 +1,51 @@
 module gs.physics {
     export class CollisionResponseSystem extends System {
         quadTree: QuadTree<Bounds>;
+        private processed: Map<number, Set<number>> = new Map();
+        private candidates: Set<Bounds> = new Set();
 
-        constructor(entityManager: EntityManager) {
+        constructor(entityManager: EntityManager, position: Vector2, width: FixedPoint, height: FixedPoint) {
             super(entityManager, 0, Matcher.empty().all(RigidBody, Collider));
-            this.quadTree = new QuadTree<Bounds>(0, { position: new Vector2(0, 0), width: new FixedPoint(1000), height: new FixedPoint(1000) }); //初始化四叉树的大小
+            this.quadTree = new QuadTree<Bounds>(0, { position: position, width: width, height: height });
         }
 
         update(entities: Entity[]): void {
-            for (let entity of entities) {
+            const { quadTree, processed, candidates } = this;
+
+            for (const entity of entities) {
                 const collider = entity.getComponent(Collider);
                 if (collider) {
-                    this.quadTree.insert(collider.getBounds());
+                    quadTree.insert(collider.getBounds());
                     collider.isColliding = false;
                 }
+
+                const entityId = entity.getId();
+                const processedPairs = this.processed.get(entityId);
+                if (processedPairs) {
+                    processedPairs.clear();
+                } else {
+                    this.processed.set(entityId, new Set());
+                }
+                this.processed.get(entityId).add(entityId);
             }
 
-            for (let entity of entities) {
+
+            for (const entity of entities) {
                 const collider1 = entity.getComponent(Collider);
                 if (!collider1) continue;
 
+                const entityId = entity.getId();
                 const bounds1 = collider1.getBounds();
-                let candidates: Set<Bounds> = new Set();
-                this.quadTree.retrieve(candidates, bounds1);
+                candidates.clear();
+                quadTree.retrieve(candidates, bounds1);
 
-                for (let candidate of Array.from(candidates)) {
-                    if (candidate.entity.getId() === entity.getId()) { 
+                for (const candidate of candidates) {
+                    const candidateId = candidate.entity.getId();
+                    if (entityId === candidateId) {
+                        continue;
+                    }
+
+                    if (this.processed.has(entityId) && this.processed.get(entityId).has(candidateId)) {
                         continue;
                     }
 
@@ -35,21 +55,21 @@ module gs.physics {
                     if (this.isColliding(bounds1, bounds2)) {
                         collider1.isColliding = true;
                         collider2.isColliding = true;
-                        const velocityAfterCollision = this.calculateVelocityAfterCollision(
-                            entity.getComponent(RigidBody),
-                            candidate.entity.getComponent(RigidBody)
-                        );
-
-                        entity.getComponent(RigidBody).velocity = velocityAfterCollision.v1;
-                        candidate.entity.getComponent(RigidBody).velocity = velocityAfterCollision.v2;
-
-                        const collisionEvent = new CollisionEvent('collision', entity, candidate.entity, velocityAfterCollision);
-                        GlobalEventEmitter.emitEvent(collisionEvent);
+                        // let body1 = entity.getComponent(RigidBody);
+                        // let body2 = candidate.entity.getComponent(RigidBody);
+                        // const velocityAfterCollision = this.calculateVelocityAfterCollision(body1, body2);
+                        // body1.velocity = velocityAfterCollision.v1;
+                        // body2.velocity = velocityAfterCollision.v2;
                     }
+
+                    if (!this.processed.has(entityId)) {
+                        this.processed.set(entityId, new Set());
+                    }
+                    this.processed.get(entityId).add(candidateId);
                 }
             }
 
-            this.quadTree.clear();
+            quadTree.clear();
         }
 
         calculateVelocityAfterCollision(body1: RigidBody, body2: RigidBody): { v1: Vector2, v2: Vector2 } {

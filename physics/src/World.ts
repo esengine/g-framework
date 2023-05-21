@@ -4,18 +4,20 @@ module gs.physics {
         timeStep: FixedPoint;
         bodies: RigidBody[];
         size: Size;
+        initialPos: Vector2;
 
         name = "PhysicsPlugin";
 
-        constructor(gravity: FixedPoint = new FixedPoint(0, -9.81), timeStep: FixedPoint = new FixedPoint(1, 60), initialSize: Size = new Size(1000, 1000)) {
+        constructor(gravity: FixedPoint = new FixedPoint(0, -9.81), timeStep: FixedPoint = new FixedPoint(1, 60), initialPos: Vector2 = new Vector2(), initialSize: Size = new Size(1000, 1000)) {
             this.gravity = gravity;
             this.timeStep = timeStep;
             this.bodies = [];
+            this.initialPos = initialPos;
             this.size = initialSize;
         }
 
         onInit(core: Core): void { 
-            core.systemManager.registerSystem(new CollisionResponseSystem(core.entityManager));
+            core.systemManager.registerSystem(new CollisionResponseSystem(core.entityManager, this.initialPos, this.size.width, this.size.height));
         }
 
         onUpdate(deltaTime: number): void {
@@ -44,17 +46,17 @@ module gs.physics {
         }
 
         step(): void {
-            for (let body of this.bodies) {
-                // 更新速度
-                body.velocity.y = FixedPoint.add(body.velocity.y, FixedPoint.mul(this.gravity, this.timeStep));
-                // 更新位置
-                body.position.x = FixedPoint.add(body.position.x, FixedPoint.mul(body.velocity.x, this.timeStep));
-                body.position.y = FixedPoint.add(body.position.y, FixedPoint.mul(body.velocity.y, this.timeStep));
-                // 处理边界碰撞
-                this.handleBorderCollision(body);
-            }
+            // for (let body of this.bodies) {
+            //     // 更新速度
+            //     body.velocity.y = FixedPoint.add(body.velocity.y, FixedPoint.mul(this.gravity, this.timeStep));
+            //     // 更新位置
+            //     body.position.x = FixedPoint.add(body.position.x, FixedPoint.mul(body.velocity.x, this.timeStep));
+            //     body.position.y = FixedPoint.add(body.position.y, FixedPoint.mul(body.velocity.y, this.timeStep));
+            //     // 处理边界碰撞
+            //     this.handleBorderCollision(body);
+            // }
             // 更新世界尺寸
-            this.updateSize();
+            // this.updateSize();
         }
     }
 }
