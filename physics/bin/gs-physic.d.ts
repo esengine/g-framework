@@ -1,4 +1,12 @@
 declare module gs.physics {
+    interface AABB {
+        minX: number;
+        minY: number;
+        maxX: number;
+        maxY: number;
+    }
+}
+declare module gs.physics {
     class CollisionEvent extends Event {
         entity1: Entity;
         entity2: Entity;
@@ -33,6 +41,66 @@ declare module gs.physics {
         constructor(entityManager: EntityManager, cellSize?: number);
         update(entities: Entity[]): void;
         isColliding(bounds1: BoxBounds, bounds2: BoxBounds): boolean;
+    }
+}
+declare module gs.physics {
+    function findItem<T>(item: T, items: T[], equalsFn?: (a: T, b: T) => boolean): number;
+    function calcBBox(node: DynamicTreeNode, toBBox: (item: any) => AABB): void;
+    function distBBox(node: DynamicTreeNode, k: number, p: number, toBBox: (item: any) => AABB, destNode?: DynamicTreeNode): DynamicTreeNode;
+    function extend(a: AABB, b: AABB): AABB;
+    function compareNodeMinX(a: DynamicTreeNode, b: DynamicTreeNode): number;
+    function compareNodeMinY(a: DynamicTreeNode, b: DynamicTreeNode): number;
+    function bboxArea(a: AABB): number;
+    function bboxMargin(a: AABB): number;
+    function enlargedArea(a: AABB, b: AABB): number;
+    function intersectionArea(a: AABB, b: AABB): number;
+    function contains(a: AABB, b: AABB): boolean;
+    function intersects(a: AABB, b: AABB): boolean;
+    function createNode(children: DynamicTreeNode[]): DynamicTreeNode;
+    function multiSelect<T>(arr: T[], left: number, right: number, n: number, compare: (a: T, b: T) => number): void;
+    function quickselect<T>(arr: T[], k: number, left: number, right: number, compare: (a: T, b: T) => number): void;
+    function swap<T>(arr: T[], i: number, j: number): void;
+}
+declare module gs.physics {
+    class DynamicTree {
+        private _maxEntries;
+        private _minEntries;
+        private compareMinX;
+        private compareMinY;
+        private data;
+        constructor(maxEntries?: number);
+        all(): any[];
+        search(bbox: AABB): any[];
+        collides(bbox: AABB): boolean;
+        load(data: any[]): DynamicTree;
+        insert(item: any): DynamicTree;
+        clear(): DynamicTree;
+        remove(item: any, equalsFn?: (a: any, b: any) => boolean): DynamicTree;
+        toBBox(item: any): AABB;
+        toJSON(): DynamicTreeNode;
+        fromJSON(data: DynamicTreeNode): DynamicTree;
+        private _all;
+        private _build;
+        private _chooseSubtree;
+        private _insert;
+        private _split;
+        private _splitRoot;
+        private _chooseSplitIndex;
+        private _chooseSplitAxis;
+        private _allDistMargin;
+        private _adjustParentBBoxes;
+        private _condense;
+    }
+}
+declare module gs.physics {
+    interface DynamicTreeNode {
+        children: DynamicTreeNode[];
+        height: number;
+        leaf: boolean;
+        minX: number;
+        minY: number;
+        maxX: number;
+        maxY: number;
     }
 }
 declare module gs.physics {
@@ -107,11 +175,9 @@ declare module gs.physics {
         y: FixedPoint;
         constructor(x?: FixedPoint | number, y?: FixedPoint | number);
         add(other: Vector2): Vector2;
-        subtract(other: Vector2): Vector2;
-        multiply(scalar: number): Vector2;
-        divide(scalar: number): Vector2;
-        multiplyScalar(scalar: number): Vector2;
-        divideScalar(scalar: number): Vector2;
+        sub(other: Vector2): Vector2;
+        mul(scalar: FixedPoint | number): Vector2;
+        div(scalar: FixedPoint | number): Vector2;
         /** 计算向量的长度 */
         length(): FixedPoint;
         /** 计算向量的平方长度 */

@@ -1,17 +1,17 @@
 module gs.physics {
     export class CollisionResponseSystem extends System {
-        dynamicTree: DynamicTree;
+        spatialHash: SpatialHash<Bounds>;
         private processed: Map<number, Set<number>> = new Map();
         private collisionPairs: [Entity, Entity][] = [];
 
-        constructor(entityManager: EntityManager) {
+        constructor(entityManager: EntityManager, cellSize: number = 100) {
             super(entityManager, 0, Matcher.empty().all(RigidBody, Collider));
-            this.dynamicTree = new DynamicTree();
+            this.spatialHash = new SpatialHash<Bounds>(cellSize);
         }
 
         update(entities: Entity[]): void {
-            const { dynamicTree, processed, collisionPairs } = this;
-            dynamicTree.optimize();
+            const { spatialHash, processed, collisionPairs } = this;
+            spatialHash.clear();
             processed.clear();
             collisionPairs.length = 0;
 
@@ -19,7 +19,7 @@ module gs.physics {
                 const collider = entity.getComponent(Collider);
                 if (!collider) continue;
                 const bounds = collider.getBounds();
-                dynamicTree.insert(boxBoundsToAABB(bounds), entity);
+                spatialHash.insert(bounds);
                 collider.isColliding = false;
         
                 const entityId = entity.getId();
@@ -29,16 +29,14 @@ module gs.physics {
                     processed.set(entityId, processedPairs);
                 }
                 
-                const candidates = dynamicTree.queryRange(boxBoundsToAABB(bounds));
-                for (const candidate of candidates) {
-                    const candidateEntity = candidate;
-                    const candidateId = candidateEntity.getId();
+                spatialHash.retrieve(bounds, candidate => {
+                    const candidateId = candidate.entity.getId();
                     if (entityId === candidateId || processedPairs.has(candidateId)) {
-                        continue;
+                        return;
                     }
-                    collisionPairs.push([entity, candidateEntity]);
+                    collisionPairs.push([entity, candidate.entity]);
                     processedPairs.add(candidateId);
-                }
+                });
             }
         
             for (const [entity, candidate] of collisionPairs) {
@@ -55,9 +53,16 @@ module gs.physics {
         }
         
         isColliding(bounds1: BoxBounds, bounds2: BoxBounds): boolean {
-            const aabb1 = boxBoundsToAABB(bounds1);
-            const aabb2 = boxBoundsToAABB(bounds2);
-            return aabb1.intersects(aabb2);
+            const { position: position1, width: width1, height: height1 } = bounds1;
+            const { position: position2, width: width2, height: height2 } = bounds2;
+
+            return !(
+                position2.x.gt(FixedPoint.add(position1.x, width1)) ||
+                FixedPoint.add(position2.x, width2).lt(position1.x) ||
+                position2.y.gt(FixedPoint.add(position1.y, height1)) ||
+                FixedPoint.add(position2.y, height2).lt(position1.y)
+            );
         }
     }
+
 }

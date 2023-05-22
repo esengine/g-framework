@@ -183,6 +183,524 @@ var gs;
 (function (gs) {
     var physics;
     (function (physics) {
+        function findItem(item, items, equalsFn) {
+            if (!equalsFn) {
+                return items.indexOf(item);
+            }
+            for (var i = 0; i < items.length; i++) {
+                if (equalsFn(item, items[i])) {
+                    return i;
+                }
+            }
+            return -1;
+        }
+        physics.findItem = findItem;
+        function calcBBox(node, toBBox) {
+            distBBox(node, 0, node.children.length, toBBox, node);
+        }
+        physics.calcBBox = calcBBox;
+        function distBBox(node, k, p, toBBox, destNode) {
+            if (!destNode) {
+                destNode = createNode(null);
+            }
+            destNode.minX = Infinity;
+            destNode.minY = Infinity;
+            destNode.maxX = -Infinity;
+            destNode.maxY = -Infinity;
+            for (var i = k; i < p; i++) {
+                var child = node.children[i];
+                extend(destNode, node.leaf ? toBBox(child) : child);
+            }
+            return destNode;
+        }
+        physics.distBBox = distBBox;
+        function extend(a, b) {
+            a.minX = Math.min(a.minX, b.minX);
+            a.minY = Math.min(a.minY, b.minY);
+            a.maxX = Math.max(a.maxX, b.maxX);
+            a.maxY = Math.max(a.maxY, b.maxY);
+            return a;
+        }
+        physics.extend = extend;
+        function compareNodeMinX(a, b) {
+            return a.minX - b.minX;
+        }
+        physics.compareNodeMinX = compareNodeMinX;
+        function compareNodeMinY(a, b) {
+            return a.minY - b.minY;
+        }
+        physics.compareNodeMinY = compareNodeMinY;
+        function bboxArea(a) {
+            return (a.maxX - a.minX) * (a.maxY - a.minY);
+        }
+        physics.bboxArea = bboxArea;
+        function bboxMargin(a) {
+            return (a.maxX - a.minX) + (a.maxY - a.minY);
+        }
+        physics.bboxMargin = bboxMargin;
+        function enlargedArea(a, b) {
+            return (Math.max(b.maxX, a.maxX) - Math.min(b.minX, a.minX)) *
+                (Math.max(b.maxY, a.maxY) - Math.min(b.minY, a.minY));
+        }
+        physics.enlargedArea = enlargedArea;
+        function intersectionArea(a, b) {
+            var minX = Math.max(a.minX, b.minX);
+            var minY = Math.max(a.minY, b.minY);
+            var maxX = Math.min(a.maxX, b.maxX);
+            var maxY = Math.min(a.maxY, b.maxY);
+            return Math.max(0, maxX - minX) *
+                Math.max(0, maxY - minY);
+        }
+        physics.intersectionArea = intersectionArea;
+        function contains(a, b) {
+            return a.minX <= b.minX &&
+                a.minY <= b.minY &&
+                b.maxX <= a.maxX &&
+                b.maxY <= a.maxY;
+        }
+        physics.contains = contains;
+        function intersects(a, b) {
+            return b.minX <= a.maxX &&
+                b.minY <= a.maxY &&
+                b.maxX >= a.minX &&
+                b.maxY >= a.minY;
+        }
+        physics.intersects = intersects;
+        function createNode(children) {
+            return {
+                children: children,
+                height: 1,
+                leaf: true,
+                minX: Infinity,
+                minY: Infinity,
+                maxX: -Infinity,
+                maxY: -Infinity
+            };
+        }
+        physics.createNode = createNode;
+        function multiSelect(arr, left, right, n, compare) {
+            var stack = [left, right];
+            while (stack.length) {
+                right = stack.pop();
+                left = stack.pop();
+                if (right - left <= n) {
+                    continue;
+                }
+                var mid = left + Math.ceil((right - left) / n / 2) * n;
+                quickselect(arr, mid, left, right, compare);
+                stack.push(left, mid, mid, right);
+            }
+        }
+        physics.multiSelect = multiSelect;
+        function quickselect(arr, k, left, right, compare) {
+            while (right > left) {
+                if (right - left > 600) {
+                    var n = right - left + 1;
+                    var m = k - left + 1;
+                    var z = Math.log(n);
+                    var s = 0.5 * Math.exp(2 * z / 3);
+                    var sd = 0.5 * Math.sqrt(z * s * (n - s) / n) * Math.sign(m - n / 2);
+                    var newLeft = Math.max(left, Math.floor(k - m * s / n + sd));
+                    var newRight = Math.min(right, Math.floor(k + (n - m) * s / n + sd));
+                    quickselect(arr, k, newLeft, newRight, compare);
+                }
+                var t = arr[k];
+                var i = left;
+                var j = right;
+                swap(arr, left, k);
+                if (compare(arr[right], t) > 0) {
+                    swap(arr, left, right);
+                }
+                while (i < j) {
+                    swap(arr, i, j);
+                    i++;
+                    j--;
+                    while (compare(arr[i], t) < 0) {
+                        i++;
+                    }
+                    while (compare(arr[j], t) > 0) {
+                        j--;
+                    }
+                }
+                if (compare(arr[left], t) === 0) {
+                    swap(arr, left, j);
+                }
+                else {
+                    j++;
+                    swap(arr, j, right);
+                }
+                if (j <= k) {
+                    left = j + 1;
+                }
+                if (k <= j) {
+                    right = j - 1;
+                }
+            }
+        }
+        physics.quickselect = quickselect;
+        function swap(arr, i, j) {
+            var temp = arr[i];
+            arr[i] = arr[j];
+            arr[j] = temp;
+        }
+        physics.swap = swap;
+    })(physics = gs.physics || (gs.physics = {}));
+})(gs || (gs = {}));
+var gs;
+(function (gs) {
+    var physics;
+    (function (physics) {
+        var DynamicTree = /** @class */ (function () {
+            function DynamicTree(maxEntries) {
+                if (maxEntries === void 0) { maxEntries = 9; }
+                // 默认情况下，节点中的最大条目数为9；最佳性能时，最小节点填充为40%
+                this._maxEntries = Math.max(4, maxEntries);
+                this._minEntries = Math.max(2, Math.ceil(this._maxEntries * 0.4));
+                this.clear();
+            }
+            DynamicTree.prototype.all = function () {
+                return this._all(this.data, []);
+            };
+            DynamicTree.prototype.search = function (bbox) {
+                var node = this.data;
+                var result = [];
+                if (!physics.intersects(bbox, node))
+                    return result;
+                var toBBox = this.toBBox;
+                var nodesToSearch = [];
+                while (node) {
+                    for (var i = 0; i < node.children.length; i++) {
+                        var child = node.children[i];
+                        var childBBox = node.leaf ? toBBox(child) : child;
+                        if (physics.intersects(bbox, childBBox)) {
+                            if (node.leaf)
+                                result.push(child);
+                            else if (physics.contains(bbox, childBBox))
+                                this._all(child, result);
+                            else
+                                nodesToSearch.push(child);
+                        }
+                    }
+                    node = nodesToSearch.pop();
+                }
+                return result;
+            };
+            DynamicTree.prototype.collides = function (bbox) {
+                var node = this.data;
+                if (!physics.intersects(bbox, node))
+                    return false;
+                var nodesToSearch = [];
+                while (node) {
+                    for (var i = 0; i < node.children.length; i++) {
+                        var child = node.children[i];
+                        var childBBox = node.leaf ? this.toBBox(child) : child;
+                        if (physics.intersects(bbox, childBBox)) {
+                            if (node.leaf || physics.contains(bbox, childBBox))
+                                return true;
+                            nodesToSearch.push(child);
+                        }
+                    }
+                    node = nodesToSearch.pop();
+                }
+                return false;
+            };
+            DynamicTree.prototype.load = function (data) {
+                if (!(data && data.length))
+                    return this;
+                if (data.length < this._minEntries) {
+                    for (var i = 0; i < data.length; i++) {
+                        this.insert(data[i]);
+                    }
+                    return this;
+                }
+                // 使用OMT算法从头开始递归构建树结构
+                var node = this._build(data.slice(), 0, data.length - 1, 0);
+                if (!this.data.children.length) {
+                    // 如果树为空，则保存
+                    this.data = node;
+                }
+                else if (this.data.height === node.height) {
+                    // 如果树的高度相同，则分割根节点
+                    this._splitRoot(this.data, node);
+                }
+                else {
+                    if (this.data.height < node.height) {
+                        // 如果插入的树较大，则交换树
+                        var tmpNode = this.data;
+                        this.data = node;
+                        node = tmpNode;
+                    }
+                    // 在合适的层级将小树插入大树中
+                    this._insert(node, this.data.height - node.height - 1, true);
+                }
+                return this;
+            };
+            DynamicTree.prototype.insert = function (item) {
+                if (item)
+                    this._insert(item, this.data.height - 1);
+                return this;
+            };
+            DynamicTree.prototype.clear = function () {
+                this.data = physics.createNode([]);
+                return this;
+            };
+            DynamicTree.prototype.remove = function (item, equalsFn) {
+                if (!item)
+                    return this;
+                var node = this.data;
+                var bbox = this.toBBox(item);
+                var path = [];
+                var indexes = [];
+                var i, parent, goingUp;
+                // 深度优先的迭代树遍历
+                while (node || path.length) {
+                    if (!node) {
+                        node = path.pop();
+                        parent = path[path.length - 1];
+                        i = indexes.pop();
+                        goingUp = true;
+                    }
+                    if (node.leaf) {
+                        // 检查当前节点
+                        var index = physics.findItem(item, node.children, equalsFn);
+                        if (index !== -1) {
+                            // 找到项目，删除项目并向上调整树
+                            node.children.splice(index, 1);
+                            path.push(node);
+                            this._condense(path);
+                            return this;
+                        }
+                    }
+                    if (!goingUp && !node.leaf && physics.contains(node, bbox)) {
+                        path.push(node);
+                        indexes.push(i);
+                        i = 0;
+                        parent = node;
+                        node = node.children[0];
+                    }
+                    else if (parent) {
+                        i++;
+                        node = parent.children[i];
+                        goingUp = false;
+                    }
+                    else
+                        node = null;
+                }
+                return this;
+            };
+            DynamicTree.prototype.toBBox = function (item) {
+                return item;
+            };
+            DynamicTree.prototype.toJSON = function () {
+                return this.data;
+            };
+            DynamicTree.prototype.fromJSON = function (data) {
+                this.data = data;
+                return this;
+            };
+            DynamicTree.prototype._all = function (node, result) {
+                var nodesToSearch = [];
+                while (node) {
+                    if (node.leaf)
+                        result.push.apply(result, __spread(node.children));
+                    else
+                        nodesToSearch.push.apply(nodesToSearch, __spread(node.children));
+                    node = nodesToSearch.pop();
+                }
+                return result;
+            };
+            DynamicTree.prototype._build = function (items, left, right, height) {
+                var N = right - left + 1;
+                var M = this._maxEntries;
+                var node;
+                if (N <= M) {
+                    // 达到叶级别；返回叶节点
+                    node = physics.createNode(items.slice(left, right + 1));
+                    physics.calcBBox(node, this.toBBox);
+                    return node;
+                }
+                if (!height) {
+                    // 目标高度为批量加载的树
+                    height = Math.ceil(Math.log(N) / Math.log(M));
+                    // 目标根节点条目数量以最大化存储利用率
+                    M = Math.ceil(N / Math.pow(M, height - 1));
+                }
+                node = physics.createNode([]);
+                node.leaf = false;
+                node.height = height;
+                // 将条目拆分为M个方形的瓦片
+                var N2 = Math.ceil(N / M);
+                var N1 = N2 * Math.ceil(Math.sqrt(M));
+                physics.multiSelect(items, left, right, N1, this.compareMinX);
+                for (var i = left; i <= right; i += N1) {
+                    var right2 = Math.min(i + N1 - 1, right);
+                    physics.multiSelect(items, i, right2, N2, this.compareMinY);
+                    for (var j = i; j <= right2; j += N2) {
+                        var right3 = Math.min(j + N2 - 1, right2);
+                        node.children.push(this._build(items, j, right3, height - 1));
+                    }
+                }
+                physics.calcBBox(node, this.toBBox);
+                return node;
+            };
+            DynamicTree.prototype._chooseSubtree = function (bbox, node, level, path) {
+                while (true) {
+                    path.push(node);
+                    if (node.leaf || path.length - 1 === level)
+                        break;
+                    var minArea = Infinity;
+                    var minEnlargement = Infinity;
+                    var targetNode = void 0;
+                    for (var i = 0; i < node.children.length; i++) {
+                        var child = node.children[i];
+                        var area = physics.bboxArea(child);
+                        var enlargement = physics.enlargedArea(bbox, child) - area;
+                        // 选择面积扩展最小的条目
+                        if (enlargement < minEnlargement) {
+                            minEnlargement = enlargement;
+                            minArea = area < minArea ? area : minArea;
+                            targetNode = child;
+                        }
+                        else if (enlargement === minEnlargement) {
+                            // 否则选择面积最小的条目
+                            if (area < minArea) {
+                                minArea = area;
+                                targetNode = child;
+                            }
+                        }
+                    }
+                    node = targetNode || node.children[0];
+                }
+                return node;
+            };
+            DynamicTree.prototype._insert = function (item, level, isNode) {
+                var bbox = isNode ? item : this.toBBox(item);
+                var insertPath = [];
+                // 找到最适合容纳条目的节点，并保存沿途的所有节点
+                var node = this._chooseSubtree(bbox, this.data, level, insertPath);
+                // 将条目放入节点中
+                node.children.push(item);
+                physics.extend(node, bbox);
+                // 分割节点溢出；如有必要，向上传播
+                while (level >= 0) {
+                    if (insertPath[level].children.length > this._maxEntries) {
+                        this._split(insertPath, level);
+                        level--;
+                    }
+                    else
+                        break;
+                }
+                // 调整沿插入路径的bbox
+                this._adjustParentBBoxes(bbox, insertPath, level);
+            };
+            // 将溢出的节点分割为两个节点
+            DynamicTree.prototype._split = function (insertPath, level) {
+                var node = insertPath[level];
+                var M = node.children.length;
+                var m = this._minEntries;
+                this._chooseSplitAxis(node, m, M);
+                var splitIndex = this._chooseSplitIndex(node, m, M);
+                var newNode = physics.createNode(node.children.splice(splitIndex, node.children.length - splitIndex));
+                newNode.height = node.height;
+                newNode.leaf = node.leaf;
+                physics.calcBBox(node, this.toBBox);
+                physics.calcBBox(newNode, this.toBBox);
+                if (level)
+                    insertPath[level - 1].children.push(newNode);
+                else
+                    this._splitRoot(node, newNode);
+            };
+            DynamicTree.prototype._splitRoot = function (node, newNode) {
+                this.data = physics.createNode([node, newNode]);
+                this.data.height = node.height + 1;
+                this.data.leaf = false;
+                physics.calcBBox(this.data, this.toBBox);
+            };
+            DynamicTree.prototype._chooseSplitIndex = function (node, m, M) {
+                var index;
+                var minOverlap = Infinity;
+                var minArea = Infinity;
+                for (var i = m; i <= M - m; i++) {
+                    var bbox1 = physics.distBBox(node, 0, i, this.toBBox);
+                    var bbox2 = physics.distBBox(node, i, M, this.toBBox);
+                    var overlap = physics.intersectionArea(bbox1, bbox2);
+                    var area = physics.bboxArea(bbox1) + physics.bboxArea(bbox2);
+                    // 选择重叠最小的分布
+                    if (overlap < minOverlap) {
+                        minOverlap = overlap;
+                        index = i;
+                        minArea = area < minArea ? area : minArea;
+                    }
+                    else if (overlap === minOverlap) {
+                        // 否则选择面积最小的分布
+                        if (area < minArea) {
+                            minArea = area;
+                            index = i;
+                        }
+                    }
+                }
+                return index || M - m;
+            };
+            // 根据最佳分割轴对节点的子项进行排序
+            DynamicTree.prototype._chooseSplitAxis = function (node, m, M) {
+                var compareMinX = node.leaf ? this.compareMinX : physics.compareNodeMinX;
+                var compareMinY = node.leaf ? this.compareMinY : physics.compareNodeMinY;
+                var xMargin = this._allDistMargin(node, m, M, compareMinX);
+                var yMargin = this._allDistMargin(node, m, M, compareMinY);
+                // 如果总分布边距值对于x最小，则按minX排序，
+                // 否则已经按minY排序
+                if (xMargin < yMargin)
+                    node.children.sort(compareMinX);
+            };
+            // 所有可能的分布中，每个节点至少为m时的总边距
+            DynamicTree.prototype._allDistMargin = function (node, m, M, compare) {
+                node.children.sort(compare);
+                var toBBox = this.toBBox;
+                var leftBBox = physics.distBBox(node, 0, m, toBBox);
+                var rightBBox = physics.distBBox(node, M - m, M, toBBox);
+                var margin = physics.bboxMargin(leftBBox) + physics.bboxMargin(rightBBox);
+                for (var i = m; i < M - m; i++) {
+                    var child = node.children[i];
+                    physics.extend(leftBBox, node.leaf ? toBBox(child) : child);
+                    margin += physics.bboxMargin(leftBBox);
+                }
+                for (var i = M - m - 1; i >= m; i--) {
+                    var child = node.children[i];
+                    physics.extend(rightBBox, node.leaf ? toBBox(child) : child);
+                    margin += physics.bboxMargin(rightBBox);
+                }
+                return margin;
+            };
+            DynamicTree.prototype._adjustParentBBoxes = function (bbox, path, level) {
+                // 调整给定树路径上的bbox
+                for (var i = level; i >= 0; i--) {
+                    physics.extend(path[i], bbox);
+                }
+            };
+            DynamicTree.prototype._condense = function (path) {
+                // 遍历路径，删除空节点并更新bbox
+                for (var i = path.length - 1, siblings = void 0; i >= 0; i--) {
+                    if (path[i].children.length === 0) {
+                        if (i > 0) {
+                            siblings = path[i - 1].children;
+                            siblings.splice(siblings.indexOf(path[i]), 1);
+                        }
+                        else
+                            this.clear();
+                    }
+                    else
+                        physics.calcBBox(path[i], this.toBBox);
+                }
+            };
+            return DynamicTree;
+        }());
+        physics.DynamicTree = DynamicTree;
+    })(physics = gs.physics || (gs.physics = {}));
+})(gs || (gs = {}));
+var gs;
+(function (gs) {
+    var physics;
+    (function (physics) {
         var FixedPoint = /** @class */ (function () {
             function FixedPoint(value, precision) {
                 if (value === void 0) { value = 0; }
@@ -548,49 +1066,45 @@ var gs;
                 this.y = y instanceof physics.FixedPoint ? y : new physics.FixedPoint(y);
             }
             Vector2.prototype.add = function (other) {
-                return new Vector2(this.x.toFloat() + other.x.toFloat(), this.y.toFloat() + other.y.toFloat());
+                return new Vector2(physics.FixedPoint.add(this.x, other.x), physics.FixedPoint.add(this.y, other.y));
             };
-            Vector2.prototype.subtract = function (other) {
-                return new Vector2(this.x.toFloat() - other.x.toFloat(), this.y.toFloat() - other.y.toFloat());
+            Vector2.prototype.sub = function (other) {
+                return new Vector2(physics.FixedPoint.sub(this.x, other.x), physics.FixedPoint.sub(this.y, other.y));
             };
-            Vector2.prototype.multiply = function (scalar) {
-                return new Vector2(this.x.toFloat() * scalar, this.y.toFloat() * scalar);
+            Vector2.prototype.mul = function (scalar) {
+                return new Vector2(physics.FixedPoint.mul(this.x, scalar), physics.FixedPoint.mul(this.y, scalar));
             };
-            Vector2.prototype.divide = function (scalar) {
-                return new Vector2(this.x.toFloat() / scalar, this.y.toFloat() / scalar);
-            };
-            Vector2.prototype.multiplyScalar = function (scalar) {
-                return new Vector2(this.x.toFloat() * scalar, this.y.toFloat() * scalar);
-            };
-            Vector2.prototype.divideScalar = function (scalar) {
-                return new Vector2(this.x.toFloat() / scalar, this.y.toFloat() / scalar);
+            Vector2.prototype.div = function (scalar) {
+                return new Vector2(physics.FixedPoint.div(this.x, scalar), physics.FixedPoint.div(this.y, scalar));
             };
             /** 计算向量的长度 */
             Vector2.prototype.length = function () {
-                return new physics.FixedPoint(Math.sqrt(this.x.toFloat() * this.x.toFloat() + this.y.toFloat() * this.y.toFloat()));
+                var lengthSquared = physics.FixedPoint.add(physics.FixedPoint.mul(this.x, this.x), physics.FixedPoint.mul(this.y, this.y));
+                return physics.FixedPoint.from(Math.sqrt(lengthSquared.toFloat()));
             };
             /** 计算向量的平方长度 */
             Vector2.prototype.lengthSquared = function () {
-                return new physics.FixedPoint(this.x.toFloat() * this.x.toFloat() + this.y.toFloat() * this.y.toFloat());
+                return physics.FixedPoint.add(physics.FixedPoint.mul(this.x, this.x), physics.FixedPoint.mul(this.y, this.y));
             };
             /** 归一化向量 */
             Vector2.prototype.normalize = function () {
                 var len = this.length();
-                return new Vector2(this.x.div(len), this.y.div(len));
+                return new Vector2(physics.FixedPoint.div(this.x, len), physics.FixedPoint.div(this.y, len));
             };
             /** 计算两个向量的点积 */
             Vector2.prototype.dot = function (other) {
-                return new physics.FixedPoint(this.x.toFloat() * other.x.toFloat() + this.y.toFloat() * other.y.toFloat());
+                return physics.FixedPoint.add(physics.FixedPoint.mul(this.x, other.x), physics.FixedPoint.mul(this.y, other.y));
             };
             /** 计算两个向量的叉积 */
             Vector2.prototype.cross = function (other) {
-                return new physics.FixedPoint(this.x.toFloat() * other.y.toFloat() - this.y.toFloat() * other.x.toFloat());
+                return physics.FixedPoint.sub(physics.FixedPoint.mul(this.x, other.y), physics.FixedPoint.mul(this.y, other.x));
             };
             /** 计算到另一个向量的距离 */
             Vector2.prototype.distanceTo = function (other) {
-                var dx = this.x.sub(other.x);
-                var dy = this.y.sub(other.y);
-                return new physics.FixedPoint(Math.sqrt(dx.toFloat() * dx.toFloat() + dy.toFloat() * dy.toFloat()));
+                var dx = physics.FixedPoint.sub(this.x, other.x);
+                var dy = physics.FixedPoint.sub(this.y, other.y);
+                var distanceSquared = physics.FixedPoint.add(physics.FixedPoint.mul(dx, dx), physics.FixedPoint.mul(dy, dy));
+                return physics.FixedPoint.from(Math.sqrt(distanceSquared.toFloat()));
             };
             return Vector2;
         }());
@@ -612,7 +1126,7 @@ var gs;
                 this.bodies = [];
             }
             World.prototype.onInit = function (core) {
-                core.systemManager.registerSystem(new physics.CollisionResponseSystem(core.entityManager, this.cellSize));
+                core.systemManager.registerSystem(new physics.CollisionResponseSystem(core.entityManager));
             };
             World.prototype.onUpdate = function (deltaTime) {
                 this.step();
