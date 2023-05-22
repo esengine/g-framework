@@ -91,8 +91,8 @@ module gs.physics {
         }
 
         public clear(): void {
-            for (const bucket of this.hashTable.values()) {
-                this.returnSetToPool(bucket);
+            for (const set of this.setPool) {
+                set.clear();
             }
             this.hashTable.clear();
             this.objectTable.clear();

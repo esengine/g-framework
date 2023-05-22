@@ -13,7 +13,7 @@ module gs.physics {
         }
 
         onInit(core: Core): void { 
-            core.systemManager.registerSystem(new CollisionResponseSystem(core.entityManager, this.cellSize));
+            core.systemManager.registerSystem(new CollisionResponseSystem(core.entityManager));
         }
 
         onUpdate(deltaTime: number): void {

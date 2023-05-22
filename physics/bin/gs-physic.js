@@ -497,9 +497,9 @@ var gs;
             SpatialHash.prototype.clear = function () {
                 var e_7, _a;
                 try {
-                    for (var _b = __values(this.hashTable.values()), _c = _b.next(); !_c.done; _c = _b.next()) {
-                        var bucket = _c.value;
-                        this.returnSetToPool(bucket);
+                    for (var _b = __values(this.setPool), _c = _b.next(); !_c.done; _c = _b.next()) {
+                        var set = _c.value;
+                        set.clear();
                     }
                 }
                 catch (e_7_1) { e_7 = { error: e_7_1 }; }
