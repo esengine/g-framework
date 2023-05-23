@@ -123,10 +123,7 @@ var gs;
                             children: [],
                             height: 0,
                             leaf: true,
-                            minX: bounds.position.x.toFloat(),
-                            minY: bounds.position.y.toFloat(),
-                            maxX: physics.FixedPoint.add(bounds.position.x, bounds.width).toFloat(),
-                            maxY: physics.FixedPoint.add(bounds.position.y, bounds.height).toFloat()
+                            collider: collider
                         };
                         boundsArray.push(node);
                         nodeEntityMap.set(node, entity);
@@ -151,7 +148,7 @@ var gs;
                             processedPairs = new Set();
                             processed.set(entityId, processedPairs);
                         }
-                        var candidates = dynamicTree.search(node);
+                        var candidates = dynamicTree.search(node.collider);
                         try {
                             for (var candidates_1 = __values(candidates), candidates_1_1 = candidates_1.next(); !candidates_1_1.done; candidates_1_1 = candidates_1.next()) {
                                 var candidate = candidates_1_1.value;
@@ -218,59 +215,74 @@ var gs;
             return -1;
         }
         physics.findItem = findItem;
-        function calcBBox(node, toBBox) {
-            distBBox(node, 0, node.children.length, toBBox, node);
+        function calcBounds(node, toBounds) {
+            distBounds(node, 0, node.children.length, toBounds, node);
         }
-        physics.calcBBox = calcBBox;
-        function distBBox(node, k, p, toBBox, destNode) {
+        physics.calcBounds = calcBounds;
+        function distBounds(node, k, p, toCollider, destNode) {
             if (!destNode) {
                 destNode = createNode(null);
             }
-            destNode.minX = Infinity;
-            destNode.minY = Infinity;
-            destNode.maxX = -Infinity;
-            destNode.maxY = -Infinity;
+            destNode.collider = new physics.Collider();
+            var minX = Infinity;
+            var minY = Infinity;
+            var maxX = -Infinity;
+            var maxY = -Infinity;
             for (var i = k; i < p; i++) {
                 var child = node.children[i];
-                extend(destNode, node.leaf ? toBBox(child) : child);
+                var collider = toCollider(child);
+                minX = Math.min(minX, collider.bounds.position.x.toFloat());
+                minY = Math.min(minY, collider.bounds.position.y.toFloat());
+                maxX = Math.max(maxX, collider.bounds.position.x.toFloat() + collider.bounds.width.toFloat());
+                maxY = Math.max(maxY, collider.bounds.position.y.toFloat() + collider.bounds.height.toFloat());
             }
+            // 创建一个新的Bounds对象
+            var newBounds = new physics.BoxBounds(new physics.Vector2(minX, minY), new physics.FixedPoint(maxX - minX), new physics.FixedPoint(maxY - minY), destNode.collider.entity);
+            // 设置destNode的Collider的Bounds
+            destNode.collider.setBounds(newBounds);
             return destNode;
         }
-        physics.distBBox = distBBox;
+        physics.distBounds = distBounds;
         function extend(a, b) {
-            a.minX = Math.min(a.minX, b.minX);
-            a.minY = Math.min(a.minY, b.minY);
-            a.maxX = Math.max(a.maxX, b.maxX);
-            a.maxY = Math.max(a.maxY, b.maxY);
+            var minX = Math.min(a.position.x.toFloat(), b.position.x.toFloat());
+            var minY = Math.min(a.position.y.toFloat(), b.position.y.toFloat());
+            var maxX = Math.max(a.position.x.toFloat() + a.width.toFloat(), b.position.x.toFloat() + b.width.toFloat());
+            var maxY = Math.max(a.position.y.toFloat() + a.height.toFloat(), b.position.y.toFloat() + b.height.toFloat());
+            a.position.x = new physics.FixedPoint(minX);
+            a.position.y = new physics.FixedPoint(minY);
+            a.width = new physics.FixedPoint(maxX - minX);
+            a.height = new physics.FixedPoint(maxY - minY);
             return a;
         }
         physics.extend = extend;
         function compareNodeMinX(a, b) {
-            return a.minX - b.minX;
+            return a.collider.getBounds().position.x.toFloat() - b.collider.getBounds().position.x.toFloat();
         }
         physics.compareNodeMinX = compareNodeMinX;
         function compareNodeMinY(a, b) {
-            return a.minY - b.minY;
+            return a.collider.getBounds().position.y.toFloat() - b.collider.getBounds().position.y.toFloat();
         }
         physics.compareNodeMinY = compareNodeMinY;
-        function bboxArea(a) {
-            return (a.maxX - a.minX) * (a.maxY - a.minY);
+        function boundsArea(a) {
+            var bounds = a.collider.getBounds();
+            return bounds.width.toFloat() * bounds.height.toFloat();
         }
-        physics.bboxArea = bboxArea;
-        function bboxMargin(a) {
-            return (a.maxX - a.minX) + (a.maxY - a.minY);
+        physics.boundsArea = boundsArea;
+        function boundsMargin(a) {
+            var bounds = a.collider.getBounds();
+            return bounds.width.toFloat() + bounds.height.toFloat();
         }
-        physics.bboxMargin = bboxMargin;
+        physics.boundsMargin = boundsMargin;
         function enlargedArea(a, b) {
-            return (Math.max(b.maxX, a.maxX) - Math.min(b.minX, a.minX)) *
-                (Math.max(b.maxY, a.maxY) - Math.min(b.minY, a.minY));
+            return (Math.max(b.position.x.toFloat() + b.width.toFloat(), a.position.x.toFloat() + a.width.toFloat()) - Math.min(b.position.x.toFloat(), a.position.x.toFloat())) *
+                (Math.max(b.position.y.toFloat() + b.height.toFloat(), a.position.y.toFloat() + a.height.toFloat()) - Math.min(b.position.y.toFloat(), a.position.y.toFloat()));
         }
         physics.enlargedArea = enlargedArea;
         function intersectionArea(a, b) {
-            var minX = Math.max(a.minX, b.minX);
-            var minY = Math.max(a.minY, b.minY);
-            var maxX = Math.min(a.maxX, b.maxX);
-            var maxY = Math.min(a.maxY, b.maxY);
+            var minX = Math.max(a.position.x.toFloat(), b.position.x.toFloat());
+            var minY = Math.max(a.position.y.toFloat(), b.position.y.toFloat());
+            var maxX = Math.min(a.position.x.toFloat() + a.width.toFloat(), b.position.x.toFloat() + b.width.toFloat());
+            var maxY = Math.min(a.position.y.toFloat() + a.height.toFloat(), b.position.y.toFloat() + b.height.toFloat());
             return Math.max(0, maxX - minX) *
                 Math.max(0, maxY - minY);
         }
@@ -294,10 +306,7 @@ var gs;
                 children: children,
                 height: 1,
                 leaf: true,
-                minX: Infinity,
-                minY: Infinity,
-                maxX: -Infinity,
-                maxY: -Infinity
+                collider: new physics.Collider()
             };
         }
         physics.createNode = createNode;
@@ -381,26 +390,28 @@ var gs;
                 this._minEntries = Math.max(2, Math.ceil(this._maxEntries * 0.4));
                 this.clear();
             }
-            DynamicTree.prototype.compareMinX = function (a, b) { return a.minX - b.minX; };
-            DynamicTree.prototype.compareMinY = function (a, b) { return a.minY - b.minY; };
+            DynamicTree.prototype.compareMinX = function (a, b) {
+                return a.collider.getBounds().position.x.toFloat() - b.collider.getBounds().position.x.toFloat();
+            };
+            DynamicTree.prototype.compareMinY = function (a, b) {
+                return a.collider.getBounds().position.y.toFloat() - b.collider.getBounds().position.y.toFloat();
+            };
             DynamicTree.prototype.all = function () {
                 return this._all(this.data, []);
             };
-            DynamicTree.prototype.search = function (bbox) {
+            DynamicTree.prototype.search = function (collider) {
                 var node = this.data;
                 var result = [];
-                if (!physics.intersects(bbox, node))
+                if (!collider.intersects(node.collider))
                     return result;
-                var toBBox = this.toBBox;
                 var nodesToSearch = [];
                 while (node) {
                     for (var i = 0; i < node.children.length; i++) {
                         var child = node.children[i];
-                        var childBBox = node.leaf ? toBBox(child) : child;
-                        if (physics.intersects(bbox, childBBox)) {
+                        if (collider.intersects(child.collider)) {
                             if (node.leaf)
                                 result.push(child);
-                            else if (physics.contains(bbox, childBBox))
+                            else if (collider.contains(child.collider))
                                 this._all(child, result);
                             else
                                 nodesToSearch.push(child);
@@ -410,17 +421,16 @@ var gs;
                 }
                 return result;
             };
-            DynamicTree.prototype.collides = function (bbox) {
+            DynamicTree.prototype.collides = function (collider) {
                 var node = this.data;
-                if (!physics.intersects(bbox, node))
+                if (!collider.intersects(node.collider))
                     return false;
                 var nodesToSearch = [];
                 while (node) {
                     for (var i = 0; i < node.children.length; i++) {
                         var child = node.children[i];
-                        var childBBox = node.leaf ? this.toBBox(child) : child;
-                        if (physics.intersects(bbox, childBBox)) {
-                            if (node.leaf || physics.contains(bbox, childBBox))
+                        if (collider.intersects(child.collider)) {
+                            if (node.leaf || collider.contains(child.collider))
                                 return true;
                             nodesToSearch.push(child);
                         }
@@ -473,7 +483,7 @@ var gs;
                 if (!item)
                     return this;
                 var node = this.data;
-                var bbox = this.toBBox(item);
+                var bbox = item.collider.getBounds();
                 var path = [];
                 var indexes = [];
                 var i, parent, goingUp;
@@ -496,7 +506,7 @@ var gs;
                             return this;
                         }
                     }
-                    if (!goingUp && !node.leaf && physics.contains(node, bbox)) {
+                    if (!goingUp && !node.leaf && item.collider.contains(node.collider)) {
                         path.push(node);
                         indexes.push(i);
                         i = 0;
@@ -513,8 +523,8 @@ var gs;
                 }
                 return this;
             };
-            DynamicTree.prototype.toBBox = function (item) {
-                return item;
+            DynamicTree.prototype.toBounds = function (item) {
+                return item.collider;
             };
             DynamicTree.prototype.toJSON = function () {
                 return this.data;
@@ -541,7 +551,7 @@ var gs;
                 if (N <= M) {
                     // 达到叶级别；返回叶节点
                     node = physics.createNode(items.slice(left, right + 1));
-                    physics.calcBBox(node, this.toBBox);
+                    physics.calcBounds(node, this.toBounds);
                     return node;
                 }
                 if (!height) {
@@ -565,10 +575,10 @@ var gs;
                         node.children.push(this._build(items, j, right3, height - 1));
                     }
                 }
-                physics.calcBBox(node, this.toBBox);
+                physics.calcBounds(node, this.toBounds);
                 return node;
             };
-            DynamicTree.prototype._chooseSubtree = function (bbox, node, level, path) {
+            DynamicTree.prototype._chooseSubtree = function (collider, node, level, path) {
                 while (true) {
                     path.push(node);
                     if (node.leaf || path.length - 1 === level)
@@ -578,8 +588,8 @@ var gs;
                     var targetNode = void 0;
                     for (var i = 0; i < node.children.length; i++) {
                         var child = node.children[i];
-                        var area = physics.bboxArea(child);
-                        var enlargement = physics.enlargedArea(bbox, child) - area;
+                        var area = physics.boundsArea(child);
+                        var enlargement = physics.enlargedArea(collider.getBounds(), child.collider.getBounds()) - area;
                         // 选择面积扩展最小的条目
                         if (enlargement < minEnlargement) {
                             minEnlargement = enlargement;
@@ -599,13 +609,13 @@ var gs;
                 return node;
             };
             DynamicTree.prototype._insert = function (item, level, isNode) {
-                var bbox = isNode ? item : this.toBBox(item);
+                var bounds = isNode ? item.collider.getBounds() : item.collider.bounds;
                 var insertPath = [];
                 // 找到最适合容纳条目的节点，并保存沿途的所有节点
-                var node = this._chooseSubtree(bbox, this.data, level, insertPath);
+                var node = this._chooseSubtree(item.collider, this.data, level, insertPath);
                 // 将条目放入节点中
                 node.children.push(item);
-                physics.extend(node, bbox);
+                physics.extend(node.collider.getBounds(), bounds);
                 // 分割节点溢出；如有必要，向上传播
                 while (level >= 0) {
                     if (insertPath[level].children.length > this._maxEntries) {
@@ -615,8 +625,8 @@ var gs;
                     else
                         break;
                 }
-                // 调整沿插入路径的bbox
-                this._adjustParentBBoxes(bbox, insertPath, level);
+                // 调整沿插入路径的Bounds
+                this._adjustParentBounds(bounds, insertPath, level);
             };
             // 将溢出的节点分割为两个节点
             DynamicTree.prototype._split = function (insertPath, level) {
@@ -628,8 +638,8 @@ var gs;
                 var newNode = physics.createNode(node.children.splice(splitIndex, node.children.length - splitIndex));
                 newNode.height = node.height;
                 newNode.leaf = node.leaf;
-                physics.calcBBox(node, this.toBBox);
-                physics.calcBBox(newNode, this.toBBox);
+                physics.calcBounds(node, this.toBounds);
+                physics.calcBounds(newNode, this.toBounds);
                 if (level)
                     insertPath[level - 1].children.push(newNode);
                 else
@@ -639,17 +649,17 @@ var gs;
                 this.data = physics.createNode([node, newNode]);
                 this.data.height = node.height + 1;
                 this.data.leaf = false;
-                physics.calcBBox(this.data, this.toBBox);
+                physics.calcBounds(this.data, this.toBounds);
             };
             DynamicTree.prototype._chooseSplitIndex = function (node, m, M) {
                 var index;
                 var minOverlap = Infinity;
                 var minArea = Infinity;
                 for (var i = m; i <= M - m; i++) {
-                    var bbox1 = physics.distBBox(node, 0, i, this.toBBox);
-                    var bbox2 = physics.distBBox(node, i, M, this.toBBox);
-                    var overlap = physics.intersectionArea(bbox1, bbox2);
-                    var area = physics.bboxArea(bbox1) + physics.bboxArea(bbox2);
+                    var bbox1 = physics.distBounds(node, 0, i, this.toBounds);
+                    var bbox2 = physics.distBounds(node, i, M, this.toBounds);
+                    var overlap = physics.intersectionArea(bbox1.collider.getBounds(), bbox2.collider.getBounds());
+                    var area = physics.boundsArea(bbox1) + physics.boundsArea(bbox2);
                     // 选择重叠最小的分布
                     if (overlap < minOverlap) {
                         minOverlap = overlap;
@@ -680,26 +690,26 @@ var gs;
             // 所有可能的分布中，每个节点至少为m时的总边距
             DynamicTree.prototype._allDistMargin = function (node, m, M, compare) {
                 node.children.sort(compare);
-                var toBBox = this.toBBox;
-                var leftBBox = physics.distBBox(node, 0, m, toBBox);
-                var rightBBox = physics.distBBox(node, M - m, M, toBBox);
-                var margin = physics.bboxMargin(leftBBox) + physics.bboxMargin(rightBBox);
+                var toBounds = this.toBounds;
+                var leftBounds = physics.distBounds(node, 0, m, toBounds);
+                var rightBounds = physics.distBounds(node, M - m, M, toBounds);
+                var margin = physics.boundsMargin(leftBounds) + physics.boundsMargin(rightBounds);
                 for (var i = m; i < M - m; i++) {
                     var child = node.children[i];
-                    physics.extend(leftBBox, node.leaf ? toBBox(child) : child);
-                    margin += physics.bboxMargin(leftBBox);
+                    physics.extend(leftBounds.collider.getBounds(), node.leaf ? toBounds(child).getBounds() : child.collider.getBounds());
+                    margin += physics.boundsMargin(leftBounds);
                 }
                 for (var i = M - m - 1; i >= m; i--) {
                     var child = node.children[i];
-                    physics.extend(rightBBox, node.leaf ? toBBox(child) : child);
-                    margin += physics.bboxMargin(rightBBox);
+                    physics.extend(rightBounds.collider.getBounds(), node.leaf ? toBounds(child).getBounds() : child.collider.getBounds());
+                    margin += physics.boundsMargin(rightBounds);
                 }
                 return margin;
             };
-            DynamicTree.prototype._adjustParentBBoxes = function (bbox, path, level) {
-                // 调整给定树路径上的bbox
+            DynamicTree.prototype._adjustParentBounds = function (bounds, path, level) {
+                // 调整给定树路径上的Bounds
                 for (var i = level; i >= 0; i--) {
-                    physics.extend(path[i], bbox);
+                    physics.extend(path[i].collider.getBounds(), bounds);
                 }
             };
             DynamicTree.prototype._condense = function (path) {
@@ -714,7 +724,7 @@ var gs;
                             this.clear();
                     }
                     else
-                        physics.calcBBox(path[i], this.toBBox);
+                        physics.calcBounds(path[i], this.toBounds);
                 }
             };
             return DynamicTree;
@@ -1167,7 +1177,16 @@ var gs;
                 return _super !== null && _super.apply(this, arguments) || this;
             }
             Collider.prototype.getBounds = function () {
-                return { position: new physics.Vector2(), width: new physics.FixedPoint(), height: new physics.FixedPoint(), entity: this.entity };
+                return this.bounds;
+            };
+            Collider.prototype.setBounds = function (bounds) {
+                this.bounds = bounds;
+            };
+            Collider.prototype.intersects = function (other) {
+                return this.getBounds().intersects(other.getBounds());
+            };
+            Collider.prototype.contains = function (other) {
+                return this.getBounds().contains(other.getBounds());
             };
             return Collider;
         }(gs.Component));
@@ -1192,14 +1211,8 @@ var gs;
             BoxCollider.prototype.onInitialize = function (size) {
                 this.size = size;
                 this.transform = this.entity.getComponent(physics.Transform);
-            };
-            BoxCollider.prototype.getBounds = function () {
-                return {
-                    position: this.transform.position,
-                    width: this.size.width,
-                    height: this.size.height,
-                    entity: this.entity
-                };
+                var bounds = new physics.BoxBounds(this.transform.position, this.size.width, this.size.height, this.entity);
+                this.setBounds(bounds);
             };
             return BoxCollider;
         }(physics.Collider));
@@ -1210,96 +1223,67 @@ var gs;
 (function (gs) {
     var physics;
     (function (physics) {
-        var Circle = /** @class */ (function () {
-            function Circle() {
+        var CircleCollider = /** @class */ (function (_super) {
+            __extends(CircleCollider, _super);
+            function CircleCollider() {
+                return _super !== null && _super.apply(this, arguments) || this;
             }
-            Object.defineProperty(Circle.prototype, "width", {
-                get: function () {
-                    return this.radius.mul(2);
-                },
-                enumerable: true,
-                configurable: true
-            });
-            Object.defineProperty(Circle.prototype, "height", {
-                get: function () {
-                    return this.radius.mul(2);
-                },
-                enumerable: true,
-                configurable: true
-            });
-            /**
-             * 计算圆形面积
-             * @returns
-             */
-            Circle.prototype.area = function () {
-                return this.radius.mul(this.radius).mul(Math.PI);
-            };
-            /**
-             * 计算圆形周长
-             * @returns
-             */
-            Circle.prototype.circumference = function () {
-                return this.radius.mul(2).mul(Math.PI);
-            };
-            /**
-             * 判断点是否在圆内
-             * @param point
-             * @returns
-             */
-            Circle.prototype.containsPoint = function (point) {
-                return this.position.distanceTo(point).lte(this.radius);
-            };
-            /**
-             * 判断两个圆是否相交
-             * @param other
-             * @returns
-             */
-            Circle.prototype.intersects = function (other) {
-                return this.position.distanceTo(other.position).lte(this.radius.add(other.radius));
-            };
-            return Circle;
-        }());
-        physics.Circle = Circle;
+            return CircleCollider;
+        }(physics.Collider));
+        physics.CircleCollider = CircleCollider;
     })(physics = gs.physics || (gs.physics = {}));
 })(gs || (gs = {}));
 var gs;
 (function (gs) {
     var physics;
     (function (physics) {
-        var Rectangle = /** @class */ (function () {
-            function Rectangle() {
+        var PolygonCollider = /** @class */ (function (_super) {
+            __extends(PolygonCollider, _super);
+            function PolygonCollider() {
+                return _super !== null && _super.apply(this, arguments) || this;
             }
-            /**
-             * 计算矩形面积
-             * @returns
-             */
-            Rectangle.prototype.area = function () {
-                return this.width.mul(this.height);
+            return PolygonCollider;
+        }(physics.Collider));
+        physics.PolygonCollider = PolygonCollider;
+    })(physics = gs.physics || (gs.physics = {}));
+})(gs || (gs = {}));
+var gs;
+(function (gs) {
+    var physics;
+    (function (physics) {
+        var BoxBounds = /** @class */ (function () {
+            function BoxBounds(position, width, height, entity) {
+                this.position = position;
+                this.width = width;
+                this.height = height;
+                this.entity = entity;
+            }
+            BoxBounds.prototype.intersects = function (other) {
+                return true;
             };
-            /**
-             * 判断点是否在矩形内
-             * @param point
-             * @returns
-             */
-            Rectangle.prototype.containsPoint = function (point) {
-                return point.x.gte(this.position.x) &&
-                    point.x.lte(this.position.x.add(this.width)) &&
-                    point.y.gte(this.position.y) &&
-                    point.y.lte(this.position.y.add(this.height));
+            BoxBounds.prototype.contains = function (other) {
+                return false;
             };
-            /**
-             * 判断两个矩形是否相交
-             * @param rect
-             * @returns
-             */
-            Rectangle.prototype.intersects = function (rect) {
-                return !(rect.position.x.add(rect.width).lt(this.position.x) ||
-                    rect.position.y.add(rect.height).lt(this.position.y) ||
-                    rect.position.x.gt(this.position.x.add(this.width)) ||
-                    rect.position.y.gt(this.position.y.add(this.height)));
-            };
-            return Rectangle;
+            return BoxBounds;
         }());
-        physics.Rectangle = Rectangle;
+        physics.BoxBounds = BoxBounds;
+    })(physics = gs.physics || (gs.physics = {}));
+})(gs || (gs = {}));
+var gs;
+(function (gs) {
+    var physics;
+    (function (physics) {
+        var CircleBounds = /** @class */ (function () {
+            function CircleBounds() {
+            }
+            CircleBounds.prototype.intersects = function (other) {
+                return false;
+            };
+            CircleBounds.prototype.contains = function (other) {
+                return false;
+            };
+            return CircleBounds;
+        }());
+        physics.CircleBounds = CircleBounds;
     })(physics = gs.physics || (gs.physics = {}));
 })(gs || (gs = {}));

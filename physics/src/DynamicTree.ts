@@ -2,8 +2,12 @@ module gs.physics {
     export class DynamicTree {
         private _maxEntries: number;
         private _minEntries: number;
-        private compareMinX(a: AABB, b: AABB) { return a.minX - b.minX; }
-        private compareMinY(a: AABB, b: AABB) { return a.minY - b.minY; }
+        private compareMinX(a: DynamicTreeNode, b: DynamicTreeNode) { 
+            return a.collider.getBounds().position.x.toFloat() - b.collider.getBounds().position.x.toFloat(); 
+        }
+        private compareMinY(a: DynamicTreeNode, b: DynamicTreeNode) { 
+            return a.collider.getBounds().position.y.toFloat() - b.collider.getBounds().position.y.toFloat(); 
+        }
         private data: DynamicTreeNode;
 
         constructor(maxEntries = 9) {
@@ -20,23 +24,21 @@ module gs.physics {
             return this._all(this.data, []);
         }
 
-        search(bbox: AABB): DynamicTreeNode[] {
+        search(collider: Collider): DynamicTreeNode[] {
             let node = this.data;
             const result: DynamicTreeNode[] = [];
 
-            if (!intersects(bbox, node)) return result;
+            if (!collider.intersects(node.collider)) return result;
 
-            const toBBox = this.toBBox;
             const nodesToSearch: DynamicTreeNode[] = [];
 
             while (node) {
                 for (let i = 0; i < node.children.length; i++) {
                     const child = node.children[i];
-                    const childBBox = node.leaf ? toBBox(child) : child;
 
-                    if (intersects(bbox, childBBox)) {
+                    if (collider.intersects(child.collider)) {
                         if (node.leaf) result.push(child);
-                        else if (contains(bbox, childBBox)) this._all(child, result);
+                        else if (collider.contains(child.collider)) this._all(child, result);
                         else nodesToSearch.push(child);
                     }
                 }
@@ -46,19 +48,18 @@ module gs.physics {
             return result;
         }
 
-        collides(bbox: AABB): boolean {
+        collides(collider: Collider): boolean {
             let node = this.data;
 
-            if (!intersects(bbox, node)) return false;
+            if (!collider.intersects(node.collider)) return false;
 
             const nodesToSearch: DynamicTreeNode[] = [];
             while (node) {
                 for (let i = 0; i < node.children.length; i++) {
                     const child = node.children[i];
-                    const childBBox = node.leaf ? this.toBBox(child) : child;
 
-                    if (intersects(bbox, childBBox)) {
-                        if (node.leaf || contains(bbox, childBBox)) return true;
+                    if (collider.intersects(child.collider)) {
+                        if (node.leaf || collider.contains(child.collider)) return true;
                         nodesToSearch.push(child);
                     }
                 }
@@ -112,11 +113,11 @@ module gs.physics {
             return this;
         }
 
-        remove(item: DynamicTreeNode, equalsFn?: (a: AABB, b: AABB) => boolean): DynamicTree {
+        remove(item: DynamicTreeNode, equalsFn?: (a: DynamicTreeNode, b: DynamicTreeNode) => boolean): DynamicTree {
             if (!item) return this;
 
             let node = this.data;
-            const bbox = this.toBBox(item);
+            const bbox = item.collider.getBounds();
             const path: DynamicTreeNode[] = [];
             const indexes: number[] = [];
             let i, parent, goingUp;
@@ -143,7 +144,7 @@ module gs.physics {
                     }
                 }
 
-                if (!goingUp && !node.leaf && contains(node, bbox)) {
+                if (!goingUp && !node.leaf && item.collider.contains(node.collider)) {
                     path.push(node);
                     indexes.push(i);
                     i = 0;
@@ -159,8 +160,8 @@ module gs.physics {
             return this;
         }
 
-        toBBox(item: DynamicTreeNode): AABB {
-            return item;
+        toBounds(item: DynamicTreeNode): Collider {
+            return item.collider;
         }
 
         toJSON(): DynamicTreeNode {
@@ -196,7 +197,7 @@ module gs.physics {
             if (N <= M) {
                 // 达到叶级别；返回叶节点
                 node = createNode(items.slice(left, right + 1));
-                calcBBox(node, this.toBBox);
+                calcBounds(node, this.toBounds);
                 return node;
             }
 
@@ -232,31 +233,31 @@ module gs.physics {
                 }
             }
 
-            calcBBox(node, this.toBBox);
+            calcBounds(node, this.toBounds);
 
             return node;
         }
 
         private _chooseSubtree(
-            bbox: AABB,
+            collider: Collider,
             node: DynamicTreeNode,
             level: number,
             path: DynamicTreeNode[]
         ): DynamicTreeNode {
             while (true) {
                 path.push(node);
-
+        
                 if (node.leaf || path.length - 1 === level) break;
-
+        
                 let minArea = Infinity;
                 let minEnlargement = Infinity;
                 let targetNode: DynamicTreeNode;
-
+        
                 for (let i = 0; i < node.children.length; i++) {
                     const child = node.children[i];
-                    const area = bboxArea(child);
-                    const enlargement = enlargedArea(bbox, child) - area;
-
+                    const area = boundsArea(child);
+                    const enlargement = enlargedArea(collider.getBounds(), child.collider.getBounds()) - area;
+        
                     // 选择面积扩展最小的条目
                     if (enlargement < minEnlargement) {
                         minEnlargement = enlargement;
@@ -270,24 +271,25 @@ module gs.physics {
                         }
                     }
                 }
-
+        
                 node = targetNode || node.children[0];
             }
-
+        
             return node;
         }
 
         private _insert(item: DynamicTreeNode, level: number, isNode?: boolean): void {
-            const bbox = isNode ? item : this.toBBox(item);
+            const bounds = isNode ? item.collider.getBounds() : item.collider.bounds;
             const insertPath: DynamicTreeNode[] = [];
-
+        
             // 找到最适合容纳条目的节点，并保存沿途的所有节点
-            const node = this._chooseSubtree(bbox, this.data, level, insertPath);
-
+            const node = this._chooseSubtree(item.collider, this.data, level, insertPath);
+        
             // 将条目放入节点中
             node.children.push(item);
-            extend(node, bbox);
-
+        
+            extend(node.collider.getBounds(), bounds);
+        
             // 分割节点溢出；如有必要，向上传播
             while (level >= 0) {
                 if (insertPath[level].children.length > this._maxEntries) {
@@ -295,9 +297,9 @@ module gs.physics {
                     level--;
                 } else break;
             }
-
-            // 调整沿插入路径的bbox
-            this._adjustParentBBoxes(bbox, insertPath, level);
+        
+            // 调整沿插入路径的Bounds
+            this._adjustParentBounds(bounds, insertPath, level);
         }
 
         // 将溢出的节点分割为两个节点
@@ -316,8 +318,8 @@ module gs.physics {
             newNode.height = node.height;
             newNode.leaf = node.leaf;
 
-            calcBBox(node, this.toBBox);
-            calcBBox(newNode, this.toBBox);
+            calcBounds(node, this.toBounds);
+            calcBounds(newNode, this.toBounds);
 
             if (level) insertPath[level - 1].children.push(newNode);
             else this._splitRoot(node, newNode);
@@ -327,7 +329,7 @@ module gs.physics {
             this.data = createNode([node, newNode]);
             this.data.height = node.height + 1;
             this.data.leaf = false;
-            calcBBox(this.data, this.toBBox);
+            calcBounds(this.data, this.toBounds);
         }
 
         private _chooseSplitIndex(
@@ -340,11 +342,11 @@ module gs.physics {
             let minArea = Infinity;
 
             for (let i = m; i <= M - m; i++) {
-                const bbox1 = distBBox(node, 0, i, this.toBBox);
-                const bbox2 = distBBox(node, i, M, this.toBBox);
+                const bbox1 = distBounds(node, 0, i, this.toBounds);
+                const bbox2 = distBounds(node, i, M, this.toBounds);
 
-                const overlap = intersectionArea(bbox1, bbox2);
-                const area = bboxArea(bbox1) + bboxArea(bbox2);
+                const overlap = intersectionArea(bbox1.collider.getBounds(), bbox2.collider.getBounds());
+                const area = boundsArea(bbox1) + boundsArea(bbox2);
 
                 // 选择重叠最小的分布
                 if (overlap < minOverlap) {
@@ -384,37 +386,38 @@ module gs.physics {
             compare: (a: DynamicTreeNode, b: DynamicTreeNode) => number
         ): number {
             node.children.sort(compare);
-
-            const toBBox = this.toBBox;
-            const leftBBox = distBBox(node, 0, m, toBBox);
-            const rightBBox = distBBox(node, M - m, M, toBBox);
-            let margin = bboxMargin(leftBBox) + bboxMargin(rightBBox);
-
+        
+            const toBounds = this.toBounds;
+            const leftBounds = distBounds(node, 0, m, toBounds);
+            const rightBounds = distBounds(node, M - m, M, toBounds);
+            let margin = boundsMargin(leftBounds) + boundsMargin(rightBounds);
+        
             for (let i = m; i < M - m; i++) {
                 const child = node.children[i];
-                extend(leftBBox, node.leaf ? toBBox(child) : child);
-                margin += bboxMargin(leftBBox);
+                extend(leftBounds.collider.getBounds(), node.leaf ? toBounds(child).getBounds() : child.collider.getBounds());
+                margin += boundsMargin(leftBounds);
             }
-
+        
             for (let i = M - m - 1; i >= m; i--) {
                 const child = node.children[i];
-                extend(rightBBox, node.leaf ? toBBox(child) : child);
-                margin += bboxMargin(rightBBox);
+                extend(rightBounds.collider.getBounds(), node.leaf ? toBounds(child).getBounds() : child.collider.getBounds());
+                margin += boundsMargin(rightBounds);
             }
-
+        
             return margin;
         }
 
-        private _adjustParentBBoxes(
-            bbox: AABB,
+        private _adjustParentBounds(
+            bounds: Bounds,
             path: DynamicTreeNode[],
             level: number
         ): void {
-            // 调整给定树路径上的bbox
+            // 调整给定树路径上的Bounds
             for (let i = level; i >= 0; i--) {
-                extend(path[i], bbox);
+                extend(path[i].collider.getBounds(), bounds);
             }
         }
+        
 
         private _condense(path: DynamicTreeNode[]): void {
             // 遍历路径，删除空节点并更新bbox
@@ -424,7 +427,7 @@ module gs.physics {
                         siblings = path[i - 1].children;
                         siblings.splice(siblings.indexOf(path[i]), 1);
                     } else this.clear();
-                } else calcBBox(path[i], this.toBBox);
+                } else calcBounds(path[i], this.toBounds);
             }
         }
     }

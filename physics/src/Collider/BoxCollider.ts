@@ -8,18 +8,11 @@ module gs.physics {
             Transform
         ];
 
-        public onInitialize(size: Size): void {
+        onInitialize(size: Size): void {
             this.size = size;
             this.transform = this.entity.getComponent(Transform);
-        }
-
-        getBounds(): BoxBounds {
-            return {
-                position: this.transform.position,
-                width: this.size.width,
-                height: this.size.height,
-                entity: this.entity
-            };
+            const bounds = new BoxBounds(this.transform.position, this.size.width, this.size.height, this.entity);
+            this.setBounds(bounds);
         }
     }
 }
