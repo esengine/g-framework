@@ -96,11 +96,12 @@ var gs;
     (function (physics) {
         var CollisionResponseSystem = /** @class */ (function (_super) {
             __extends(CollisionResponseSystem, _super);
-            function CollisionResponseSystem(entityManager) {
+            function CollisionResponseSystem(entityManager, updateInterval) {
                 var _this = _super.call(this, entityManager, 0, gs.Matcher.empty().all(physics.RigidBody, physics.Collider)) || this;
                 _this.processed = new Map();
                 _this.collisionPairs = [];
                 _this.dynamicTree = new physics.DynamicTree();
+                _this.updateInterval = updateInterval;
                 return _this;
             }
             CollisionResponseSystem.prototype.update = function (entities) {
@@ -184,12 +185,8 @@ var gs;
                         var _f = __read(collisionPairs_1_1.value, 2), entity = _f[0], candidate = _f[1];
                         var collider = entity.getComponent(physics.Collider);
                         var collider2 = candidate.getComponent(physics.Collider);
-                        var bounds = collider.getBounds();
-                        var bounds2 = collider2.getBounds();
-                        if (this.isColliding(bounds, bounds2)) {
-                            collider.isColliding = true;
-                            collider2.isColliding = true;
-                        }
+                        collider.isColliding = true;
+                        collider2.isColliding = true;
                     }
                 }
                 catch (e_4_1) { e_4 = { error: e_4_1 }; }
@@ -199,14 +196,6 @@ var gs;
                     }
                     finally { if (e_4) throw e_4.error; }
                 }
-            };
-            CollisionResponseSystem.prototype.isColliding = function (bounds1, bounds2) {
-                var position1 = bounds1.position, width1 = bounds1.width, height1 = bounds1.height;
-                var position2 = bounds2.position, width2 = bounds2.width, height2 = bounds2.height;
-                return !(position2.x.gt(physics.FixedPoint.add(position1.x, width1)) ||
-                    physics.FixedPoint.add(position2.x, width2).lt(position1.x) ||
-                    position2.y.gt(physics.FixedPoint.add(position1.y, height1)) ||
-                    physics.FixedPoint.add(position2.y, height2).lt(position1.y));
             };
             return CollisionResponseSystem;
         }(gs.System));
@@ -1152,26 +1141,17 @@ var gs;
     var physics;
     (function (physics) {
         var World = /** @class */ (function () {
-            function World(gravity, timeStep, cellSize) {
+            function World(gravity, timeStep) {
                 if (gravity === void 0) { gravity = new physics.FixedPoint(0, -9.81); }
-                if (timeStep === void 0) { timeStep = new physics.FixedPoint(1, 60); }
-                this.cellSize = cellSize;
+                if (timeStep === void 0) { timeStep = new physics.FixedPoint(1 / 60); }
                 this.name = "PhysicsPlugin";
                 this.gravity = gravity;
                 this.timeStep = timeStep;
-                this.bodies = [];
             }
             World.prototype.onInit = function (core) {
-                core.systemManager.registerSystem(new physics.CollisionResponseSystem(core.entityManager));
+                core.systemManager.registerSystem(new physics.CollisionResponseSystem(core.entityManager, this.timeStep.toFloat() * 1000));
             };
-            World.prototype.onUpdate = function (deltaTime) {
-                this.step();
-            };
-            World.prototype.addBody = function (body) {
-                this.bodies.push(body);
-            };
-            World.prototype.step = function () {
-            };
+            World.prototype.onUpdate = function (deltaTime) { };
             return World;
         }());
         physics.World = World;

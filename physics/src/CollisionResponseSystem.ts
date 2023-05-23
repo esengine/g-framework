@@ -4,9 +4,10 @@ module gs.physics {
         private processed: Map<number, Set<number>> = new Map();
         private collisionPairs: [Entity, Entity][] = [];
 
-        constructor(entityManager: EntityManager) {
+        constructor(entityManager: EntityManager, updateInterval: number) {
             super(entityManager, 0, Matcher.empty().all(RigidBody, Collider));
             this.dynamicTree = new DynamicTree();
+            this.updateInterval = updateInterval;
         }
 
         update(entities: Entity[]): void {
@@ -62,26 +63,10 @@ module gs.physics {
             for (const [entity, candidate] of collisionPairs) {
                 const collider = entity.getComponent(Collider);
                 const collider2 = candidate.getComponent(Collider);
-                const bounds = collider.getBounds();
-                const bounds2 = collider2.getBounds();
 
-                if (this.isColliding(bounds, bounds2)) {
-                    collider.isColliding = true;
-                    collider2.isColliding = true;
-                }
+                collider.isColliding = true;
+                collider2.isColliding = true;
             }
-        }
-
-        isColliding(bounds1: BoxBounds, bounds2: BoxBounds): boolean {
-            const { position: position1, width: width1, height: height1 } = bounds1;
-            const { position: position2, width: width2, height: height2 } = bounds2;
-
-            return !(
-                position2.x.gt(FixedPoint.add(position1.x, width1)) ||
-                FixedPoint.add(position2.x, width2).lt(position1.x) ||
-                position2.y.gt(FixedPoint.add(position1.y, height1)) ||
-                FixedPoint.add(position2.y, height2).lt(position1.y)
-            );
         }
     }
 }

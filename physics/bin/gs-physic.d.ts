@@ -38,9 +38,8 @@ declare module gs.physics {
         dynamicTree: DynamicTree;
         private processed;
         private collisionPairs;
-        constructor(entityManager: EntityManager);
+        constructor(entityManager: EntityManager, updateInterval: number);
         update(entities: Entity[]): void;
-        isColliding(bounds1: BoxBounds, bounds2: BoxBounds): boolean;
     }
 }
 declare module gs.physics {
@@ -194,16 +193,12 @@ declare module gs.physics {
 }
 declare module gs.physics {
     class World implements IPlugin {
-        private cellSize;
         gravity: FixedPoint;
         timeStep: FixedPoint;
-        bodies: RigidBody[];
         name: string;
-        constructor(gravity: FixedPoint, timeStep: FixedPoint, cellSize: number);
+        constructor(gravity?: FixedPoint, timeStep?: FixedPoint);
         onInit(core: Core): void;
         onUpdate(deltaTime: number): void;
-        addBody(body: RigidBody): void;
-        step(): void;
     }
 }
 declare module gs.physics {
