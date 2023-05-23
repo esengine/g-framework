@@ -96,46 +96,40 @@ var gs;
     (function (physics) {
         var CollisionResponseSystem = /** @class */ (function (_super) {
             __extends(CollisionResponseSystem, _super);
-            function CollisionResponseSystem(entityManager, cellSize) {
-                if (cellSize === void 0) { cellSize = 100; }
+            function CollisionResponseSystem(entityManager) {
                 var _this = _super.call(this, entityManager, 0, gs.Matcher.empty().all(physics.RigidBody, physics.Collider)) || this;
                 _this.processed = new Map();
                 _this.collisionPairs = [];
-                _this.spatialHash = new physics.SpatialHash(cellSize);
+                _this.dynamicTree = new physics.DynamicTree();
                 return _this;
             }
             CollisionResponseSystem.prototype.update = function (entities) {
-                var e_1, _a, e_2, _b;
-                var _c = this, spatialHash = _c.spatialHash, processed = _c.processed, collisionPairs = _c.collisionPairs;
-                spatialHash.clear();
+                var e_1, _a, e_2, _b, e_3, _c, e_4, _d;
+                var _e = this, dynamicTree = _e.dynamicTree, processed = _e.processed, collisionPairs = _e.collisionPairs;
+                dynamicTree.clear();
                 processed.clear();
                 collisionPairs.length = 0;
-                var _loop_1 = function (entity) {
-                    var collider = entity.getComponent(physics.Collider);
-                    if (!collider)
-                        return "continue";
-                    var bounds = collider.getBounds();
-                    spatialHash.insert(bounds);
-                    collider.isColliding = false;
-                    var entityId = entity.getId();
-                    var processedPairs = processed.get(entityId);
-                    if (!processedPairs) {
-                        processedPairs = new Set();
-                        processed.set(entityId, processedPairs);
-                    }
-                    spatialHash.retrieve(bounds, function (candidate) {
-                        var candidateId = candidate.entity.getId();
-                        if (entityId === candidateId || processedPairs.has(candidateId)) {
-                            return;
-                        }
-                        collisionPairs.push([entity, candidate.entity]);
-                        processedPairs.add(candidateId);
-                    });
-                };
+                var nodeEntityMap = new Map();
+                var boundsArray = [];
                 try {
                     for (var entities_1 = __values(entities), entities_1_1 = entities_1.next(); !entities_1_1.done; entities_1_1 = entities_1.next()) {
                         var entity = entities_1_1.value;
-                        _loop_1(entity);
+                        var collider = entity.getComponent(physics.Collider);
+                        if (!collider)
+                            continue;
+                        var bounds = collider.getBounds();
+                        var node = {
+                            children: [],
+                            height: 0,
+                            leaf: true,
+                            minX: bounds.position.x.toFloat(),
+                            minY: bounds.position.y.toFloat(),
+                            maxX: physics.FixedPoint.add(bounds.position.x, bounds.width).toFloat(),
+                            maxY: physics.FixedPoint.add(bounds.position.y, bounds.height).toFloat()
+                        };
+                        boundsArray.push(node);
+                        nodeEntityMap.set(node, entity);
+                        collider.isColliding = false;
                     }
                 }
                 catch (e_1_1) { e_1 = { error: e_1_1 }; }
@@ -145,9 +139,49 @@ var gs;
                     }
                     finally { if (e_1) throw e_1.error; }
                 }
+                dynamicTree.load(boundsArray);
+                try {
+                    for (var boundsArray_1 = __values(boundsArray), boundsArray_1_1 = boundsArray_1.next(); !boundsArray_1_1.done; boundsArray_1_1 = boundsArray_1.next()) {
+                        var node = boundsArray_1_1.value;
+                        var entity = nodeEntityMap.get(node);
+                        var entityId = entity.getId();
+                        var processedPairs = processed.get(entityId);
+                        if (!processedPairs) {
+                            processedPairs = new Set();
+                            processed.set(entityId, processedPairs);
+                        }
+                        var candidates = dynamicTree.search(node);
+                        try {
+                            for (var candidates_1 = __values(candidates), candidates_1_1 = candidates_1.next(); !candidates_1_1.done; candidates_1_1 = candidates_1.next()) {
+                                var candidate = candidates_1_1.value;
+                                var candidateEntity = nodeEntityMap.get(candidate);
+                                var candidateId = candidateEntity.getId();
+                                if (entityId === candidateId || processedPairs.has(candidateId)) {
+                                    continue;
+                                }
+                                collisionPairs.push([entity, candidateEntity]);
+                                processedPairs.add(candidateId);
+                            }
+                        }
+                        catch (e_3_1) { e_3 = { error: e_3_1 }; }
+                        finally {
+                            try {
+                                if (candidates_1_1 && !candidates_1_1.done && (_c = candidates_1.return)) _c.call(candidates_1);
+                            }
+                            finally { if (e_3) throw e_3.error; }
+                        }
+                    }
+                }
+                catch (e_2_1) { e_2 = { error: e_2_1 }; }
+                finally {
+                    try {
+                        if (boundsArray_1_1 && !boundsArray_1_1.done && (_b = boundsArray_1.return)) _b.call(boundsArray_1);
+                    }
+                    finally { if (e_2) throw e_2.error; }
+                }
                 try {
                     for (var collisionPairs_1 = __values(collisionPairs), collisionPairs_1_1 = collisionPairs_1.next(); !collisionPairs_1_1.done; collisionPairs_1_1 = collisionPairs_1.next()) {
-                        var _d = __read(collisionPairs_1_1.value, 2), entity = _d[0], candidate = _d[1];
+                        var _f = __read(collisionPairs_1_1.value, 2), entity = _f[0], candidate = _f[1];
                         var collider = entity.getComponent(physics.Collider);
                         var collider2 = candidate.getComponent(physics.Collider);
                         var bounds = collider.getBounds();
@@ -158,12 +192,12 @@ var gs;
                         }
                     }
                 }
-                catch (e_2_1) { e_2 = { error: e_2_1 }; }
+                catch (e_4_1) { e_4 = { error: e_4_1 }; }
                 finally {
                     try {
-                        if (collisionPairs_1_1 && !collisionPairs_1_1.done && (_b = collisionPairs_1.return)) _b.call(collisionPairs_1);
+                        if (collisionPairs_1_1 && !collisionPairs_1_1.done && (_d = collisionPairs_1.return)) _d.call(collisionPairs_1);
                     }
-                    finally { if (e_2) throw e_2.error; }
+                    finally { if (e_4) throw e_4.error; }
                 }
             };
             CollisionResponseSystem.prototype.isColliding = function (bounds1, bounds2) {
@@ -358,6 +392,8 @@ var gs;
                 this._minEntries = Math.max(2, Math.ceil(this._maxEntries * 0.4));
                 this.clear();
             }
+            DynamicTree.prototype.compareMinX = function (a, b) { return a.minX - b.minX; };
+            DynamicTree.prototype.compareMinY = function (a, b) { return a.minY - b.minY; };
             DynamicTree.prototype.all = function () {
                 return this._all(this.data, []);
             };
@@ -934,7 +970,7 @@ var gs;
                 this.objectTable.set(obj, keys);
             };
             SpatialHash.prototype.retrieve = function (obj, callback) {
-                var e_3, _a, e_4, _b;
+                var e_5, _a, e_6, _b;
                 var keys = this.objectTable.get(obj);
                 if (keys) {
                     try {
@@ -948,27 +984,27 @@ var gs;
                                         callback(obj_1);
                                     }
                                 }
-                                catch (e_4_1) { e_4 = { error: e_4_1 }; }
+                                catch (e_6_1) { e_6 = { error: e_6_1 }; }
                                 finally {
                                     try {
                                         if (bucket_1_1 && !bucket_1_1.done && (_b = bucket_1.return)) _b.call(bucket_1);
                                     }
-                                    finally { if (e_4) throw e_4.error; }
+                                    finally { if (e_6) throw e_6.error; }
                                 }
                             }
                         }
                     }
-                    catch (e_3_1) { e_3 = { error: e_3_1 }; }
+                    catch (e_5_1) { e_5 = { error: e_5_1 }; }
                     finally {
                         try {
                             if (keys_1_1 && !keys_1_1.done && (_a = keys_1.return)) _a.call(keys_1);
                         }
-                        finally { if (e_3) throw e_3.error; }
+                        finally { if (e_5) throw e_5.error; }
                     }
                 }
             };
             SpatialHash.prototype.retrieveAll = function () {
-                var e_5, _a;
+                var e_7, _a;
                 var result = [];
                 try {
                     for (var _b = __values(this.hashTable.values()), _c = _b.next(); !_c.done; _c = _b.next()) {
@@ -976,17 +1012,17 @@ var gs;
                         result.push.apply(result, __spread(bucket));
                     }
                 }
-                catch (e_5_1) { e_5 = { error: e_5_1 }; }
+                catch (e_7_1) { e_7 = { error: e_7_1 }; }
                 finally {
                     try {
                         if (_c && !_c.done && (_a = _b.return)) _a.call(_b);
                     }
-                    finally { if (e_5) throw e_5.error; }
+                    finally { if (e_7) throw e_7.error; }
                 }
                 return result;
             };
             SpatialHash.prototype.remove = function (obj) {
-                var e_6, _a;
+                var e_8, _a;
                 var keys = this.objectTable.get(obj);
                 if (keys) {
                     try {
@@ -1002,30 +1038,30 @@ var gs;
                             }
                         }
                     }
-                    catch (e_6_1) { e_6 = { error: e_6_1 }; }
+                    catch (e_8_1) { e_8 = { error: e_8_1 }; }
                     finally {
                         try {
                             if (keys_2_1 && !keys_2_1.done && (_a = keys_2.return)) _a.call(keys_2);
                         }
-                        finally { if (e_6) throw e_6.error; }
+                        finally { if (e_8) throw e_8.error; }
                     }
                     this.objectTable.delete(obj);
                 }
             };
             SpatialHash.prototype.clear = function () {
-                var e_7, _a;
+                var e_9, _a;
                 try {
                     for (var _b = __values(this.setPool), _c = _b.next(); !_c.done; _c = _b.next()) {
                         var set = _c.value;
                         set.clear();
                     }
                 }
-                catch (e_7_1) { e_7 = { error: e_7_1 }; }
+                catch (e_9_1) { e_9 = { error: e_9_1 }; }
                 finally {
                     try {
                         if (_c && !_c.done && (_a = _b.return)) _a.call(_b);
                     }
-                    finally { if (e_7) throw e_7.error; }
+                    finally { if (e_9) throw e_9.error; }
                 }
                 this.hashTable.clear();
                 this.objectTable.clear();

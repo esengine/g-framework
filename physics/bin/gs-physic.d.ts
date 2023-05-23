@@ -35,10 +35,10 @@ declare module gs.physics {
 }
 declare module gs.physics {
     class CollisionResponseSystem extends System {
-        spatialHash: SpatialHash<Bounds>;
+        dynamicTree: DynamicTree;
         private processed;
         private collisionPairs;
-        constructor(entityManager: EntityManager, cellSize?: number);
+        constructor(entityManager: EntityManager);
         update(entities: Entity[]): void;
         isColliding(bounds1: BoxBounds, bounds2: BoxBounds): boolean;
     }
@@ -69,14 +69,14 @@ declare module gs.physics {
         private compareMinY;
         private data;
         constructor(maxEntries?: number);
-        all(): any[];
-        search(bbox: AABB): any[];
+        all(): DynamicTreeNode[];
+        search(bbox: AABB): DynamicTreeNode[];
         collides(bbox: AABB): boolean;
-        load(data: any[]): DynamicTree;
-        insert(item: any): DynamicTree;
+        load(data: DynamicTreeNode[]): DynamicTree;
+        insert(item: DynamicTreeNode): DynamicTree;
         clear(): DynamicTree;
-        remove(item: any, equalsFn?: (a: any, b: any) => boolean): DynamicTree;
-        toBBox(item: any): AABB;
+        remove(item: DynamicTreeNode, equalsFn?: (a: AABB, b: AABB) => boolean): DynamicTree;
+        toBBox(item: DynamicTreeNode): AABB;
         toJSON(): DynamicTreeNode;
         fromJSON(data: DynamicTreeNode): DynamicTree;
         private _all;

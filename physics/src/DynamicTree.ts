@@ -2,8 +2,8 @@ module gs.physics {
     export class DynamicTree {
         private _maxEntries: number;
         private _minEntries: number;
-        private compareMinX: (a: any, b: any) => number;
-        private compareMinY: (a: any, b: any) => number;
+        private compareMinX(a: AABB, b: AABB) { return a.minX - b.minX; }
+        private compareMinY(a: AABB, b: AABB) { return a.minY - b.minY; }
         private data: DynamicTreeNode;
 
         constructor(maxEntries = 9) {
@@ -16,13 +16,13 @@ module gs.physics {
             this.clear();
         }
 
-        all(): any[] {
+        all(): DynamicTreeNode[] {
             return this._all(this.data, []);
         }
 
-        search(bbox: AABB): any[] {
+        search(bbox: AABB): DynamicTreeNode[] {
             let node = this.data;
-            const result: any[] = [];
+            const result: DynamicTreeNode[] = [];
 
             if (!intersects(bbox, node)) return result;
 
@@ -68,7 +68,7 @@ module gs.physics {
             return false;
         }
 
-        load(data: any[]): DynamicTree {
+        load(data: DynamicTreeNode[]): DynamicTree {
             if (!(data && data.length)) return this;
 
             if (data.length < this._minEntries) {
@@ -102,7 +102,7 @@ module gs.physics {
             return this;
         }
 
-        insert(item: any): DynamicTree {
+        insert(item: DynamicTreeNode): DynamicTree {
             if (item) this._insert(item, this.data.height - 1);
             return this;
         }
@@ -112,7 +112,7 @@ module gs.physics {
             return this;
         }
 
-        remove(item: any, equalsFn?: (a: any, b: any) => boolean): DynamicTree {
+        remove(item: DynamicTreeNode, equalsFn?: (a: AABB, b: AABB) => boolean): DynamicTree {
             if (!item) return this;
 
             let node = this.data;
@@ -159,7 +159,7 @@ module gs.physics {
             return this;
         }
 
-        toBBox(item: any): AABB {
+        toBBox(item: DynamicTreeNode): AABB {
             return item;
         }
 
@@ -172,7 +172,7 @@ module gs.physics {
             return this;
         }
 
-        private _all(node: DynamicTreeNode, result: any[]): any[] {
+        private _all(node: DynamicTreeNode, result: DynamicTreeNode[]): DynamicTreeNode[] {
             const nodesToSearch: DynamicTreeNode[] = [];
             while (node) {
                 if (node.leaf) result.push(...node.children);
@@ -184,7 +184,7 @@ module gs.physics {
         }
 
         private _build(
-            items: any[],
+            items: DynamicTreeNode[],
             left: number,
             right: number,
             height: number
@@ -277,7 +277,7 @@ module gs.physics {
             return node;
         }
 
-        private _insert(item: any, level: number, isNode?: boolean): void {
+        private _insert(item: DynamicTreeNode, level: number, isNode?: boolean): void {
             const bbox = isNode ? item : this.toBBox(item);
             const insertPath: DynamicTreeNode[] = [];
 
