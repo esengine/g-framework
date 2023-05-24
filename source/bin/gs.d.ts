@@ -4,6 +4,7 @@ declare module gs {
         private _systemManager;
         private _timeManager;
         private _plugins;
+        private _performanceProfiler;
         readonly entityManager: EntityManager;
         readonly systemManager: SystemManager;
         private static _instance;
@@ -297,6 +298,28 @@ declare module gs {
          * 系统注销时的逻辑
          */
         onUnregister(): void;
+    }
+}
+declare module gs {
+    class Debug {
+        static isEnabled: boolean;
+        static enable(): void;
+        static disable(): void;
+    }
+}
+declare module gs {
+    class PerformanceProfiler {
+        private static instance;
+        private performanceData;
+        private frameCount;
+        private totalTime;
+        private maxFrameTime;
+        private minFrameTime;
+        private constructor();
+        static getInstance(): PerformanceProfiler;
+        startFrame(): void;
+        endFrame(): void;
+        reportPerformance(): void;
     }
 }
 declare module gs {

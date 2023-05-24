@@ -74,6 +74,7 @@ var gs;
             this._entityManager = new gs.EntityManager();
             this._systemManager = new gs.SystemManager(this._entityManager);
             this._timeManager = gs.TimeManager.getInstance();
+            this._performanceProfiler = gs.PerformanceProfiler.getInstance();
             return this;
         };
         Core.prototype.registerPlugin = function (plugin) {
@@ -82,6 +83,7 @@ var gs;
         };
         Core.prototype.update = function (deltaTime) {
             var e_1, _a;
+            this._performanceProfiler.startFrame();
             this._timeManager.update(deltaTime);
             this._systemManager.update();
             try {
@@ -97,6 +99,7 @@ var gs;
                 }
                 finally { if (e_1) throw e_1.error; }
             }
+            this._performanceProfiler.endFrame();
         };
         return Core;
     }());
@@ -853,6 +856,70 @@ var gs;
         return System;
     }());
     gs.System = System;
+})(gs || (gs = {}));
+var gs;
+(function (gs) {
+    var Debug = /** @class */ (function () {
+        function Debug() {
+        }
+        Debug.enable = function () {
+            this.isEnabled = true;
+        };
+        Debug.disable = function () {
+            this.isEnabled = false;
+        };
+        Debug.isEnabled = false;
+        return Debug;
+    }());
+    gs.Debug = Debug;
+})(gs || (gs = {}));
+var gs;
+(function (gs) {
+    var PerformanceProfiler = /** @class */ (function () {
+        function PerformanceProfiler() {
+            this.performanceData = {};
+            this.frameCount = 0;
+            this.totalTime = 0;
+            this.maxFrameTime = 0;
+            this.minFrameTime = Infinity;
+        }
+        PerformanceProfiler.getInstance = function () {
+            if (!PerformanceProfiler.instance) {
+                PerformanceProfiler.instance = new PerformanceProfiler();
+            }
+            return PerformanceProfiler.instance;
+        };
+        PerformanceProfiler.prototype.startFrame = function () {
+            if (gs.Debug.isEnabled) {
+                this.performanceData['frameStart'] = performance.now();
+            }
+        };
+        PerformanceProfiler.prototype.endFrame = function () {
+            if (gs.Debug.isEnabled) {
+                var frameStart = this.performanceData['frameStart'];
+                if (frameStart) {
+                    var frameTime = performance.now() - frameStart;
+                    this.totalTime += frameTime;
+                    this.frameCount++;
+                    this.maxFrameTime = Math.max(this.maxFrameTime, frameTime);
+                    this.minFrameTime = Math.min(this.minFrameTime, frameTime);
+                    console.log("\u5E27\u65F6\u95F4: " + frameTime + "ms");
+                }
+            }
+        };
+        PerformanceProfiler.prototype.reportPerformance = function () {
+            if (gs.Debug.isEnabled) {
+                var averageFrameTime = this.totalTime / this.frameCount;
+                var averageFrameRate = 1000 / averageFrameTime;
+                console.log("\u5E73\u5747\u5E27\u65F6\u95F4: " + averageFrameTime + "ms \u5728 " + this.frameCount + " \u5E27");
+                console.log("\u5E73\u5747\u5E27\u7387: " + averageFrameRate + " FPS");
+                console.log("\u6700\u5927\u5E27\u65F6\u95F4: " + this.maxFrameTime + "ms");
+                console.log("\u6700\u5C0F\u5E27\u65F6\u95F4: " + this.minFrameTime + "ms");
+            }
+        };
+        return PerformanceProfiler;
+    }());
+    gs.PerformanceProfiler = PerformanceProfiler;
 })(gs || (gs = {}));
 var gs;
 (function (gs) {
