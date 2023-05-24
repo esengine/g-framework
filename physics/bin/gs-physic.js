@@ -118,7 +118,6 @@ var gs;
                         var collider = entity.getComponent(physics.Collider);
                         if (!collider)
                             continue;
-                        var bounds = collider.getBounds();
                         var node = {
                             children: [],
                             height: 0,
@@ -287,20 +286,6 @@ var gs;
                 Math.max(0, maxY - minY);
         }
         physics.intersectionArea = intersectionArea;
-        function contains(a, b) {
-            return a.minX <= b.minX &&
-                a.minY <= b.minY &&
-                b.maxX <= a.maxX &&
-                b.maxY <= a.maxY;
-        }
-        physics.contains = contains;
-        function intersects(a, b) {
-            return b.minX <= a.maxX &&
-                b.minY <= a.maxY &&
-                b.maxX >= a.minX &&
-                b.maxY >= a.minY;
-        }
-        physics.intersects = intersects;
         function createNode(children) {
             return {
                 children: children,
@@ -744,40 +729,44 @@ var gs;
                 this.precision = precision;
             }
             FixedPoint.prototype.add = function (other) {
+                var result = new FixedPoint(0, this.precision);
                 if (other instanceof FixedPoint) {
-                    this.rawValue += other.rawValue;
+                    result.rawValue = this.rawValue + other.rawValue;
                 }
                 else {
-                    this.rawValue += Math.round(other * this.precision);
+                    result.rawValue = this.rawValue + Math.round(other * this.precision);
                 }
-                return this;
+                return result;
             };
             FixedPoint.prototype.sub = function (other) {
+                var result = new FixedPoint(0, this.precision);
                 if (other instanceof FixedPoint) {
-                    this.rawValue -= other.rawValue;
+                    result.rawValue = this.rawValue - other.rawValue;
                 }
                 else {
-                    this.rawValue -= Math.round(other * this.precision);
+                    result.rawValue = this.rawValue - Math.round(other * this.precision);
                 }
-                return this;
+                return result;
             };
             FixedPoint.prototype.mul = function (other) {
+                var result = new FixedPoint(0, this.precision);
                 if (other instanceof FixedPoint) {
-                    this.rawValue = Math.round((this.rawValue * other.rawValue) / other.precision);
+                    result.rawValue = Math.round((this.rawValue * other.rawValue) / other.precision);
                 }
                 else {
-                    this.rawValue = Math.round(this.rawValue * other);
+                    result.rawValue = Math.round(this.rawValue * other);
                 }
-                return this;
+                return result;
             };
             FixedPoint.prototype.div = function (other) {
+                var result = new FixedPoint(0, this.precision);
                 if (other instanceof FixedPoint) {
-                    this.rawValue = Math.round((this.rawValue / other.rawValue) * this.precision);
+                    result.rawValue = Math.round((this.rawValue / other.rawValue) * this.precision);
                 }
                 else {
-                    this.rawValue = Math.round(this.rawValue / other);
+                    result.rawValue = Math.round(this.rawValue / other);
                 }
-                return this;
+                return result;
             };
             FixedPoint.prototype.lt = function (other) {
                 if (other instanceof FixedPoint) {
@@ -1223,34 +1212,6 @@ var gs;
 (function (gs) {
     var physics;
     (function (physics) {
-        var CircleCollider = /** @class */ (function (_super) {
-            __extends(CircleCollider, _super);
-            function CircleCollider() {
-                return _super !== null && _super.apply(this, arguments) || this;
-            }
-            return CircleCollider;
-        }(physics.Collider));
-        physics.CircleCollider = CircleCollider;
-    })(physics = gs.physics || (gs.physics = {}));
-})(gs || (gs = {}));
-var gs;
-(function (gs) {
-    var physics;
-    (function (physics) {
-        var PolygonCollider = /** @class */ (function (_super) {
-            __extends(PolygonCollider, _super);
-            function PolygonCollider() {
-                return _super !== null && _super.apply(this, arguments) || this;
-            }
-            return PolygonCollider;
-        }(physics.Collider));
-        physics.PolygonCollider = PolygonCollider;
-    })(physics = gs.physics || (gs.physics = {}));
-})(gs || (gs = {}));
-var gs;
-(function (gs) {
-    var physics;
-    (function (physics) {
         var BoxBounds = /** @class */ (function () {
             function BoxBounds(position, width, height, entity) {
                 this.position = position;
@@ -1259,10 +1220,17 @@ var gs;
                 this.entity = entity;
             }
             BoxBounds.prototype.intersects = function (other) {
-                return true;
+                var visitor = new physics.IntersectionVisitor(other);
+                this.accept(visitor);
+                return visitor.getResult();
             };
             BoxBounds.prototype.contains = function (other) {
-                return false;
+                var visitor = new physics.ContainVisitor(other);
+                this.accept(visitor);
+                return visitor.getResult();
+            };
+            BoxBounds.prototype.accept = function (visitor) {
+                visitor.visitBox(this);
             };
             return BoxBounds;
         }());
@@ -1274,16 +1242,140 @@ var gs;
     var physics;
     (function (physics) {
         var CircleBounds = /** @class */ (function () {
-            function CircleBounds() {
+            function CircleBounds(position, radius, entity) {
+                this.position = position;
+                this.radius = radius;
+                this.entity = entity;
+                this.width = radius.mul(2);
+                this.height = radius.mul(2);
             }
             CircleBounds.prototype.intersects = function (other) {
-                return false;
+                var visitor = new physics.IntersectionVisitor(other);
+                this.accept(visitor);
+                return visitor.getResult();
             };
             CircleBounds.prototype.contains = function (other) {
-                return false;
+                var visitor = new physics.ContainVisitor(other);
+                this.accept(visitor);
+                return visitor.getResult();
+            };
+            CircleBounds.prototype.accept = function (visitor) {
+                visitor.visitCircle(this);
             };
             return CircleBounds;
         }());
         physics.CircleBounds = CircleBounds;
+    })(physics = gs.physics || (gs.physics = {}));
+})(gs || (gs = {}));
+var gs;
+(function (gs) {
+    var physics;
+    (function (physics) {
+        var ContainVisitor = /** @class */ (function () {
+            function ContainVisitor(other) {
+                this.other = other;
+                this.result = false;
+            }
+            ContainVisitor.prototype.visitBox = function (box) {
+                if (this.other instanceof physics.BoxBounds) {
+                    var otherBox = this.other;
+                    this.result = (box.position.x.toFloat() <= otherBox.position.x.toFloat() &&
+                        box.position.y.toFloat() <= otherBox.position.y.toFloat() &&
+                        box.position.x.toFloat() + box.width.toFloat() >= otherBox.position.x.toFloat() + otherBox.width.toFloat() &&
+                        box.position.y.toFloat() + box.height.toFloat() >= otherBox.position.y.toFloat() + otherBox.height.toFloat());
+                }
+                else if (this.other instanceof physics.CircleBounds) {
+                    var otherCircle = this.other;
+                    var circleBoundingBox = new physics.BoxBounds(otherCircle.position, otherCircle.radius.mul(2), otherCircle.radius.mul(2), otherCircle.entity);
+                    this.result = (box.position.x.toFloat() <= circleBoundingBox.position.x.toFloat() &&
+                        box.position.y.toFloat() <= circleBoundingBox.position.y.toFloat() &&
+                        box.position.x.toFloat() + box.width.toFloat() >= circleBoundingBox.position.x.toFloat() + circleBoundingBox.width.toFloat() &&
+                        box.position.y.toFloat() + box.height.toFloat() >= circleBoundingBox.position.y.toFloat() + circleBoundingBox.height.toFloat());
+                }
+            };
+            ContainVisitor.prototype.visitCircle = function (circle) {
+                if (this.other instanceof physics.CircleBounds) {
+                    var otherCircle = this.other;
+                    var dx = circle.position.x.toFloat() - otherCircle.position.x.toFloat();
+                    var dy = circle.position.y.toFloat() - otherCircle.position.y.toFloat();
+                    var distance = Math.sqrt(dx * dx + dy * dy);
+                    this.result = (distance + otherCircle.radius.toFloat() <= circle.radius.toFloat());
+                }
+                else if (this.other instanceof physics.BoxBounds) {
+                    var otherBox = this.other;
+                    var boxBoundingCircleRadius = Math.sqrt(Math.pow(otherBox.width.toFloat() / 2, 2) + Math.pow(otherBox.height.toFloat() / 2, 2));
+                    var boxBoundingCircle = new physics.CircleBounds(otherBox.position.add(new physics.Vector2(otherBox.width.div(2), otherBox.height.div(2))), new physics.FixedPoint(boxBoundingCircleRadius), otherBox.entity);
+                    var dx = circle.position.x.toFloat() - boxBoundingCircle.position.x.toFloat();
+                    var dy = circle.position.y.toFloat() - boxBoundingCircle.position.y.toFloat();
+                    var distance = Math.sqrt(dx * dx + dy * dy);
+                    this.result = (distance + boxBoundingCircle.radius.toFloat() <= circle.radius.toFloat());
+                }
+            };
+            ContainVisitor.prototype.getResult = function () {
+                return this.result;
+            };
+            return ContainVisitor;
+        }());
+        physics.ContainVisitor = ContainVisitor;
+    })(physics = gs.physics || (gs.physics = {}));
+})(gs || (gs = {}));
+var gs;
+(function (gs) {
+    var physics;
+    (function (physics) {
+        var IntersectionVisitor = /** @class */ (function () {
+            function IntersectionVisitor(other) {
+                this.other = other;
+                this.result = false;
+            }
+            IntersectionVisitor.prototype.visitBox = function (box) {
+                if (this.other instanceof physics.BoxBounds) {
+                    var otherBox = this.other;
+                    this.result = !(box.position.x.toFloat() + box.width.toFloat() < otherBox.position.x.toFloat() ||
+                        otherBox.position.x.toFloat() + otherBox.width.toFloat() < box.position.x.toFloat() ||
+                        box.position.y.toFloat() + box.height.toFloat() < otherBox.position.y.toFloat() ||
+                        otherBox.position.y.toFloat() + otherBox.height.toFloat() < box.position.y.toFloat());
+                }
+                else if (this.other instanceof physics.CircleBounds) {
+                    this.result = this.intersectsBoxCircle(box, this.other);
+                }
+            };
+            IntersectionVisitor.prototype.visitCircle = function (circle) {
+                if (this.other instanceof physics.CircleBounds) {
+                    var otherCircle = this.other;
+                    var dx = circle.position.x.toFloat() - otherCircle.position.x.toFloat();
+                    var dy = circle.position.y.toFloat() - otherCircle.position.y.toFloat();
+                    var distance = Math.sqrt(dx * dx + dy * dy);
+                    this.result = distance < circle.radius.toFloat() + otherCircle.radius.toFloat();
+                }
+                else if (this.other instanceof physics.BoxBounds) {
+                    this.result = this.intersectsBoxCircle(this.other, circle);
+                }
+            };
+            IntersectionVisitor.prototype.intersectsBoxCircle = function (box, circle) {
+                var circleDistanceX = Math.abs(circle.position.x.toFloat() - box.position.x.toFloat() - box.width.toFloat() / 2);
+                var circleDistanceY = Math.abs(circle.position.y.toFloat() - box.position.y.toFloat() - box.height.toFloat() / 2);
+                if (circleDistanceX > (box.width.toFloat() / 2 + circle.radius.toFloat())) {
+                    return false;
+                }
+                if (circleDistanceY > (box.height.toFloat() / 2 + circle.radius.toFloat())) {
+                    return false;
+                }
+                if (circleDistanceX <= (box.width.toFloat() / 2)) {
+                    return true;
+                }
+                if (circleDistanceY <= (box.height.toFloat() / 2)) {
+                    return true;
+                }
+                var cornerDistanceSq = Math.pow(circleDistanceX - box.width.toFloat() / 2, 2) +
+                    Math.pow(circleDistanceY - box.height.toFloat() / 2, 2);
+                return (cornerDistanceSq <= Math.pow(circle.radius.toFloat(), 2));
+            };
+            IntersectionVisitor.prototype.getResult = function () {
+                return this.result;
+            };
+            return IntersectionVisitor;
+        }());
+        physics.IntersectionVisitor = IntersectionVisitor;
     })(physics = gs.physics || (gs.physics = {}));
 })(gs || (gs = {}));

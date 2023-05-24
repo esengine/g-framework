@@ -97,20 +97,6 @@ module gs.physics {
             Math.max(0, maxY - minY);
     }
 
-    export function contains(a: AABB, b: AABB): boolean {
-        return a.minX <= b.minX &&
-            a.minY <= b.minY &&
-            b.maxX <= a.maxX &&
-            b.maxY <= a.maxY;
-    }
-
-    export function intersects(a: AABB, b: AABB): boolean {
-        return b.minX <= a.maxX &&
-            b.minY <= a.maxY &&
-            b.maxX >= a.minX &&
-            b.maxY >= a.minY;
-    }
-
     export function createNode(children: DynamicTreeNode[]): DynamicTreeNode {
         return {
             children,

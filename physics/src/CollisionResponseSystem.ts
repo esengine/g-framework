@@ -22,7 +22,6 @@ module gs.physics {
             for (const entity of entities) {
                 const collider = entity.getComponent(Collider);
                 if (!collider) continue;
-                const bounds = collider.getBounds();
                 const node: DynamicTreeNode = {
                     children: [], 
                     height: 0, 

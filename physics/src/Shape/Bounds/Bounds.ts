@@ -7,5 +7,7 @@ module gs.physics {
 
         intersects(other: Bounds): boolean;
         contains(other: Bounds): boolean;
+
+        accept(visitor: BoundsVisitor): void;
     }
 }

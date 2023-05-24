@@ -13,11 +13,19 @@ module gs.physics {
         }
 
         intersects(other: Bounds): boolean {
-            return true;
+            const visitor = new IntersectionVisitor(other);
+            this.accept(visitor);
+            return visitor.getResult();
         }
 
         contains(other: Bounds): boolean {
-            return false;
+            const visitor = new ContainVisitor(other);
+            this.accept(visitor);
+            return visitor.getResult();
+        }
+
+        accept(visitor: BoundsVisitor): void {
+            visitor.visitBox(this);
         }
     }
 }

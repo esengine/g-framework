@@ -8,40 +8,44 @@ module gs.physics {
             this.precision = precision;
         }
 
-        add(other: FixedPoint | number) {
+        add(other: FixedPoint | number): FixedPoint {
+            const result = new FixedPoint(0, this.precision);
             if (other instanceof FixedPoint) {
-                this.rawValue += other.rawValue;
+                result.rawValue = this.rawValue + other.rawValue;
             } else {
-                this.rawValue += Math.round(other * this.precision);
+                result.rawValue = this.rawValue + Math.round(other * this.precision);
             }
-            return this;
+            return result;
         }
-
-        sub(other: FixedPoint | number) {
+        
+        sub(other: FixedPoint | number): FixedPoint {
+            const result = new FixedPoint(0, this.precision);
             if (other instanceof FixedPoint) {
-                this.rawValue -= other.rawValue;
+                result.rawValue = this.rawValue - other.rawValue;
             } else {
-                this.rawValue -= Math.round(other * this.precision);
+                result.rawValue = this.rawValue - Math.round(other * this.precision);
             }
-            return this;
+            return result;
         }
-
-        mul(other: FixedPoint | number) {
+        
+        mul(other: FixedPoint | number): FixedPoint {
+            const result = new FixedPoint(0, this.precision);
             if (other instanceof FixedPoint) {
-                this.rawValue = Math.round((this.rawValue * other.rawValue) / other.precision);
+                result.rawValue = Math.round((this.rawValue * other.rawValue) / other.precision);
             } else {
-                this.rawValue = Math.round(this.rawValue * other);
+                result.rawValue = Math.round(this.rawValue * other);
             }
-            return this;
+            return result;
         }
-
-        div(other: FixedPoint | number) {
+        
+        div(other: FixedPoint | number): FixedPoint {
+            const result = new FixedPoint(0, this.precision);
             if (other instanceof FixedPoint) {
-                this.rawValue = Math.round((this.rawValue / other.rawValue) * this.precision);
+                result.rawValue = Math.round((this.rawValue / other.rawValue) * this.precision);
             } else {
-                this.rawValue = Math.round(this.rawValue / other);
+                result.rawValue = Math.round(this.rawValue / other);
             }
-            return this;
+            return result;
         }
 
         lt(other: FixedPoint | number): boolean {

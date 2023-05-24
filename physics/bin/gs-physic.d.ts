@@ -1,12 +1,4 @@
 declare module gs.physics {
-    interface AABB {
-        minX: number;
-        minY: number;
-        maxX: number;
-        maxY: number;
-    }
-}
-declare module gs.physics {
     class CollisionEvent extends Event {
         entity1: Entity;
         entity2: Entity;
@@ -53,8 +45,6 @@ declare module gs.physics {
     function boundsMargin(a: DynamicTreeNode): number;
     function enlargedArea(a: Bounds, b: Bounds): number;
     function intersectionArea(a: Bounds, b: Bounds): number;
-    function contains(a: AABB, b: AABB): boolean;
-    function intersects(a: AABB, b: AABB): boolean;
     function createNode(children: DynamicTreeNode[]): DynamicTreeNode;
     function multiSelect<T>(arr: T[], left: number, right: number, n: number, compare: (a: T, b: T) => number): void;
     function quickselect<T>(arr: T[], k: number, left: number, right: number, compare: (a: T, b: T) => number): void;
@@ -104,10 +94,10 @@ declare module gs.physics {
         rawValue: number;
         precision: number;
         constructor(value?: number, precision?: number);
-        add(other: FixedPoint | number): this;
-        sub(other: FixedPoint | number): this;
-        mul(other: FixedPoint | number): this;
-        div(other: FixedPoint | number): this;
+        add(other: FixedPoint | number): FixedPoint;
+        sub(other: FixedPoint | number): FixedPoint;
+        mul(other: FixedPoint | number): FixedPoint;
+        div(other: FixedPoint | number): FixedPoint;
         lt(other: FixedPoint | number): boolean;
         gt(other: FixedPoint | number): boolean;
         gte(other: FixedPoint | number): boolean;
@@ -217,14 +207,6 @@ declare module gs.physics {
     }
 }
 declare module gs.physics {
-    class CircleCollider extends Collider {
-    }
-}
-declare module gs.physics {
-    class PolygonCollider extends Collider {
-    }
-}
-declare module gs.physics {
     interface Bounds {
         position: Vector2;
         width: FixedPoint;
@@ -232,6 +214,13 @@ declare module gs.physics {
         entity: Entity;
         intersects(other: Bounds): boolean;
         contains(other: Bounds): boolean;
+        accept(visitor: BoundsVisitor): void;
+    }
+}
+declare module gs.physics {
+    interface BoundsVisitor {
+        visitBox(box: BoxBounds): void;
+        visitCircle(circle: CircleBounds): void;
     }
 }
 declare module gs.physics {
@@ -243,6 +232,7 @@ declare module gs.physics {
         constructor(position: Vector2, width: FixedPoint, height: FixedPoint, entity: Entity);
         intersects(other: Bounds): boolean;
         contains(other: Bounds): boolean;
+        accept(visitor: BoundsVisitor): void;
     }
 }
 declare module gs.physics {
@@ -252,7 +242,30 @@ declare module gs.physics {
         height: FixedPoint;
         entity: Entity;
         radius: FixedPoint;
+        constructor(position: Vector2, radius: FixedPoint, entity: Entity);
         intersects(other: Bounds): boolean;
         contains(other: Bounds): boolean;
+        accept(visitor: BoundsVisitor): void;
+    }
+}
+declare module gs.physics {
+    class ContainVisitor implements BoundsVisitor {
+        private other;
+        private result;
+        constructor(other: Bounds);
+        visitBox(box: BoxBounds): void;
+        visitCircle(circle: CircleBounds): void;
+        getResult(): boolean;
+    }
+}
+declare module gs.physics {
+    class IntersectionVisitor implements BoundsVisitor {
+        private other;
+        private result;
+        constructor(other: Bounds);
+        visitBox(box: BoxBounds): void;
+        visitCircle(circle: CircleBounds): void;
+        intersectsBoxCircle(box: BoxBounds, circle: CircleBounds): boolean;
+        getResult(): boolean;
     }
 }
