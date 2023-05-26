@@ -22,15 +22,11 @@ module gs.physics {
             for (const entity of entities) {
                 const collider = entity.getComponent(Collider);
                 if (!collider) continue;
-                const bounds = collider.getBounds();
                 const node: DynamicTreeNode = {
                     children: [], 
                     height: 0, 
                     leaf: true, 
-                    minX: bounds.position.x.toFloat(), 
-                    minY: bounds.position.y.toFloat(), 
-                    maxX: FixedPoint.add(bounds.position.x, bounds.width).toFloat(), 
-                    maxY: FixedPoint.add(bounds.position.y, bounds.height).toFloat()
+                    bounds: collider.getBounds()
                 };
                 boundsArray.push(node);
                 nodeEntityMap.set(node, entity);
@@ -48,7 +44,7 @@ module gs.physics {
                     processed.set(entityId, processedPairs);
                 }
             
-                const candidates = dynamicTree.search(node);
+                const candidates = dynamicTree.search(node.bounds);
                 for (const candidate of candidates) {
                     const candidateEntity = nodeEntityMap.get(candidate);
                     const candidateId = candidateEntity.getId();

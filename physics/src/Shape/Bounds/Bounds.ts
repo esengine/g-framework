@@ -4,5 +4,10 @@ module gs.physics {
         width: FixedPoint;
         height: FixedPoint;
         entity: Entity;
+
+        intersects(other: Bounds): boolean;
+        contains(other: Bounds): boolean;
+
+        accept(visitor: BoundsVisitor): void;
     }
 }

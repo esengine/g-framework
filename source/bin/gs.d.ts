@@ -4,6 +4,7 @@ declare module gs {
         private _systemManager;
         private _timeManager;
         private _plugins;
+        private _performanceProfiler;
         readonly entityManager: EntityManager;
         readonly systemManager: SystemManager;
         private static _instance;
@@ -67,12 +68,11 @@ declare module gs {
      * 组件
      */
     abstract class Component {
-        private _entityId;
+        private _entity;
         private _version;
         private _entityManager;
         dependencies: ComponentConstructor<Component>[];
-        setEntityId(entityId: number, entityManager: EntityManager): void;
-        getEntityId(): number;
+        setEntity(entity: Entity, entityManager: EntityManager): void;
         readonly entityId: number;
         readonly entity: Entity;
         readonly version: number;
@@ -83,10 +83,10 @@ declare module gs {
         markUpdated(): void;
         /**
          * 重置组件的状态并进行必要的初始化
-         * @param entityId
+         * @param entity
          * @param entityManager
          */
-        reinitialize(entityId: number, entityManager: EntityManager): void;
+        reinitialize(entity: Entity, entityManager: EntityManager): void;
         /**
          * 当组件初始化的时候调用
          * @param args
@@ -300,6 +300,28 @@ declare module gs {
     }
 }
 declare module gs {
+    class Debug {
+        static isEnabled: boolean;
+        static enable(): void;
+        static disable(): void;
+    }
+}
+declare module gs {
+    class PerformanceProfiler {
+        private static instance;
+        private performanceData;
+        private frameCount;
+        private totalTime;
+        private maxFrameTime;
+        private minFrameTime;
+        private constructor();
+        static getInstance(): PerformanceProfiler;
+        startFrame(): void;
+        endFrame(): void;
+        reportPerformance(): void;
+    }
+}
+declare module gs {
     class Event {
         type: string;
         data: any;
@@ -390,7 +412,7 @@ declare module gs {
          * const positionManager = new ComponentManager(PositionComponent);
          */
         constructor(componentType: ComponentConstructor<T>);
-        create(entityId: number, entityManager: EntityManager): T;
+        create(entity: Entity, entityManager: EntityManager): T;
         /**
          * 获取组件数据
          * @param entityId 实体ID

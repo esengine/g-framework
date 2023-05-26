@@ -12,78 +12,89 @@ module gs.physics {
         return -1;
     }
 
-    export function calcBBox(node: DynamicTreeNode, toBBox: (item: any) => AABB): void {
-        distBBox(node, 0, node.children.length, toBBox, node);
+    export function calcBounds(node: DynamicTreeNode, toBounds: (item: any) => Bounds): void {
+        distBounds(node, 0, node.children.length, toBounds, node);
     }
 
-    export function distBBox(node: DynamicTreeNode, k: number, p: number, toBBox: (item: any) => AABB, destNode?: DynamicTreeNode): DynamicTreeNode {
+    export function distBounds(node: DynamicTreeNode, k: number, p: number, toBounds: (item: any) => Bounds, destNode?: DynamicTreeNode): DynamicTreeNode {
         if (!destNode) {
             destNode = createNode(null);
         }
-        destNode.minX = Infinity;
-        destNode.minY = Infinity;
-        destNode.maxX = -Infinity;
-        destNode.maxY = -Infinity;
+        destNode.bounds = new BoxBounds(Vector2.zero(), new FixedPoint(), new FixedPoint(), null);
+
+        let minX = Infinity;
+        let minY = Infinity;
+        let maxX = -Infinity;
+        let maxY = -Infinity;
 
         for (let i = k; i < p; i++) {
             const child = node.children[i];
-            extend(destNode, node.leaf ? toBBox(child) : child);
+            const bounds = toBounds(child);
+            minX = Math.min(minX, bounds.position.x.toFloat());
+            minY = Math.min(minY, bounds.position.y.toFloat());
+            maxX = Math.max(maxX, bounds.position.x.toFloat() + bounds.width.toFloat());
+            maxY = Math.max(maxY, bounds.position.y.toFloat() + bounds.height.toFloat());
         }
+
+        // 创建一个新的Bounds对象
+        const newBounds = new BoxBounds(
+            new Vector2(minX, minY),
+            new FixedPoint(maxX - minX),
+            new FixedPoint(maxY - minY),
+            destNode.bounds.entity
+        );
+
+        // 设置destNode的Collider的Bounds
+        destNode.bounds = newBounds;
 
         return destNode;
     }
 
-    export function extend(a: AABB, b: AABB): AABB {
-        a.minX = Math.min(a.minX, b.minX);
-        a.minY = Math.min(a.minY, b.minY);
-        a.maxX = Math.max(a.maxX, b.maxX);
-        a.maxY = Math.max(a.maxY, b.maxY);
+    export function extend(a: Bounds, b: Bounds): Bounds {
+        const minX = Math.min(a.position.x.toFloat(), b.position.x.toFloat());
+        const minY = Math.min(a.position.y.toFloat(), b.position.y.toFloat());
+        const maxX = Math.max(a.position.x.toFloat() + a.width.toFloat(), b.position.x.toFloat() + b.width.toFloat());
+        const maxY = Math.max(a.position.y.toFloat() + a.height.toFloat(), b.position.y.toFloat() + b.height.toFloat());
+    
+        a.position.x = new FixedPoint(minX);
+        a.position.y = new FixedPoint(minY);
+        a.width = new FixedPoint(maxX - minX);
+        a.height = new FixedPoint(maxY - minY);
+    
         return a;
     }
 
     export function compareNodeMinX(a: DynamicTreeNode, b: DynamicTreeNode): number {
-        return a.minX - b.minX;
+        return a.bounds.position.x.toFloat() - b.bounds.position.x.toFloat();
     }
-
+    
     export function compareNodeMinY(a: DynamicTreeNode, b: DynamicTreeNode): number {
-        return a.minY - b.minY;
+        return a.bounds.position.y.toFloat() - b.bounds.position.y.toFloat();
+    }
+    
+    export function boundsArea(a: DynamicTreeNode): number {
+        const bounds = a.bounds;
+        return bounds.width.toFloat() * bounds.height.toFloat();
+    }
+    
+    export function boundsMargin(a: DynamicTreeNode): number {
+        const bounds = a.bounds;
+        return bounds.width.toFloat() + bounds.height.toFloat();
     }
 
-    export function bboxArea(a: AABB): number {
-        return (a.maxX - a.minX) * (a.maxY - a.minY);
+    export function enlargedArea(a: Bounds, b: Bounds): number {
+        return (Math.max(b.position.x.toFloat() + b.width.toFloat(), a.position.x.toFloat() + a.width.toFloat()) - Math.min(b.position.x.toFloat(), a.position.x.toFloat())) *
+            (Math.max(b.position.y.toFloat() + b.height.toFloat(), a.position.y.toFloat() + a.height.toFloat()) - Math.min(b.position.y.toFloat(), a.position.y.toFloat()));
     }
 
-    export function bboxMargin(a: AABB): number {
-        return (a.maxX - a.minX) + (a.maxY - a.minY);
-    }
-
-    export function enlargedArea(a: AABB, b: AABB): number {
-        return (Math.max(b.maxX, a.maxX) - Math.min(b.minX, a.minX)) *
-            (Math.max(b.maxY, a.maxY) - Math.min(b.minY, a.minY));
-    }
-
-    export function intersectionArea(a: AABB, b: AABB): number {
-        const minX = Math.max(a.minX, b.minX);
-        const minY = Math.max(a.minY, b.minY);
-        const maxX = Math.min(a.maxX, b.maxX);
-        const maxY = Math.min(a.maxY, b.maxY);
-
+    export function intersectionArea(a: Bounds, b: Bounds): number {
+        const minX = Math.max(a.position.x.toFloat(), b.position.x.toFloat());
+        const minY = Math.max(a.position.y.toFloat(), b.position.y.toFloat());
+        const maxX = Math.min(a.position.x.toFloat() + a.width.toFloat(), b.position.x.toFloat() + b.width.toFloat());
+        const maxY = Math.min(a.position.y.toFloat() + a.height.toFloat(), b.position.y.toFloat() + b.height.toFloat());
+    
         return Math.max(0, maxX - minX) *
             Math.max(0, maxY - minY);
-    }
-
-    export function contains(a: AABB, b: AABB): boolean {
-        return a.minX <= b.minX &&
-            a.minY <= b.minY &&
-            b.maxX <= a.maxX &&
-            b.maxY <= a.maxY;
-    }
-
-    export function intersects(a: AABB, b: AABB): boolean {
-        return b.minX <= a.maxX &&
-            b.minY <= a.maxY &&
-            b.maxX >= a.minX &&
-            b.maxY >= a.minY;
     }
 
     export function createNode(children: DynamicTreeNode[]): DynamicTreeNode {
@@ -91,12 +102,10 @@ module gs.physics {
             children,
             height: 1,
             leaf: true,
-            minX: Infinity,
-            minY: Infinity,
-            maxX: -Infinity,
-            maxY: -Infinity
+            bounds: new BoxBounds(Vector2.zero(), new FixedPoint(), new FixedPoint(), null)
         };
     }
+    
 
     export function multiSelect<T>(arr: T[], left: number, right: number, n: number, compare: (a: T, b: T) => number): void {
         const stack = [left, right];

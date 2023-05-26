@@ -4,6 +4,7 @@ module gs {
         private _systemManager: SystemManager;
         private _timeManager: TimeManager;
         private _plugins: IPlugin[] = [];
+        private _performanceProfiler: PerformanceProfiler;
 
         public get entityManager() {
             return this._entityManager;
@@ -29,6 +30,8 @@ module gs {
             this._entityManager = new EntityManager();
             this._systemManager = new SystemManager(this._entityManager);
             this._timeManager = TimeManager.getInstance();
+
+            this._performanceProfiler = PerformanceProfiler.getInstance();
             return this;
         }
 
@@ -38,12 +41,14 @@ module gs {
         }
 
         update(deltaTime: number) {
+            this._performanceProfiler.startFrame();
             this._timeManager.update(deltaTime);
             this._systemManager.update();
 
             for (const plugin of this._plugins) {
                 plugin.onUpdate(deltaTime);
             }
+            this._performanceProfiler.endFrame();
         }
     }
 }

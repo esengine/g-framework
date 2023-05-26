@@ -1,5 +1,9 @@
 module gs.physics {
     export class Vector2 {
+        public static zero() {
+            return new Vector2();
+        }
+
         x: FixedPoint;
         y: FixedPoint;
 

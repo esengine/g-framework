@@ -74,7 +74,7 @@ module gs {
                 manager = this.entityManager.addComponentManager(componentType);
             }
 
-            const component = manager.create(this.id, this.entityManager) as T;
+            const component = manager.create(this, this.entityManager) as T;
             component.onInitialize(...args);
 
             const componentInfo = ComponentTypeManager.getIndexFor(componentType);

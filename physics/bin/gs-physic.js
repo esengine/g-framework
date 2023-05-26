@@ -118,15 +118,11 @@ var gs;
                         var collider = entity.getComponent(physics.Collider);
                         if (!collider)
                             continue;
-                        var bounds = collider.getBounds();
                         var node = {
                             children: [],
                             height: 0,
                             leaf: true,
-                            minX: bounds.position.x.toFloat(),
-                            minY: bounds.position.y.toFloat(),
-                            maxX: physics.FixedPoint.add(bounds.position.x, bounds.width).toFloat(),
-                            maxY: physics.FixedPoint.add(bounds.position.y, bounds.height).toFloat()
+                            bounds: collider.getBounds()
                         };
                         boundsArray.push(node);
                         nodeEntityMap.set(node, entity);
@@ -151,7 +147,7 @@ var gs;
                             processedPairs = new Set();
                             processed.set(entityId, processedPairs);
                         }
-                        var candidates = dynamicTree.search(node);
+                        var candidates = dynamicTree.search(node.bounds);
                         try {
                             for (var candidates_1 = __values(candidates), candidates_1_1 = candidates_1.next(); !candidates_1_1.done; candidates_1_1 = candidates_1.next()) {
                                 var candidate = candidates_1_1.value;
@@ -218,86 +214,84 @@ var gs;
             return -1;
         }
         physics.findItem = findItem;
-        function calcBBox(node, toBBox) {
-            distBBox(node, 0, node.children.length, toBBox, node);
+        function calcBounds(node, toBounds) {
+            distBounds(node, 0, node.children.length, toBounds, node);
         }
-        physics.calcBBox = calcBBox;
-        function distBBox(node, k, p, toBBox, destNode) {
+        physics.calcBounds = calcBounds;
+        function distBounds(node, k, p, toBounds, destNode) {
             if (!destNode) {
                 destNode = createNode(null);
             }
-            destNode.minX = Infinity;
-            destNode.minY = Infinity;
-            destNode.maxX = -Infinity;
-            destNode.maxY = -Infinity;
+            destNode.bounds = new physics.BoxBounds(physics.Vector2.zero(), new physics.FixedPoint(), new physics.FixedPoint(), null);
+            var minX = Infinity;
+            var minY = Infinity;
+            var maxX = -Infinity;
+            var maxY = -Infinity;
             for (var i = k; i < p; i++) {
                 var child = node.children[i];
-                extend(destNode, node.leaf ? toBBox(child) : child);
+                var bounds = toBounds(child);
+                minX = Math.min(minX, bounds.position.x.toFloat());
+                minY = Math.min(minY, bounds.position.y.toFloat());
+                maxX = Math.max(maxX, bounds.position.x.toFloat() + bounds.width.toFloat());
+                maxY = Math.max(maxY, bounds.position.y.toFloat() + bounds.height.toFloat());
             }
+            // 创建一个新的Bounds对象
+            var newBounds = new physics.BoxBounds(new physics.Vector2(minX, minY), new physics.FixedPoint(maxX - minX), new physics.FixedPoint(maxY - minY), destNode.bounds.entity);
+            // 设置destNode的Collider的Bounds
+            destNode.bounds = newBounds;
             return destNode;
         }
-        physics.distBBox = distBBox;
+        physics.distBounds = distBounds;
         function extend(a, b) {
-            a.minX = Math.min(a.minX, b.minX);
-            a.minY = Math.min(a.minY, b.minY);
-            a.maxX = Math.max(a.maxX, b.maxX);
-            a.maxY = Math.max(a.maxY, b.maxY);
+            var minX = Math.min(a.position.x.toFloat(), b.position.x.toFloat());
+            var minY = Math.min(a.position.y.toFloat(), b.position.y.toFloat());
+            var maxX = Math.max(a.position.x.toFloat() + a.width.toFloat(), b.position.x.toFloat() + b.width.toFloat());
+            var maxY = Math.max(a.position.y.toFloat() + a.height.toFloat(), b.position.y.toFloat() + b.height.toFloat());
+            a.position.x = new physics.FixedPoint(minX);
+            a.position.y = new physics.FixedPoint(minY);
+            a.width = new physics.FixedPoint(maxX - minX);
+            a.height = new physics.FixedPoint(maxY - minY);
             return a;
         }
         physics.extend = extend;
         function compareNodeMinX(a, b) {
-            return a.minX - b.minX;
+            return a.bounds.position.x.toFloat() - b.bounds.position.x.toFloat();
         }
         physics.compareNodeMinX = compareNodeMinX;
         function compareNodeMinY(a, b) {
-            return a.minY - b.minY;
+            return a.bounds.position.y.toFloat() - b.bounds.position.y.toFloat();
         }
         physics.compareNodeMinY = compareNodeMinY;
-        function bboxArea(a) {
-            return (a.maxX - a.minX) * (a.maxY - a.minY);
+        function boundsArea(a) {
+            var bounds = a.bounds;
+            return bounds.width.toFloat() * bounds.height.toFloat();
         }
-        physics.bboxArea = bboxArea;
-        function bboxMargin(a) {
-            return (a.maxX - a.minX) + (a.maxY - a.minY);
+        physics.boundsArea = boundsArea;
+        function boundsMargin(a) {
+            var bounds = a.bounds;
+            return bounds.width.toFloat() + bounds.height.toFloat();
         }
-        physics.bboxMargin = bboxMargin;
+        physics.boundsMargin = boundsMargin;
         function enlargedArea(a, b) {
-            return (Math.max(b.maxX, a.maxX) - Math.min(b.minX, a.minX)) *
-                (Math.max(b.maxY, a.maxY) - Math.min(b.minY, a.minY));
+            return (Math.max(b.position.x.toFloat() + b.width.toFloat(), a.position.x.toFloat() + a.width.toFloat()) - Math.min(b.position.x.toFloat(), a.position.x.toFloat())) *
+                (Math.max(b.position.y.toFloat() + b.height.toFloat(), a.position.y.toFloat() + a.height.toFloat()) - Math.min(b.position.y.toFloat(), a.position.y.toFloat()));
         }
         physics.enlargedArea = enlargedArea;
         function intersectionArea(a, b) {
-            var minX = Math.max(a.minX, b.minX);
-            var minY = Math.max(a.minY, b.minY);
-            var maxX = Math.min(a.maxX, b.maxX);
-            var maxY = Math.min(a.maxY, b.maxY);
+            var minX = Math.max(a.position.x.toFloat(), b.position.x.toFloat());
+            var minY = Math.max(a.position.y.toFloat(), b.position.y.toFloat());
+            var maxX = Math.min(a.position.x.toFloat() + a.width.toFloat(), b.position.x.toFloat() + b.width.toFloat());
+            var maxY = Math.min(a.position.y.toFloat() + a.height.toFloat(), b.position.y.toFloat() + b.height.toFloat());
             return Math.max(0, maxX - minX) *
                 Math.max(0, maxY - minY);
         }
         physics.intersectionArea = intersectionArea;
-        function contains(a, b) {
-            return a.minX <= b.minX &&
-                a.minY <= b.minY &&
-                b.maxX <= a.maxX &&
-                b.maxY <= a.maxY;
-        }
-        physics.contains = contains;
-        function intersects(a, b) {
-            return b.minX <= a.maxX &&
-                b.minY <= a.maxY &&
-                b.maxX >= a.minX &&
-                b.maxY >= a.minY;
-        }
-        physics.intersects = intersects;
         function createNode(children) {
             return {
                 children: children,
                 height: 1,
                 leaf: true,
-                minX: Infinity,
-                minY: Infinity,
-                maxX: -Infinity,
-                maxY: -Infinity
+                bounds: new physics.BoxBounds(physics.Vector2.zero(), new physics.FixedPoint(), new physics.FixedPoint(), null)
             };
         }
         physics.createNode = createNode;
@@ -381,26 +375,28 @@ var gs;
                 this._minEntries = Math.max(2, Math.ceil(this._maxEntries * 0.4));
                 this.clear();
             }
-            DynamicTree.prototype.compareMinX = function (a, b) { return a.minX - b.minX; };
-            DynamicTree.prototype.compareMinY = function (a, b) { return a.minY - b.minY; };
+            DynamicTree.prototype.compareMinX = function (a, b) {
+                return a.bounds.position.x.toFloat() - b.bounds.position.x.toFloat();
+            };
+            DynamicTree.prototype.compareMinY = function (a, b) {
+                return a.bounds.position.y.toFloat() - b.bounds.position.y.toFloat();
+            };
             DynamicTree.prototype.all = function () {
                 return this._all(this.data, []);
             };
-            DynamicTree.prototype.search = function (bbox) {
+            DynamicTree.prototype.search = function (bounds) {
                 var node = this.data;
                 var result = [];
-                if (!physics.intersects(bbox, node))
+                if (!bounds.intersects(node.bounds))
                     return result;
-                var toBBox = this.toBBox;
                 var nodesToSearch = [];
                 while (node) {
                     for (var i = 0; i < node.children.length; i++) {
                         var child = node.children[i];
-                        var childBBox = node.leaf ? toBBox(child) : child;
-                        if (physics.intersects(bbox, childBBox)) {
+                        if (bounds.intersects(child.bounds)) {
                             if (node.leaf)
                                 result.push(child);
-                            else if (physics.contains(bbox, childBBox))
+                            else if (bounds.contains(child.bounds))
                                 this._all(child, result);
                             else
                                 nodesToSearch.push(child);
@@ -410,17 +406,16 @@ var gs;
                 }
                 return result;
             };
-            DynamicTree.prototype.collides = function (bbox) {
+            DynamicTree.prototype.collides = function (bounds) {
                 var node = this.data;
-                if (!physics.intersects(bbox, node))
+                if (!bounds.intersects(node.bounds))
                     return false;
                 var nodesToSearch = [];
                 while (node) {
                     for (var i = 0; i < node.children.length; i++) {
                         var child = node.children[i];
-                        var childBBox = node.leaf ? this.toBBox(child) : child;
-                        if (physics.intersects(bbox, childBBox)) {
-                            if (node.leaf || physics.contains(bbox, childBBox))
+                        if (bounds.intersects(child.bounds)) {
+                            if (node.leaf || bounds.contains(child.bounds))
                                 return true;
                             nodesToSearch.push(child);
                         }
@@ -473,7 +468,7 @@ var gs;
                 if (!item)
                     return this;
                 var node = this.data;
-                var bbox = this.toBBox(item);
+                var bbox = item.bounds;
                 var path = [];
                 var indexes = [];
                 var i, parent, goingUp;
@@ -496,7 +491,7 @@ var gs;
                             return this;
                         }
                     }
-                    if (!goingUp && !node.leaf && physics.contains(node, bbox)) {
+                    if (!goingUp && !node.leaf && item.bounds.contains(node.bounds)) {
                         path.push(node);
                         indexes.push(i);
                         i = 0;
@@ -513,8 +508,8 @@ var gs;
                 }
                 return this;
             };
-            DynamicTree.prototype.toBBox = function (item) {
-                return item;
+            DynamicTree.prototype.toBounds = function (item) {
+                return item.bounds;
             };
             DynamicTree.prototype.toJSON = function () {
                 return this.data;
@@ -541,7 +536,7 @@ var gs;
                 if (N <= M) {
                     // 达到叶级别；返回叶节点
                     node = physics.createNode(items.slice(left, right + 1));
-                    physics.calcBBox(node, this.toBBox);
+                    physics.calcBounds(node, this.toBounds);
                     return node;
                 }
                 if (!height) {
@@ -565,10 +560,10 @@ var gs;
                         node.children.push(this._build(items, j, right3, height - 1));
                     }
                 }
-                physics.calcBBox(node, this.toBBox);
+                physics.calcBounds(node, this.toBounds);
                 return node;
             };
-            DynamicTree.prototype._chooseSubtree = function (bbox, node, level, path) {
+            DynamicTree.prototype._chooseSubtree = function (bounds, node, level, path) {
                 while (true) {
                     path.push(node);
                     if (node.leaf || path.length - 1 === level)
@@ -578,8 +573,8 @@ var gs;
                     var targetNode = void 0;
                     for (var i = 0; i < node.children.length; i++) {
                         var child = node.children[i];
-                        var area = physics.bboxArea(child);
-                        var enlargement = physics.enlargedArea(bbox, child) - area;
+                        var area = physics.boundsArea(child);
+                        var enlargement = physics.enlargedArea(bounds, child.bounds) - area;
                         // 选择面积扩展最小的条目
                         if (enlargement < minEnlargement) {
                             minEnlargement = enlargement;
@@ -599,13 +594,13 @@ var gs;
                 return node;
             };
             DynamicTree.prototype._insert = function (item, level, isNode) {
-                var bbox = isNode ? item : this.toBBox(item);
+                var bounds = isNode ? item.bounds : item.bounds;
                 var insertPath = [];
                 // 找到最适合容纳条目的节点，并保存沿途的所有节点
-                var node = this._chooseSubtree(bbox, this.data, level, insertPath);
+                var node = this._chooseSubtree(item.bounds, this.data, level, insertPath);
                 // 将条目放入节点中
                 node.children.push(item);
-                physics.extend(node, bbox);
+                physics.extend(node.bounds, bounds);
                 // 分割节点溢出；如有必要，向上传播
                 while (level >= 0) {
                     if (insertPath[level].children.length > this._maxEntries) {
@@ -615,8 +610,8 @@ var gs;
                     else
                         break;
                 }
-                // 调整沿插入路径的bbox
-                this._adjustParentBBoxes(bbox, insertPath, level);
+                // 调整沿插入路径的Bounds
+                this._adjustParentBounds(bounds, insertPath, level);
             };
             // 将溢出的节点分割为两个节点
             DynamicTree.prototype._split = function (insertPath, level) {
@@ -628,8 +623,8 @@ var gs;
                 var newNode = physics.createNode(node.children.splice(splitIndex, node.children.length - splitIndex));
                 newNode.height = node.height;
                 newNode.leaf = node.leaf;
-                physics.calcBBox(node, this.toBBox);
-                physics.calcBBox(newNode, this.toBBox);
+                physics.calcBounds(node, this.toBounds);
+                physics.calcBounds(newNode, this.toBounds);
                 if (level)
                     insertPath[level - 1].children.push(newNode);
                 else
@@ -639,17 +634,17 @@ var gs;
                 this.data = physics.createNode([node, newNode]);
                 this.data.height = node.height + 1;
                 this.data.leaf = false;
-                physics.calcBBox(this.data, this.toBBox);
+                physics.calcBounds(this.data, this.toBounds);
             };
             DynamicTree.prototype._chooseSplitIndex = function (node, m, M) {
                 var index;
                 var minOverlap = Infinity;
                 var minArea = Infinity;
                 for (var i = m; i <= M - m; i++) {
-                    var bbox1 = physics.distBBox(node, 0, i, this.toBBox);
-                    var bbox2 = physics.distBBox(node, i, M, this.toBBox);
-                    var overlap = physics.intersectionArea(bbox1, bbox2);
-                    var area = physics.bboxArea(bbox1) + physics.bboxArea(bbox2);
+                    var bbox1 = physics.distBounds(node, 0, i, this.toBounds);
+                    var bbox2 = physics.distBounds(node, i, M, this.toBounds);
+                    var overlap = physics.intersectionArea(bbox1.bounds, bbox2.bounds);
+                    var area = physics.boundsArea(bbox1) + physics.boundsArea(bbox2);
                     // 选择重叠最小的分布
                     if (overlap < minOverlap) {
                         minOverlap = overlap;
@@ -680,26 +675,26 @@ var gs;
             // 所有可能的分布中，每个节点至少为m时的总边距
             DynamicTree.prototype._allDistMargin = function (node, m, M, compare) {
                 node.children.sort(compare);
-                var toBBox = this.toBBox;
-                var leftBBox = physics.distBBox(node, 0, m, toBBox);
-                var rightBBox = physics.distBBox(node, M - m, M, toBBox);
-                var margin = physics.bboxMargin(leftBBox) + physics.bboxMargin(rightBBox);
+                var toBounds = this.toBounds;
+                var leftBounds = physics.distBounds(node, 0, m, toBounds);
+                var rightBounds = physics.distBounds(node, M - m, M, toBounds);
+                var margin = physics.boundsMargin(leftBounds) + physics.boundsMargin(rightBounds);
                 for (var i = m; i < M - m; i++) {
                     var child = node.children[i];
-                    physics.extend(leftBBox, node.leaf ? toBBox(child) : child);
-                    margin += physics.bboxMargin(leftBBox);
+                    physics.extend(leftBounds.bounds, node.leaf ? toBounds(child) : child.bounds);
+                    margin += physics.boundsMargin(leftBounds);
                 }
                 for (var i = M - m - 1; i >= m; i--) {
                     var child = node.children[i];
-                    physics.extend(rightBBox, node.leaf ? toBBox(child) : child);
-                    margin += physics.bboxMargin(rightBBox);
+                    physics.extend(rightBounds.bounds, node.leaf ? toBounds(child) : child.bounds);
+                    margin += physics.boundsMargin(rightBounds);
                 }
                 return margin;
             };
-            DynamicTree.prototype._adjustParentBBoxes = function (bbox, path, level) {
-                // 调整给定树路径上的bbox
+            DynamicTree.prototype._adjustParentBounds = function (bounds, path, level) {
+                // 调整给定树路径上的Bounds
                 for (var i = level; i >= 0; i--) {
-                    physics.extend(path[i], bbox);
+                    physics.extend(path[i].bounds, bounds);
                 }
             };
             DynamicTree.prototype._condense = function (path) {
@@ -714,7 +709,7 @@ var gs;
                             this.clear();
                     }
                     else
-                        physics.calcBBox(path[i], this.toBBox);
+                        physics.calcBounds(path[i], this.toBounds);
                 }
             };
             return DynamicTree;
@@ -734,40 +729,44 @@ var gs;
                 this.precision = precision;
             }
             FixedPoint.prototype.add = function (other) {
+                var result = new FixedPoint(0, this.precision);
                 if (other instanceof FixedPoint) {
-                    this.rawValue += other.rawValue;
+                    result.rawValue = this.rawValue + other.rawValue;
                 }
                 else {
-                    this.rawValue += Math.round(other * this.precision);
+                    result.rawValue = this.rawValue + Math.round(other * this.precision);
                 }
-                return this;
+                return result;
             };
             FixedPoint.prototype.sub = function (other) {
+                var result = new FixedPoint(0, this.precision);
                 if (other instanceof FixedPoint) {
-                    this.rawValue -= other.rawValue;
+                    result.rawValue = this.rawValue - other.rawValue;
                 }
                 else {
-                    this.rawValue -= Math.round(other * this.precision);
+                    result.rawValue = this.rawValue - Math.round(other * this.precision);
                 }
-                return this;
+                return result;
             };
             FixedPoint.prototype.mul = function (other) {
+                var result = new FixedPoint(0, this.precision);
                 if (other instanceof FixedPoint) {
-                    this.rawValue = Math.round((this.rawValue * other.rawValue) / other.precision);
+                    result.rawValue = Math.round((this.rawValue * other.rawValue) / other.precision);
                 }
                 else {
-                    this.rawValue = Math.round(this.rawValue * other);
+                    result.rawValue = Math.round(this.rawValue * other);
                 }
-                return this;
+                return result;
             };
             FixedPoint.prototype.div = function (other) {
+                var result = new FixedPoint(0, this.precision);
                 if (other instanceof FixedPoint) {
-                    this.rawValue = Math.round((this.rawValue / other.rawValue) * this.precision);
+                    result.rawValue = Math.round((this.rawValue / other.rawValue) * this.precision);
                 }
                 else {
-                    this.rawValue = Math.round(this.rawValue / other);
+                    result.rawValue = Math.round(this.rawValue / other);
                 }
-                return this;
+                return result;
             };
             FixedPoint.prototype.lt = function (other) {
                 if (other instanceof FixedPoint) {
@@ -1090,6 +1089,9 @@ var gs;
                 this.x = x instanceof physics.FixedPoint ? x : new physics.FixedPoint(x);
                 this.y = y instanceof physics.FixedPoint ? y : new physics.FixedPoint(y);
             }
+            Vector2.zero = function () {
+                return new Vector2();
+            };
             Vector2.prototype.add = function (other) {
                 return new Vector2(physics.FixedPoint.add(this.x, other.x), physics.FixedPoint.add(this.y, other.y));
             };
@@ -1164,10 +1166,34 @@ var gs;
         var Collider = /** @class */ (function (_super) {
             __extends(Collider, _super);
             function Collider() {
-                return _super !== null && _super.apply(this, arguments) || this;
+                var _this = _super !== null && _super.apply(this, arguments) || this;
+                _this.dependencies = [
+                    physics.Transform
+                ];
+                return _this;
             }
+            Object.defineProperty(Collider.prototype, "transform", {
+                get: function () {
+                    if (this._transform == null) {
+                        this._transform = this.entity.getComponent(physics.Transform);
+                    }
+                    return this._transform;
+                },
+                enumerable: true,
+                configurable: true
+            });
             Collider.prototype.getBounds = function () {
-                return { position: new physics.Vector2(), width: new physics.FixedPoint(), height: new physics.FixedPoint(), entity: this.entity };
+                this._bounds.position = this.transform.position;
+                return this._bounds;
+            };
+            Collider.prototype.setBounds = function (bounds) {
+                this._bounds = bounds;
+            };
+            Collider.prototype.intersects = function (other) {
+                return this.getBounds().intersects(other.getBounds());
+            };
+            Collider.prototype.contains = function (other) {
+                return this.getBounds().contains(other.getBounds());
             };
             return Collider;
         }(gs.Component));
@@ -1183,23 +1209,12 @@ var gs;
         var BoxCollider = /** @class */ (function (_super) {
             __extends(BoxCollider, _super);
             function BoxCollider() {
-                var _this = _super !== null && _super.apply(this, arguments) || this;
-                _this.dependencies = [
-                    physics.Transform
-                ];
-                return _this;
+                return _super !== null && _super.apply(this, arguments) || this;
             }
             BoxCollider.prototype.onInitialize = function (size) {
                 this.size = size;
-                this.transform = this.entity.getComponent(physics.Transform);
-            };
-            BoxCollider.prototype.getBounds = function () {
-                return {
-                    position: this.transform.position,
-                    width: this.size.width,
-                    height: this.size.height,
-                    entity: this.entity
-                };
+                var bounds = new physics.BoxBounds(this.transform.position, this.size.width, this.size.height, this.entity);
+                this.setBounds(bounds);
             };
             return BoxCollider;
         }(physics.Collider));
@@ -1210,96 +1225,198 @@ var gs;
 (function (gs) {
     var physics;
     (function (physics) {
-        var Circle = /** @class */ (function () {
-            function Circle() {
+        var CircleCollider = /** @class */ (function (_super) {
+            __extends(CircleCollider, _super);
+            function CircleCollider() {
+                return _super !== null && _super.apply(this, arguments) || this;
             }
-            Object.defineProperty(Circle.prototype, "width", {
-                get: function () {
-                    return this.radius.mul(2);
-                },
-                enumerable: true,
-                configurable: true
-            });
-            Object.defineProperty(Circle.prototype, "height", {
-                get: function () {
-                    return this.radius.mul(2);
-                },
-                enumerable: true,
-                configurable: true
-            });
-            /**
-             * 计算圆形面积
-             * @returns
-             */
-            Circle.prototype.area = function () {
-                return this.radius.mul(this.radius).mul(Math.PI);
-            };
-            /**
-             * 计算圆形周长
-             * @returns
-             */
-            Circle.prototype.circumference = function () {
-                return this.radius.mul(2).mul(Math.PI);
-            };
-            /**
-             * 判断点是否在圆内
-             * @param point
-             * @returns
-             */
-            Circle.prototype.containsPoint = function (point) {
-                return this.position.distanceTo(point).lte(this.radius);
-            };
-            /**
-             * 判断两个圆是否相交
-             * @param other
-             * @returns
-             */
-            Circle.prototype.intersects = function (other) {
-                return this.position.distanceTo(other.position).lte(this.radius.add(other.radius));
-            };
-            return Circle;
-        }());
-        physics.Circle = Circle;
+            return CircleCollider;
+        }(physics.Collider));
+        physics.CircleCollider = CircleCollider;
     })(physics = gs.physics || (gs.physics = {}));
 })(gs || (gs = {}));
 var gs;
 (function (gs) {
     var physics;
     (function (physics) {
-        var Rectangle = /** @class */ (function () {
-            function Rectangle() {
+        var PolygonCollider = /** @class */ (function (_super) {
+            __extends(PolygonCollider, _super);
+            function PolygonCollider() {
+                return _super !== null && _super.apply(this, arguments) || this;
             }
-            /**
-             * 计算矩形面积
-             * @returns
-             */
-            Rectangle.prototype.area = function () {
-                return this.width.mul(this.height);
+            return PolygonCollider;
+        }(physics.Collider));
+        physics.PolygonCollider = PolygonCollider;
+    })(physics = gs.physics || (gs.physics = {}));
+})(gs || (gs = {}));
+var gs;
+(function (gs) {
+    var physics;
+    (function (physics) {
+        var BoxBounds = /** @class */ (function () {
+            function BoxBounds(position, width, height, entity) {
+                this.position = position;
+                this.width = width;
+                this.height = height;
+                this.entity = entity;
+            }
+            BoxBounds.prototype.intersects = function (other) {
+                var visitor = new physics.IntersectionVisitor(other);
+                this.accept(visitor);
+                return visitor.getResult();
             };
-            /**
-             * 判断点是否在矩形内
-             * @param point
-             * @returns
-             */
-            Rectangle.prototype.containsPoint = function (point) {
-                return point.x.gte(this.position.x) &&
-                    point.x.lte(this.position.x.add(this.width)) &&
-                    point.y.gte(this.position.y) &&
-                    point.y.lte(this.position.y.add(this.height));
+            BoxBounds.prototype.contains = function (other) {
+                var visitor = new physics.ContainVisitor(other);
+                this.accept(visitor);
+                return visitor.getResult();
             };
-            /**
-             * 判断两个矩形是否相交
-             * @param rect
-             * @returns
-             */
-            Rectangle.prototype.intersects = function (rect) {
-                return !(rect.position.x.add(rect.width).lt(this.position.x) ||
-                    rect.position.y.add(rect.height).lt(this.position.y) ||
-                    rect.position.x.gt(this.position.x.add(this.width)) ||
-                    rect.position.y.gt(this.position.y.add(this.height)));
+            BoxBounds.prototype.accept = function (visitor) {
+                visitor.visitBox(this);
             };
-            return Rectangle;
+            return BoxBounds;
         }());
-        physics.Rectangle = Rectangle;
+        physics.BoxBounds = BoxBounds;
+    })(physics = gs.physics || (gs.physics = {}));
+})(gs || (gs = {}));
+var gs;
+(function (gs) {
+    var physics;
+    (function (physics) {
+        var CircleBounds = /** @class */ (function () {
+            function CircleBounds(position, radius, entity) {
+                this.position = position;
+                this.radius = radius;
+                this.entity = entity;
+                this.width = radius.mul(2);
+                this.height = radius.mul(2);
+            }
+            CircleBounds.prototype.intersects = function (other) {
+                var visitor = new physics.IntersectionVisitor(other);
+                this.accept(visitor);
+                return visitor.getResult();
+            };
+            CircleBounds.prototype.contains = function (other) {
+                var visitor = new physics.ContainVisitor(other);
+                this.accept(visitor);
+                return visitor.getResult();
+            };
+            CircleBounds.prototype.accept = function (visitor) {
+                visitor.visitCircle(this);
+            };
+            return CircleBounds;
+        }());
+        physics.CircleBounds = CircleBounds;
+    })(physics = gs.physics || (gs.physics = {}));
+})(gs || (gs = {}));
+var gs;
+(function (gs) {
+    var physics;
+    (function (physics) {
+        var ContainVisitor = /** @class */ (function () {
+            function ContainVisitor(other) {
+                this.other = other;
+                this.result = false;
+            }
+            ContainVisitor.prototype.visitBox = function (box) {
+                if (this.other instanceof physics.BoxBounds) {
+                    var otherBox = this.other;
+                    this.result = (box.position.x.toFloat() <= otherBox.position.x.toFloat() &&
+                        box.position.y.toFloat() <= otherBox.position.y.toFloat() &&
+                        box.position.x.toFloat() + box.width.toFloat() >= otherBox.position.x.toFloat() + otherBox.width.toFloat() &&
+                        box.position.y.toFloat() + box.height.toFloat() >= otherBox.position.y.toFloat() + otherBox.height.toFloat());
+                }
+                else if (this.other instanceof physics.CircleBounds) {
+                    var otherCircle = this.other;
+                    var circleBoundingBox = new physics.BoxBounds(otherCircle.position, otherCircle.radius.mul(2), otherCircle.radius.mul(2), otherCircle.entity);
+                    this.result = (box.position.x.toFloat() <= circleBoundingBox.position.x.toFloat() &&
+                        box.position.y.toFloat() <= circleBoundingBox.position.y.toFloat() &&
+                        box.position.x.toFloat() + box.width.toFloat() >= circleBoundingBox.position.x.toFloat() + circleBoundingBox.width.toFloat() &&
+                        box.position.y.toFloat() + box.height.toFloat() >= circleBoundingBox.position.y.toFloat() + circleBoundingBox.height.toFloat());
+                }
+            };
+            ContainVisitor.prototype.visitCircle = function (circle) {
+                if (this.other instanceof physics.CircleBounds) {
+                    var otherCircle = this.other;
+                    var dx = circle.position.x.toFloat() - otherCircle.position.x.toFloat();
+                    var dy = circle.position.y.toFloat() - otherCircle.position.y.toFloat();
+                    var distance = Math.sqrt(dx * dx + dy * dy);
+                    this.result = (distance + otherCircle.radius.toFloat() <= circle.radius.toFloat());
+                }
+                else if (this.other instanceof physics.BoxBounds) {
+                    var otherBox = this.other;
+                    var boxBoundingCircleRadius = Math.sqrt(Math.pow(otherBox.width.toFloat() / 2, 2) + Math.pow(otherBox.height.toFloat() / 2, 2));
+                    var boxBoundingCircle = new physics.CircleBounds(otherBox.position.add(new physics.Vector2(otherBox.width.div(2), otherBox.height.div(2))), new physics.FixedPoint(boxBoundingCircleRadius), otherBox.entity);
+                    var dx = circle.position.x.toFloat() - boxBoundingCircle.position.x.toFloat();
+                    var dy = circle.position.y.toFloat() - boxBoundingCircle.position.y.toFloat();
+                    var distance = Math.sqrt(dx * dx + dy * dy);
+                    this.result = (distance + boxBoundingCircle.radius.toFloat() <= circle.radius.toFloat());
+                }
+            };
+            ContainVisitor.prototype.getResult = function () {
+                return this.result;
+            };
+            return ContainVisitor;
+        }());
+        physics.ContainVisitor = ContainVisitor;
+    })(physics = gs.physics || (gs.physics = {}));
+})(gs || (gs = {}));
+var gs;
+(function (gs) {
+    var physics;
+    (function (physics) {
+        var IntersectionVisitor = /** @class */ (function () {
+            function IntersectionVisitor(other) {
+                this.other = other;
+                this.result = false;
+            }
+            IntersectionVisitor.prototype.visitBox = function (box) {
+                if (this.other instanceof physics.BoxBounds) {
+                    var otherBox = this.other;
+                    this.result = !(box.position.x.toFloat() + box.width.toFloat() < otherBox.position.x.toFloat() ||
+                        otherBox.position.x.toFloat() + otherBox.width.toFloat() < box.position.x.toFloat() ||
+                        box.position.y.toFloat() + box.height.toFloat() < otherBox.position.y.toFloat() ||
+                        otherBox.position.y.toFloat() + otherBox.height.toFloat() < box.position.y.toFloat());
+                }
+                else if (this.other instanceof physics.CircleBounds) {
+                    this.result = this.intersectsBoxCircle(box, this.other);
+                }
+            };
+            IntersectionVisitor.prototype.visitCircle = function (circle) {
+                if (this.other instanceof physics.CircleBounds) {
+                    var otherCircle = this.other;
+                    var dx = circle.position.x.toFloat() - otherCircle.position.x.toFloat();
+                    var dy = circle.position.y.toFloat() - otherCircle.position.y.toFloat();
+                    var distance = Math.sqrt(dx * dx + dy * dy);
+                    this.result = distance < circle.radius.toFloat() + otherCircle.radius.toFloat();
+                }
+                else if (this.other instanceof physics.BoxBounds) {
+                    this.result = this.intersectsBoxCircle(this.other, circle);
+                }
+            };
+            IntersectionVisitor.prototype.intersectsBoxCircle = function (box, circle) {
+                var circleDistanceX = Math.abs(circle.position.x.toFloat() - box.position.x.toFloat() - box.width.toFloat() / 2);
+                var circleDistanceY = Math.abs(circle.position.y.toFloat() - box.position.y.toFloat() - box.height.toFloat() / 2);
+                if (circleDistanceX > (box.width.toFloat() / 2 + circle.radius.toFloat())) {
+                    return false;
+                }
+                if (circleDistanceY > (box.height.toFloat() / 2 + circle.radius.toFloat())) {
+                    return false;
+                }
+                if (circleDistanceX <= (box.width.toFloat() / 2)) {
+                    return true;
+                }
+                if (circleDistanceY <= (box.height.toFloat() / 2)) {
+                    return true;
+                }
+                var cornerDistanceSq = Math.pow(circleDistanceX - box.width.toFloat() / 2, 2) +
+                    Math.pow(circleDistanceY - box.height.toFloat() / 2, 2);
+                return (cornerDistanceSq <= Math.pow(circle.radius.toFloat(), 2));
+            };
+            IntersectionVisitor.prototype.getResult = function () {
+                return this.result;
+            };
+            return IntersectionVisitor;
+        }());
+        physics.IntersectionVisitor = IntersectionVisitor;
     })(physics = gs.physics || (gs.physics = {}));
 })(gs || (gs = {}));

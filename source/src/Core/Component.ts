@@ -3,33 +3,23 @@ module gs {
      * 组件
      */
     export abstract class Component {
-        private _entityId: number | null = null;
+        private _entity: Entity;
         private _version: number = 0;
         private _entityManager: EntityManager;
 
         public dependencies: ComponentConstructor<Component>[] = [];
 
-        setEntityId(entityId: number, entityManager: EntityManager) {
-            this._entityId = entityId;
+        setEntity(entity: Entity, entityManager: EntityManager) {
+            this._entity = entity;
             this._entityManager = entityManager;
         }
 
-        getEntityId() {
-            return this._entityId;
-        }
-
         get entityId(): number {
-            if (this._entityId === null) {
-                throw new Error("Entity ID 还未被设置");
-            }
-            return this._entityId;
+            return this.entity.getId();
         }
 
         get entity(): Entity {
-            if (this._entityId === null) {
-                throw new Error("Entity ID 还未被设置");
-            }
-            return this._entityManager.getEntity(this._entityId);
+            return this._entity;
         }
 
         get version(): number {
@@ -46,10 +36,10 @@ module gs {
 
         /**
          * 重置组件的状态并进行必要的初始化
-         * @param entityId 
+         * @param entity 
          * @param entityManager 
          */
-        reinitialize(entityId: number, entityManager: EntityManager): void { }
+        reinitialize(entity: Entity, entityManager: EntityManager): void { }
 
         /**
          * 当组件初始化的时候调用
@@ -89,9 +79,7 @@ module gs {
         /**
          * 清除数据方法，用于组件池在重用时
          */
-        public reset(): void {
-            this._entityId = null;
-        }
+        public reset(): void { }
 
         /**
          * 默认的浅复制方法
