@@ -12,15 +12,15 @@ module gs.physics {
         return -1;
     }
 
-    export function calcBounds(node: DynamicTreeNode, toBounds: (item: any) => Collider): void {
+    export function calcBounds(node: DynamicTreeNode, toBounds: (item: any) => Bounds): void {
         distBounds(node, 0, node.children.length, toBounds, node);
     }
 
-    export function distBounds(node: DynamicTreeNode, k: number, p: number, toCollider: (item: any) => Collider, destNode?: DynamicTreeNode): DynamicTreeNode {
+    export function distBounds(node: DynamicTreeNode, k: number, p: number, toBounds: (item: any) => Bounds, destNode?: DynamicTreeNode): DynamicTreeNode {
         if (!destNode) {
             destNode = createNode(null);
         }
-        destNode.collider = new Collider();
+        destNode.bounds = new BoxBounds(Vector2.zero(), new FixedPoint(), new FixedPoint(), null);
 
         let minX = Infinity;
         let minY = Infinity;
@@ -29,11 +29,11 @@ module gs.physics {
 
         for (let i = k; i < p; i++) {
             const child = node.children[i];
-            const collider = toCollider(child);
-            minX = Math.min(minX, collider.bounds.position.x.toFloat());
-            minY = Math.min(minY, collider.bounds.position.y.toFloat());
-            maxX = Math.max(maxX, collider.bounds.position.x.toFloat() + collider.bounds.width.toFloat());
-            maxY = Math.max(maxY, collider.bounds.position.y.toFloat() + collider.bounds.height.toFloat());
+            const bounds = toBounds(child);
+            minX = Math.min(minX, bounds.position.x.toFloat());
+            minY = Math.min(minY, bounds.position.y.toFloat());
+            maxX = Math.max(maxX, bounds.position.x.toFloat() + bounds.width.toFloat());
+            maxY = Math.max(maxY, bounds.position.y.toFloat() + bounds.height.toFloat());
         }
 
         // 创建一个新的Bounds对象
@@ -41,11 +41,11 @@ module gs.physics {
             new Vector2(minX, minY),
             new FixedPoint(maxX - minX),
             new FixedPoint(maxY - minY),
-            destNode.collider.entity
+            destNode.bounds.entity
         );
 
         // 设置destNode的Collider的Bounds
-        destNode.collider.setBounds(newBounds);
+        destNode.bounds = newBounds;
 
         return destNode;
     }
@@ -65,20 +65,20 @@ module gs.physics {
     }
 
     export function compareNodeMinX(a: DynamicTreeNode, b: DynamicTreeNode): number {
-        return a.collider.getBounds().position.x.toFloat() - b.collider.getBounds().position.x.toFloat();
+        return a.bounds.position.x.toFloat() - b.bounds.position.x.toFloat();
     }
     
     export function compareNodeMinY(a: DynamicTreeNode, b: DynamicTreeNode): number {
-        return a.collider.getBounds().position.y.toFloat() - b.collider.getBounds().position.y.toFloat();
+        return a.bounds.position.y.toFloat() - b.bounds.position.y.toFloat();
     }
     
     export function boundsArea(a: DynamicTreeNode): number {
-        const bounds = a.collider.getBounds();
+        const bounds = a.bounds;
         return bounds.width.toFloat() * bounds.height.toFloat();
     }
     
     export function boundsMargin(a: DynamicTreeNode): number {
-        const bounds = a.collider.getBounds();
+        const bounds = a.bounds;
         return bounds.width.toFloat() + bounds.height.toFloat();
     }
 
@@ -102,7 +102,7 @@ module gs.physics {
             children,
             height: 1,
             leaf: true,
-            collider: new Collider()
+            bounds: new BoxBounds(Vector2.zero(), new FixedPoint(), new FixedPoint(), null)
         };
     }
     

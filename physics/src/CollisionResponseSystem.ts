@@ -26,7 +26,7 @@ module gs.physics {
                     children: [], 
                     height: 0, 
                     leaf: true, 
-                    collider: collider
+                    bounds: collider.getBounds()
                 };
                 boundsArray.push(node);
                 nodeEntityMap.set(node, entity);
@@ -44,7 +44,7 @@ module gs.physics {
                     processed.set(entityId, processedPairs);
                 }
             
-                const candidates = dynamicTree.search(node.collider);
+                const candidates = dynamicTree.search(node.bounds);
                 for (const candidate of candidates) {
                     const candidateEntity = nodeEntityMap.get(candidate);
                     const candidateId = candidateEntity.getId();

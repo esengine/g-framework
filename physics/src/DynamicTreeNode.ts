@@ -3,6 +3,6 @@ module gs.physics {
         children: DynamicTreeNode[];
         height: number;
         leaf: boolean;
-        collider: Collider;
+        bounds: Bounds;
     }
 }

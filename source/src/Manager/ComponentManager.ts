@@ -22,17 +22,18 @@ module gs {
             this.preallocate(10); // 预先创建10个组件实例
         }
 
-        public create(entityId: number, entityManager: EntityManager): T {
+        public create(entity: Entity, entityManager: EntityManager): T {
             let component: T;
 
             if (this.componentPool.length > 0) {
                 component = this.componentPool.pop();
-                component.reinitialize(entityId, entityManager); // 重置组件状态并进行初始化
+                component.reinitialize(entity, entityManager); // 重置组件状态并进行初始化
             } else {
                 component = new this.componentType();
             }
-            component.setEntityId(entityId, entityManager);
+            component.setEntity(entity, entityManager);
 
+            const entityId = entity.getId();
             // 检查组件依赖
             for (const dependency of component.dependencies) {
                 if (!entityManager.hasComponent(entityId, dependency)) {

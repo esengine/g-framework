@@ -1,14 +1,28 @@
 module gs.physics {
     export class Collider extends Component {
-        bounds: Bounds;
+        private _bounds: Bounds;
         isColliding: boolean;
         
+        private _transform: Transform;
+        public get transform() {
+            if (this._transform == null) {
+                this._transform = this.entity.getComponent(Transform);
+            }
+
+            return this._transform;
+        }
+
+        dependencies: ComponentConstructor<Component>[] = [
+            Transform
+        ];
+
         getBounds(): Bounds {
-            return this.bounds;
+            this._bounds.position = this.transform.position;
+            return this._bounds;
         }
 
         setBounds(bounds: Bounds): void {
-            this.bounds = bounds;
+            this._bounds = bounds;
         }
 
         intersects(other: Collider): boolean {

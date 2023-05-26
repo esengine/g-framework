@@ -235,33 +235,23 @@ var gs;
      */
     var Component = /** @class */ (function () {
         function Component() {
-            this._entityId = null;
             this._version = 0;
             this.dependencies = [];
         }
-        Component.prototype.setEntityId = function (entityId, entityManager) {
-            this._entityId = entityId;
+        Component.prototype.setEntity = function (entity, entityManager) {
+            this._entity = entity;
             this._entityManager = entityManager;
-        };
-        Component.prototype.getEntityId = function () {
-            return this._entityId;
         };
         Object.defineProperty(Component.prototype, "entityId", {
             get: function () {
-                if (this._entityId === null) {
-                    throw new Error("Entity ID 还未被设置");
-                }
-                return this._entityId;
+                return this.entity.getId();
             },
             enumerable: true,
             configurable: true
         });
         Object.defineProperty(Component.prototype, "entity", {
             get: function () {
-                if (this._entityId === null) {
-                    throw new Error("Entity ID 还未被设置");
-                }
-                return this._entityManager.getEntity(this._entityId);
+                return this._entity;
             },
             enumerable: true,
             configurable: true
@@ -282,10 +272,10 @@ var gs;
         };
         /**
          * 重置组件的状态并进行必要的初始化
-         * @param entityId
+         * @param entity
          * @param entityManager
          */
-        Component.prototype.reinitialize = function (entityId, entityManager) { };
+        Component.prototype.reinitialize = function (entity, entityManager) { };
         /**
          * 当组件初始化的时候调用
          * @param args
@@ -334,9 +324,7 @@ var gs;
         /**
          * 清除数据方法，用于组件池在重用时
          */
-        Component.prototype.reset = function () {
-            this._entityId = null;
-        };
+        Component.prototype.reset = function () { };
         /**
          * 默认的浅复制方法
          * @returns 克隆的组件实例
@@ -467,7 +455,7 @@ var gs;
             if (!manager) {
                 manager = this.entityManager.addComponentManager(componentType);
             }
-            var component = manager.create(this.id, this.entityManager);
+            var component = manager.create(this, this.entityManager);
             component.onInitialize.apply(component, __spread(args));
             var componentInfo = gs.ComponentTypeManager.getIndexFor(componentType);
             try {
@@ -1058,17 +1046,18 @@ var gs;
             this.components = new gs.SparseSet();
             this.preallocate(10); // 预先创建10个组件实例
         }
-        ComponentManager.prototype.create = function (entityId, entityManager) {
+        ComponentManager.prototype.create = function (entity, entityManager) {
             var e_12, _a;
             var component;
             if (this.componentPool.length > 0) {
                 component = this.componentPool.pop();
-                component.reinitialize(entityId, entityManager); // 重置组件状态并进行初始化
+                component.reinitialize(entity, entityManager); // 重置组件状态并进行初始化
             }
             else {
                 component = new this.componentType();
             }
-            component.setEntityId(entityId, entityManager);
+            component.setEntity(entity, entityManager);
+            var entityId = entity.getId();
             try {
                 // 检查组件依赖
                 for (var _b = __values(component.dependencies), _c = _b.next(); !_c.done; _c = _b.next()) {

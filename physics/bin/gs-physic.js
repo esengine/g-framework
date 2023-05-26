@@ -122,7 +122,7 @@ var gs;
                             children: [],
                             height: 0,
                             leaf: true,
-                            collider: collider
+                            bounds: collider.getBounds()
                         };
                         boundsArray.push(node);
                         nodeEntityMap.set(node, entity);
@@ -147,7 +147,7 @@ var gs;
                             processedPairs = new Set();
                             processed.set(entityId, processedPairs);
                         }
-                        var candidates = dynamicTree.search(node.collider);
+                        var candidates = dynamicTree.search(node.bounds);
                         try {
                             for (var candidates_1 = __values(candidates), candidates_1_1 = candidates_1.next(); !candidates_1_1.done; candidates_1_1 = candidates_1.next()) {
                                 var candidate = candidates_1_1.value;
@@ -218,27 +218,27 @@ var gs;
             distBounds(node, 0, node.children.length, toBounds, node);
         }
         physics.calcBounds = calcBounds;
-        function distBounds(node, k, p, toCollider, destNode) {
+        function distBounds(node, k, p, toBounds, destNode) {
             if (!destNode) {
                 destNode = createNode(null);
             }
-            destNode.collider = new physics.Collider();
+            destNode.bounds = new physics.BoxBounds(physics.Vector2.zero(), new physics.FixedPoint(), new physics.FixedPoint(), null);
             var minX = Infinity;
             var minY = Infinity;
             var maxX = -Infinity;
             var maxY = -Infinity;
             for (var i = k; i < p; i++) {
                 var child = node.children[i];
-                var collider = toCollider(child);
-                minX = Math.min(minX, collider.bounds.position.x.toFloat());
-                minY = Math.min(minY, collider.bounds.position.y.toFloat());
-                maxX = Math.max(maxX, collider.bounds.position.x.toFloat() + collider.bounds.width.toFloat());
-                maxY = Math.max(maxY, collider.bounds.position.y.toFloat() + collider.bounds.height.toFloat());
+                var bounds = toBounds(child);
+                minX = Math.min(minX, bounds.position.x.toFloat());
+                minY = Math.min(minY, bounds.position.y.toFloat());
+                maxX = Math.max(maxX, bounds.position.x.toFloat() + bounds.width.toFloat());
+                maxY = Math.max(maxY, bounds.position.y.toFloat() + bounds.height.toFloat());
             }
             // 创建一个新的Bounds对象
-            var newBounds = new physics.BoxBounds(new physics.Vector2(minX, minY), new physics.FixedPoint(maxX - minX), new physics.FixedPoint(maxY - minY), destNode.collider.entity);
+            var newBounds = new physics.BoxBounds(new physics.Vector2(minX, minY), new physics.FixedPoint(maxX - minX), new physics.FixedPoint(maxY - minY), destNode.bounds.entity);
             // 设置destNode的Collider的Bounds
-            destNode.collider.setBounds(newBounds);
+            destNode.bounds = newBounds;
             return destNode;
         }
         physics.distBounds = distBounds;
@@ -255,20 +255,20 @@ var gs;
         }
         physics.extend = extend;
         function compareNodeMinX(a, b) {
-            return a.collider.getBounds().position.x.toFloat() - b.collider.getBounds().position.x.toFloat();
+            return a.bounds.position.x.toFloat() - b.bounds.position.x.toFloat();
         }
         physics.compareNodeMinX = compareNodeMinX;
         function compareNodeMinY(a, b) {
-            return a.collider.getBounds().position.y.toFloat() - b.collider.getBounds().position.y.toFloat();
+            return a.bounds.position.y.toFloat() - b.bounds.position.y.toFloat();
         }
         physics.compareNodeMinY = compareNodeMinY;
         function boundsArea(a) {
-            var bounds = a.collider.getBounds();
+            var bounds = a.bounds;
             return bounds.width.toFloat() * bounds.height.toFloat();
         }
         physics.boundsArea = boundsArea;
         function boundsMargin(a) {
-            var bounds = a.collider.getBounds();
+            var bounds = a.bounds;
             return bounds.width.toFloat() + bounds.height.toFloat();
         }
         physics.boundsMargin = boundsMargin;
@@ -291,7 +291,7 @@ var gs;
                 children: children,
                 height: 1,
                 leaf: true,
-                collider: new physics.Collider()
+                bounds: new physics.BoxBounds(physics.Vector2.zero(), new physics.FixedPoint(), new physics.FixedPoint(), null)
             };
         }
         physics.createNode = createNode;
@@ -376,27 +376,27 @@ var gs;
                 this.clear();
             }
             DynamicTree.prototype.compareMinX = function (a, b) {
-                return a.collider.getBounds().position.x.toFloat() - b.collider.getBounds().position.x.toFloat();
+                return a.bounds.position.x.toFloat() - b.bounds.position.x.toFloat();
             };
             DynamicTree.prototype.compareMinY = function (a, b) {
-                return a.collider.getBounds().position.y.toFloat() - b.collider.getBounds().position.y.toFloat();
+                return a.bounds.position.y.toFloat() - b.bounds.position.y.toFloat();
             };
             DynamicTree.prototype.all = function () {
                 return this._all(this.data, []);
             };
-            DynamicTree.prototype.search = function (collider) {
+            DynamicTree.prototype.search = function (bounds) {
                 var node = this.data;
                 var result = [];
-                if (!collider.intersects(node.collider))
+                if (!bounds.intersects(node.bounds))
                     return result;
                 var nodesToSearch = [];
                 while (node) {
                     for (var i = 0; i < node.children.length; i++) {
                         var child = node.children[i];
-                        if (collider.intersects(child.collider)) {
+                        if (bounds.intersects(child.bounds)) {
                             if (node.leaf)
                                 result.push(child);
-                            else if (collider.contains(child.collider))
+                            else if (bounds.contains(child.bounds))
                                 this._all(child, result);
                             else
                                 nodesToSearch.push(child);
@@ -406,16 +406,16 @@ var gs;
                 }
                 return result;
             };
-            DynamicTree.prototype.collides = function (collider) {
+            DynamicTree.prototype.collides = function (bounds) {
                 var node = this.data;
-                if (!collider.intersects(node.collider))
+                if (!bounds.intersects(node.bounds))
                     return false;
                 var nodesToSearch = [];
                 while (node) {
                     for (var i = 0; i < node.children.length; i++) {
                         var child = node.children[i];
-                        if (collider.intersects(child.collider)) {
-                            if (node.leaf || collider.contains(child.collider))
+                        if (bounds.intersects(child.bounds)) {
+                            if (node.leaf || bounds.contains(child.bounds))
                                 return true;
                             nodesToSearch.push(child);
                         }
@@ -468,7 +468,7 @@ var gs;
                 if (!item)
                     return this;
                 var node = this.data;
-                var bbox = item.collider.getBounds();
+                var bbox = item.bounds;
                 var path = [];
                 var indexes = [];
                 var i, parent, goingUp;
@@ -491,7 +491,7 @@ var gs;
                             return this;
                         }
                     }
-                    if (!goingUp && !node.leaf && item.collider.contains(node.collider)) {
+                    if (!goingUp && !node.leaf && item.bounds.contains(node.bounds)) {
                         path.push(node);
                         indexes.push(i);
                         i = 0;
@@ -509,7 +509,7 @@ var gs;
                 return this;
             };
             DynamicTree.prototype.toBounds = function (item) {
-                return item.collider;
+                return item.bounds;
             };
             DynamicTree.prototype.toJSON = function () {
                 return this.data;
@@ -563,7 +563,7 @@ var gs;
                 physics.calcBounds(node, this.toBounds);
                 return node;
             };
-            DynamicTree.prototype._chooseSubtree = function (collider, node, level, path) {
+            DynamicTree.prototype._chooseSubtree = function (bounds, node, level, path) {
                 while (true) {
                     path.push(node);
                     if (node.leaf || path.length - 1 === level)
@@ -574,7 +574,7 @@ var gs;
                     for (var i = 0; i < node.children.length; i++) {
                         var child = node.children[i];
                         var area = physics.boundsArea(child);
-                        var enlargement = physics.enlargedArea(collider.getBounds(), child.collider.getBounds()) - area;
+                        var enlargement = physics.enlargedArea(bounds, child.bounds) - area;
                         // 选择面积扩展最小的条目
                         if (enlargement < minEnlargement) {
                             minEnlargement = enlargement;
@@ -594,13 +594,13 @@ var gs;
                 return node;
             };
             DynamicTree.prototype._insert = function (item, level, isNode) {
-                var bounds = isNode ? item.collider.getBounds() : item.collider.bounds;
+                var bounds = isNode ? item.bounds : item.bounds;
                 var insertPath = [];
                 // 找到最适合容纳条目的节点，并保存沿途的所有节点
-                var node = this._chooseSubtree(item.collider, this.data, level, insertPath);
+                var node = this._chooseSubtree(item.bounds, this.data, level, insertPath);
                 // 将条目放入节点中
                 node.children.push(item);
-                physics.extend(node.collider.getBounds(), bounds);
+                physics.extend(node.bounds, bounds);
                 // 分割节点溢出；如有必要，向上传播
                 while (level >= 0) {
                     if (insertPath[level].children.length > this._maxEntries) {
@@ -643,7 +643,7 @@ var gs;
                 for (var i = m; i <= M - m; i++) {
                     var bbox1 = physics.distBounds(node, 0, i, this.toBounds);
                     var bbox2 = physics.distBounds(node, i, M, this.toBounds);
-                    var overlap = physics.intersectionArea(bbox1.collider.getBounds(), bbox2.collider.getBounds());
+                    var overlap = physics.intersectionArea(bbox1.bounds, bbox2.bounds);
                     var area = physics.boundsArea(bbox1) + physics.boundsArea(bbox2);
                     // 选择重叠最小的分布
                     if (overlap < minOverlap) {
@@ -681,12 +681,12 @@ var gs;
                 var margin = physics.boundsMargin(leftBounds) + physics.boundsMargin(rightBounds);
                 for (var i = m; i < M - m; i++) {
                     var child = node.children[i];
-                    physics.extend(leftBounds.collider.getBounds(), node.leaf ? toBounds(child).getBounds() : child.collider.getBounds());
+                    physics.extend(leftBounds.bounds, node.leaf ? toBounds(child) : child.bounds);
                     margin += physics.boundsMargin(leftBounds);
                 }
                 for (var i = M - m - 1; i >= m; i--) {
                     var child = node.children[i];
-                    physics.extend(rightBounds.collider.getBounds(), node.leaf ? toBounds(child).getBounds() : child.collider.getBounds());
+                    physics.extend(rightBounds.bounds, node.leaf ? toBounds(child) : child.bounds);
                     margin += physics.boundsMargin(rightBounds);
                 }
                 return margin;
@@ -694,7 +694,7 @@ var gs;
             DynamicTree.prototype._adjustParentBounds = function (bounds, path, level) {
                 // 调整给定树路径上的Bounds
                 for (var i = level; i >= 0; i--) {
-                    physics.extend(path[i].collider.getBounds(), bounds);
+                    physics.extend(path[i].bounds, bounds);
                 }
             };
             DynamicTree.prototype._condense = function (path) {
@@ -1089,6 +1089,9 @@ var gs;
                 this.x = x instanceof physics.FixedPoint ? x : new physics.FixedPoint(x);
                 this.y = y instanceof physics.FixedPoint ? y : new physics.FixedPoint(y);
             }
+            Vector2.zero = function () {
+                return new Vector2();
+            };
             Vector2.prototype.add = function (other) {
                 return new Vector2(physics.FixedPoint.add(this.x, other.x), physics.FixedPoint.add(this.y, other.y));
             };
@@ -1163,13 +1166,28 @@ var gs;
         var Collider = /** @class */ (function (_super) {
             __extends(Collider, _super);
             function Collider() {
-                return _super !== null && _super.apply(this, arguments) || this;
+                var _this = _super !== null && _super.apply(this, arguments) || this;
+                _this.dependencies = [
+                    physics.Transform
+                ];
+                return _this;
             }
+            Object.defineProperty(Collider.prototype, "transform", {
+                get: function () {
+                    if (this._transform == null) {
+                        this._transform = this.entity.getComponent(physics.Transform);
+                    }
+                    return this._transform;
+                },
+                enumerable: true,
+                configurable: true
+            });
             Collider.prototype.getBounds = function () {
-                return this.bounds;
+                this._bounds.position = this.transform.position;
+                return this._bounds;
             };
             Collider.prototype.setBounds = function (bounds) {
-                this.bounds = bounds;
+                this._bounds = bounds;
             };
             Collider.prototype.intersects = function (other) {
                 return this.getBounds().intersects(other.getBounds());
@@ -1191,21 +1209,44 @@ var gs;
         var BoxCollider = /** @class */ (function (_super) {
             __extends(BoxCollider, _super);
             function BoxCollider() {
-                var _this = _super !== null && _super.apply(this, arguments) || this;
-                _this.dependencies = [
-                    physics.Transform
-                ];
-                return _this;
+                return _super !== null && _super.apply(this, arguments) || this;
             }
             BoxCollider.prototype.onInitialize = function (size) {
                 this.size = size;
-                this.transform = this.entity.getComponent(physics.Transform);
                 var bounds = new physics.BoxBounds(this.transform.position, this.size.width, this.size.height, this.entity);
                 this.setBounds(bounds);
             };
             return BoxCollider;
         }(physics.Collider));
         physics.BoxCollider = BoxCollider;
+    })(physics = gs.physics || (gs.physics = {}));
+})(gs || (gs = {}));
+var gs;
+(function (gs) {
+    var physics;
+    (function (physics) {
+        var CircleCollider = /** @class */ (function (_super) {
+            __extends(CircleCollider, _super);
+            function CircleCollider() {
+                return _super !== null && _super.apply(this, arguments) || this;
+            }
+            return CircleCollider;
+        }(physics.Collider));
+        physics.CircleCollider = CircleCollider;
+    })(physics = gs.physics || (gs.physics = {}));
+})(gs || (gs = {}));
+var gs;
+(function (gs) {
+    var physics;
+    (function (physics) {
+        var PolygonCollider = /** @class */ (function (_super) {
+            __extends(PolygonCollider, _super);
+            function PolygonCollider() {
+                return _super !== null && _super.apply(this, arguments) || this;
+            }
+            return PolygonCollider;
+        }(physics.Collider));
+        physics.PolygonCollider = PolygonCollider;
     })(physics = gs.physics || (gs.physics = {}));
 })(gs || (gs = {}));
 var gs;

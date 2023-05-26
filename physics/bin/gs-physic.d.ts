@@ -36,8 +36,8 @@ declare module gs.physics {
 }
 declare module gs.physics {
     function findItem<T>(item: T, items: T[], equalsFn?: (a: T, b: T) => boolean): number;
-    function calcBounds(node: DynamicTreeNode, toBounds: (item: any) => Collider): void;
-    function distBounds(node: DynamicTreeNode, k: number, p: number, toCollider: (item: any) => Collider, destNode?: DynamicTreeNode): DynamicTreeNode;
+    function calcBounds(node: DynamicTreeNode, toBounds: (item: any) => Bounds): void;
+    function distBounds(node: DynamicTreeNode, k: number, p: number, toBounds: (item: any) => Bounds, destNode?: DynamicTreeNode): DynamicTreeNode;
     function extend(a: Bounds, b: Bounds): Bounds;
     function compareNodeMinX(a: DynamicTreeNode, b: DynamicTreeNode): number;
     function compareNodeMinY(a: DynamicTreeNode, b: DynamicTreeNode): number;
@@ -59,13 +59,13 @@ declare module gs.physics {
         private data;
         constructor(maxEntries?: number);
         all(): DynamicTreeNode[];
-        search(collider: Collider): DynamicTreeNode[];
-        collides(collider: Collider): boolean;
+        search(bounds: Bounds): DynamicTreeNode[];
+        collides(bounds: Bounds): boolean;
         load(data: DynamicTreeNode[]): DynamicTree;
         insert(item: DynamicTreeNode): DynamicTree;
         clear(): DynamicTree;
         remove(item: DynamicTreeNode, equalsFn?: (a: DynamicTreeNode, b: DynamicTreeNode) => boolean): DynamicTree;
-        toBounds(item: DynamicTreeNode): Collider;
+        toBounds(item: DynamicTreeNode): Bounds;
         toJSON(): DynamicTreeNode;
         fromJSON(data: DynamicTreeNode): DynamicTree;
         private _all;
@@ -86,7 +86,7 @@ declare module gs.physics {
         children: DynamicTreeNode[];
         height: number;
         leaf: boolean;
-        collider: Collider;
+        bounds: Bounds;
     }
 }
 declare module gs.physics {
@@ -157,6 +157,7 @@ declare module gs.physics {
 }
 declare module gs.physics {
     class Vector2 {
+        static zero(): Vector2;
         x: FixedPoint;
         y: FixedPoint;
         constructor(x?: FixedPoint | number, y?: FixedPoint | number);
@@ -190,8 +191,11 @@ declare module gs.physics {
 }
 declare module gs.physics {
     class Collider extends Component {
-        bounds: Bounds;
+        private _bounds;
         isColliding: boolean;
+        private _transform;
+        readonly transform: Transform;
+        dependencies: ComponentConstructor<Component>[];
         getBounds(): Bounds;
         setBounds(bounds: Bounds): void;
         intersects(other: Collider): boolean;
@@ -201,9 +205,15 @@ declare module gs.physics {
 declare module gs.physics {
     class BoxCollider extends Collider {
         private size;
-        private transform;
-        dependencies: ComponentConstructor<Component>[];
         onInitialize(size: Size): void;
+    }
+}
+declare module gs.physics {
+    class CircleCollider extends Collider {
+    }
+}
+declare module gs.physics {
+    class PolygonCollider extends Collider {
     }
 }
 declare module gs.physics {
