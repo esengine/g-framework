@@ -1,5 +1,9 @@
 module gs.physics {
     export class Collider extends Component {
+        dependencies: ComponentConstructor<Component>[] = [
+            Transform
+        ];
+        
         private _bounds: Bounds;
         isColliding: boolean;
         
@@ -11,10 +15,6 @@ module gs.physics {
 
             return this._transform;
         }
-
-        dependencies: ComponentConstructor<Component>[] = [
-            Transform
-        ];
 
         getBounds(): Bounds {
             this._bounds.position = this.transform.position;

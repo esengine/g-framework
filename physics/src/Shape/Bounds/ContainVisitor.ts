@@ -43,6 +43,10 @@ module gs.physics {
             }
         }
 
+        visitPolygon(polygon: PolygonBounds): void {
+            
+        }
+
         getResult(): boolean {
             return this.result;
         }

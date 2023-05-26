@@ -28,6 +28,18 @@ module gs.physics {
             return new Vector2(FixedPoint.div(this.x, scalar), FixedPoint.div(this.y, scalar));
         }
 
+        set(x: FixedPoint, y: FixedPoint): Vector2 {
+            this.x = x;
+            this.y = y;
+            return this;
+        }
+
+        setR(value: Vector2): Vector2 {
+            this.x = value.x;
+            this.y = value.y;
+            return this;
+        }
+
         /** 计算向量的长度 */
         length(): FixedPoint {
             const lengthSquared = FixedPoint.add(FixedPoint.mul(this.x, this.x), FixedPoint.mul(this.y, this.y));
@@ -55,12 +67,47 @@ module gs.physics {
             return FixedPoint.sub(FixedPoint.mul(this.x, other.y), FixedPoint.mul(this.y, other.x));
         }
 
+        /** 计算两个向量的叉积 */
+        crossR(other: FixedPoint): FixedPoint {
+            return FixedPoint.sub(this.x.mul(other), this.y.mul(other));
+        }
+
         /** 计算到另一个向量的距离 */
         distanceTo(other: Vector2): FixedPoint {
             const dx = FixedPoint.sub(this.x, other.x);
             const dy = FixedPoint.sub(this.y, other.y);
             const distanceSquared = FixedPoint.add(FixedPoint.mul(dx, dx), FixedPoint.mul(dy, dy));
             return FixedPoint.from(Math.sqrt(distanceSquared.toFloat()));
+        }
+
+        /** 获取当前向量逆时针旋转90度的垂直向量 */
+        perp(): Vector2 {
+            return new Vector2(this.y.neg(), this.x);
+        }
+
+        /** 获取当前向量顺时针旋转90度的垂直向量 */
+        perpR(): Vector2 {
+            return new Vector2(this.y, this.x.neg());
+        }
+
+        /**
+        * 创建一个包含指定向量反转的新Vector2
+        * @returns 矢量反演的结果
+        */
+        public negate(): Vector2 {
+            return new Vector2(this.x.neg(), this.y.neg());
+        }
+
+        /**
+        * 创建一个包含指定向量反转的新Vector2
+        * @param value
+        * @returns 矢量反演的结果
+        */
+        public static negate(value: Vector2) {
+            value.x = value.x.neg();
+            value.y = value.y.neg();
+
+            return value;
         }
     }
 }

@@ -1,14 +1,4 @@
 "use strict";
-var __extends = (this && this.__extends) || (function () {
-    var extendStatics = Object.setPrototypeOf ||
-        ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
-        function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
-    return function (d, b) {
-        extendStatics(d, b);
-        function __() { this.constructor = d; }
-        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
-    };
-})();
 var __values = (this && this.__values) || function (o) {
     var m = typeof Symbol === "function" && o[Symbol.iterator], i = 0;
     if (m) return m.call(o);
@@ -19,6 +9,16 @@ var __values = (this && this.__values) || function (o) {
         }
     };
 };
+var __extends = (this && this.__extends) || (function () {
+    var extendStatics = Object.setPrototypeOf ||
+        ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+        function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+    return function (d, b) {
+        extendStatics(d, b);
+        function __() { this.constructor = d; }
+        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+    };
+})();
 var __read = (this && this.__read) || function (o, n) {
     var m = typeof Symbol === "function" && o[Symbol.iterator];
     if (!m) return o;
@@ -39,6 +39,126 @@ var __spread = (this && this.__spread) || function () {
     for (var ar = [], i = 0; i < arguments.length; i++) ar = ar.concat(__read(arguments[i]));
     return ar;
 };
+var gs;
+(function (gs) {
+    var physics;
+    (function (physics) {
+        var CollisionDetector = /** @class */ (function () {
+            function CollisionDetector(shape1, shape2) {
+                this.shape1 = shape1;
+                this.shape2 = shape2;
+            }
+            CollisionDetector.prototype.epa = function () {
+                var e_1, _a;
+                var edges = [];
+                while (true) {
+                    // 1. 找到到原点最近的边
+                    var closestEdge = edges[0];
+                    try {
+                        for (var edges_1 = __values(edges), edges_1_1 = edges_1.next(); !edges_1_1.done; edges_1_1 = edges_1.next()) {
+                            var edge = edges_1_1.value;
+                            if (edge.distance.lt(closestEdge.distance)) {
+                                closestEdge = edge;
+                            }
+                        }
+                    }
+                    catch (e_1_1) { e_1 = { error: e_1_1 }; }
+                    finally {
+                        try {
+                            if (edges_1_1 && !edges_1_1.done && (_a = edges_1.return)) _a.call(edges_1);
+                        }
+                        finally { if (e_1) throw e_1.error; }
+                    }
+                    // 2. 计算该边的法线方向，并求解support点
+                    var normal = closestEdge.pointB.sub(closestEdge.pointA).perp();
+                    var newPoint = this.support(normal);
+                    // 3. 检查新的support点是否带来了明显的改进
+                    var improvement = newPoint.sub(closestEdge.pointA).dot(normal);
+                    if (improvement.lte(0) || newPoint.distanceTo(physics.Vector2.zero()).sub(closestEdge.distance).lte(0)) {
+                        // 新的support点没有带来明显的改进，所以我们可以停止了
+                        return normal.mul(closestEdge.distance);
+                    }
+                    else {
+                        // 将新的support点添加到多边形中
+                        this.addPointToPolytope(edges, newPoint);
+                    }
+                }
+            };
+            CollisionDetector.prototype.gjk = function () {
+                var direction = new physics.Vector2(1, 0); // 可以从任意非零向量开始
+                var simplex = new physics.Simplex();
+                simplex.add(this.support(direction));
+                physics.Vector2.negate(direction); // 反向
+                while (true) {
+                    simplex.add(this.support(direction));
+                    if (simplex.vertices[0].dot(direction).toFloat() <= 0) {
+                        return false; // 没有碰撞
+                    }
+                    else {
+                        // 更新方向
+                        if (this.updateSimplexAndDirection(simplex, direction)) {
+                            return true; // 发现碰撞
+                        }
+                    }
+                }
+            };
+            CollisionDetector.prototype.updateSimplexAndDirection = function (simplex, direction) {
+                if (simplex.vertices.length === 2) {
+                    // Simplex是一条线段
+                    var B = simplex.vertices[1];
+                    var A = simplex.vertices[0];
+                    var AO = A.negate();
+                    var AB = B.sub(A);
+                    // 更新方向
+                    if (AB.cross(AO).gt(0)) {
+                        // 右手侧
+                        direction.setR(AB.perp().negate());
+                    }
+                    else {
+                        // 左手侧或者前方
+                        direction.setR(AB.perp());
+                    }
+                }
+                else if (simplex.vertices.length === 3) {
+                    // Simplex是一个三角形
+                    var C = simplex.vertices[2];
+                    var B = simplex.vertices[1];
+                    var A = simplex.vertices[0];
+                    var AO = A.negate();
+                    var AB = B.sub(A);
+                    var AC = C.sub(A);
+                    var ABC = AB.cross(AC);
+                    // 更新方向
+                    if (AB.cross(AO).gt(0)) {
+                        // 在AB边的外侧
+                        simplex.vertices.splice(2, 1); // 删除C
+                        direction.setR(AB.perp().negate()); // 沿着AB边，指向原点O
+                    }
+                    else if (AC.cross(AO).gt(0)) {
+                        // 在AC边的外侧
+                        simplex.vertices.splice(1, 1); // 删除B
+                        direction.setR(AC.perp()); // 沿着AC边，指向原点O
+                    }
+                    else {
+                        // A点在三角形ABC中
+                        return true;
+                    }
+                }
+                return false;
+            };
+            CollisionDetector.prototype.addPointToPolytope = function (edges, newPoint) {
+                // TODO: 添加新点到多边形，并更新边
+            };
+            CollisionDetector.prototype.support = function (direction) {
+                var pointOnShape1 = this.shape1.getFarthestPointInDirection(direction);
+                var pointOnShape2 = this.shape2.getFarthestPointInDirection(direction.negate());
+                return pointOnShape1.sub(pointOnShape2);
+            };
+            return CollisionDetector;
+        }());
+        physics.CollisionDetector = CollisionDetector;
+    })(physics = gs.physics || (gs.physics = {}));
+})(gs || (gs = {}));
 var gs;
 (function (gs) {
     var physics;
@@ -105,7 +225,7 @@ var gs;
                 return _this;
             }
             CollisionResponseSystem.prototype.update = function (entities) {
-                var e_1, _a, e_2, _b, e_3, _c, e_4, _d;
+                var e_2, _a, e_3, _b, e_4, _c, e_5, _d;
                 var _e = this, dynamicTree = _e.dynamicTree, processed = _e.processed, collisionPairs = _e.collisionPairs;
                 dynamicTree.clear();
                 processed.clear();
@@ -129,12 +249,12 @@ var gs;
                         collider.isColliding = false;
                     }
                 }
-                catch (e_1_1) { e_1 = { error: e_1_1 }; }
+                catch (e_2_1) { e_2 = { error: e_2_1 }; }
                 finally {
                     try {
                         if (entities_1_1 && !entities_1_1.done && (_a = entities_1.return)) _a.call(entities_1);
                     }
-                    finally { if (e_1) throw e_1.error; }
+                    finally { if (e_2) throw e_2.error; }
                 }
                 dynamicTree.load(boundsArray);
                 try {
@@ -160,37 +280,45 @@ var gs;
                                 processedPairs.add(candidateId);
                             }
                         }
-                        catch (e_3_1) { e_3 = { error: e_3_1 }; }
+                        catch (e_4_1) { e_4 = { error: e_4_1 }; }
                         finally {
                             try {
                                 if (candidates_1_1 && !candidates_1_1.done && (_c = candidates_1.return)) _c.call(candidates_1);
                             }
-                            finally { if (e_3) throw e_3.error; }
+                            finally { if (e_4) throw e_4.error; }
                         }
                     }
                 }
-                catch (e_2_1) { e_2 = { error: e_2_1 }; }
+                catch (e_3_1) { e_3 = { error: e_3_1 }; }
                 finally {
                     try {
                         if (boundsArray_1_1 && !boundsArray_1_1.done && (_b = boundsArray_1.return)) _b.call(boundsArray_1);
                     }
-                    finally { if (e_2) throw e_2.error; }
+                    finally { if (e_3) throw e_3.error; }
                 }
                 try {
                     for (var collisionPairs_1 = __values(collisionPairs), collisionPairs_1_1 = collisionPairs_1.next(); !collisionPairs_1_1.done; collisionPairs_1_1 = collisionPairs_1.next()) {
                         var _f = __read(collisionPairs_1_1.value, 2), entity = _f[0], candidate = _f[1];
                         var collider = entity.getComponent(physics.Collider);
                         var collider2 = candidate.getComponent(physics.Collider);
+                        var rigidBody = entity.getComponent(physics.RigidBody);
+                        var rigidBody2 = candidate.getComponent(physics.RigidBody);
                         collider.isColliding = true;
                         collider2.isColliding = true;
+                        // 如果两个刚体都是动态的，那么将他们拆开并反转他们的速度
+                        if (rigidBody && !rigidBody.isKinematic && rigidBody2 && !rigidBody2.isKinematic) {
+                            // 反转速度
+                            rigidBody.velocity = rigidBody.velocity.mul(new physics.FixedPoint(-1));
+                            rigidBody2.velocity = rigidBody2.velocity.mul(new physics.FixedPoint(-1));
+                        }
                     }
                 }
-                catch (e_4_1) { e_4 = { error: e_4_1 }; }
+                catch (e_5_1) { e_5 = { error: e_5_1 }; }
                 finally {
                     try {
                         if (collisionPairs_1_1 && !collisionPairs_1_1.done && (_d = collisionPairs_1.return)) _d.call(collisionPairs_1);
                     }
-                    finally { if (e_4) throw e_4.error; }
+                    finally { if (e_5) throw e_5.error; }
                 }
             };
             return CollisionResponseSystem;
@@ -721,6 +849,23 @@ var gs;
 (function (gs) {
     var physics;
     (function (physics) {
+        var Edge = /** @class */ (function () {
+            function Edge(a, b) {
+                this.pointA = a;
+                this.pointB = b;
+                var AB = b.sub(a);
+                var AO = a.negate();
+                this.distance = AB.cross(AO).div(AB.length()); // 到原点O的垂直距离
+            }
+            return Edge;
+        }());
+        physics.Edge = Edge;
+    })(physics = gs.physics || (gs.physics = {}));
+})(gs || (gs = {}));
+var gs;
+(function (gs) {
+    var physics;
+    (function (physics) {
         var FixedPoint = /** @class */ (function () {
             function FixedPoint(value, precision) {
                 if (value === void 0) { value = 0; }
@@ -871,15 +1016,51 @@ var gs;
             __extends(RigidBody, _super);
             function RigidBody() {
                 var _this = _super !== null && _super.apply(this, arguments) || this;
-                _this.position = new physics.Vector2();
-                _this.velocity = new physics.Vector2();
-                _this.mass = new physics.FixedPoint();
-                _this.size = new physics.Vector2();
+                _this.dependencies = [
+                    physics.Transform
+                ];
                 return _this;
             }
+            RigidBody.prototype.onInitialize = function (mass, isKinematic) {
+                if (mass === void 0) { mass = new physics.FixedPoint(1); }
+                if (isKinematic === void 0) { isKinematic = false; }
+                this.mass = mass;
+                this.velocity = new physics.Vector2(new physics.FixedPoint(0), new physics.FixedPoint(0));
+                this.acceleration = new physics.Vector2(new physics.FixedPoint(0), new physics.FixedPoint(0));
+                this.isKinematic = isKinematic;
+            };
+            RigidBody.prototype.applyForce = function (force) {
+                // 使用 F = m * a，或者 a = F / m
+                var forceAccel = new physics.Vector2(force.x.div(this.mass), force.y.div(this.mass));
+                this.acceleration = this.acceleration.add(forceAccel);
+            };
+            RigidBody.prototype.update = function (deltaTime) {
+                // 更新速度和位置
+                this.velocity = this.velocity.add(new physics.Vector2(this.acceleration.x.mul(deltaTime), this.acceleration.y.mul(deltaTime)));
+                var position = this.entity.getComponent(physics.Transform).position;
+                this.entity.getComponent(physics.Transform).position = position.add(new physics.Vector2(this.velocity.x.mul(deltaTime), this.velocity.y.mul(deltaTime)));
+                // 重置加速度
+                this.acceleration.set(new physics.FixedPoint(0), new physics.FixedPoint(0));
+            };
             return RigidBody;
         }(gs.Component));
         physics.RigidBody = RigidBody;
+    })(physics = gs.physics || (gs.physics = {}));
+})(gs || (gs = {}));
+var gs;
+(function (gs) {
+    var physics;
+    (function (physics) {
+        var Simplex = /** @class */ (function () {
+            function Simplex() {
+                this.vertices = [];
+            }
+            Simplex.prototype.add = function (v) {
+                this.vertices.unshift(v); // 添加新的点到数组前面
+            };
+            return Simplex;
+        }());
+        physics.Simplex = Simplex;
     })(physics = gs.physics || (gs.physics = {}));
 })(gs || (gs = {}));
 var gs;
@@ -958,7 +1139,7 @@ var gs;
                 this.objectTable.set(obj, keys);
             };
             SpatialHash.prototype.retrieve = function (obj, callback) {
-                var e_5, _a, e_6, _b;
+                var e_6, _a, e_7, _b;
                 var keys = this.objectTable.get(obj);
                 if (keys) {
                     try {
@@ -972,27 +1153,27 @@ var gs;
                                         callback(obj_1);
                                     }
                                 }
-                                catch (e_6_1) { e_6 = { error: e_6_1 }; }
+                                catch (e_7_1) { e_7 = { error: e_7_1 }; }
                                 finally {
                                     try {
                                         if (bucket_1_1 && !bucket_1_1.done && (_b = bucket_1.return)) _b.call(bucket_1);
                                     }
-                                    finally { if (e_6) throw e_6.error; }
+                                    finally { if (e_7) throw e_7.error; }
                                 }
                             }
                         }
                     }
-                    catch (e_5_1) { e_5 = { error: e_5_1 }; }
+                    catch (e_6_1) { e_6 = { error: e_6_1 }; }
                     finally {
                         try {
                             if (keys_1_1 && !keys_1_1.done && (_a = keys_1.return)) _a.call(keys_1);
                         }
-                        finally { if (e_5) throw e_5.error; }
+                        finally { if (e_6) throw e_6.error; }
                     }
                 }
             };
             SpatialHash.prototype.retrieveAll = function () {
-                var e_7, _a;
+                var e_8, _a;
                 var result = [];
                 try {
                     for (var _b = __values(this.hashTable.values()), _c = _b.next(); !_c.done; _c = _b.next()) {
@@ -1000,17 +1181,17 @@ var gs;
                         result.push.apply(result, __spread(bucket));
                     }
                 }
-                catch (e_7_1) { e_7 = { error: e_7_1 }; }
+                catch (e_8_1) { e_8 = { error: e_8_1 }; }
                 finally {
                     try {
                         if (_c && !_c.done && (_a = _b.return)) _a.call(_b);
                     }
-                    finally { if (e_7) throw e_7.error; }
+                    finally { if (e_8) throw e_8.error; }
                 }
                 return result;
             };
             SpatialHash.prototype.remove = function (obj) {
-                var e_8, _a;
+                var e_9, _a;
                 var keys = this.objectTable.get(obj);
                 if (keys) {
                     try {
@@ -1026,30 +1207,30 @@ var gs;
                             }
                         }
                     }
-                    catch (e_8_1) { e_8 = { error: e_8_1 }; }
+                    catch (e_9_1) { e_9 = { error: e_9_1 }; }
                     finally {
                         try {
                             if (keys_2_1 && !keys_2_1.done && (_a = keys_2.return)) _a.call(keys_2);
                         }
-                        finally { if (e_8) throw e_8.error; }
+                        finally { if (e_9) throw e_9.error; }
                     }
                     this.objectTable.delete(obj);
                 }
             };
             SpatialHash.prototype.clear = function () {
-                var e_9, _a;
+                var e_10, _a;
                 try {
                     for (var _b = __values(this.setPool), _c = _b.next(); !_c.done; _c = _b.next()) {
                         var set = _c.value;
                         set.clear();
                     }
                 }
-                catch (e_9_1) { e_9 = { error: e_9_1 }; }
+                catch (e_10_1) { e_10 = { error: e_10_1 }; }
                 finally {
                     try {
                         if (_c && !_c.done && (_a = _b.return)) _a.call(_b);
                     }
-                    finally { if (e_9) throw e_9.error; }
+                    finally { if (e_10) throw e_10.error; }
                 }
                 this.hashTable.clear();
                 this.objectTable.clear();
@@ -1104,6 +1285,16 @@ var gs;
             Vector2.prototype.div = function (scalar) {
                 return new Vector2(physics.FixedPoint.div(this.x, scalar), physics.FixedPoint.div(this.y, scalar));
             };
+            Vector2.prototype.set = function (x, y) {
+                this.x = x;
+                this.y = y;
+                return this;
+            };
+            Vector2.prototype.setR = function (value) {
+                this.x = value.x;
+                this.y = value.y;
+                return this;
+            };
             /** 计算向量的长度 */
             Vector2.prototype.length = function () {
                 var lengthSquared = physics.FixedPoint.add(physics.FixedPoint.mul(this.x, this.x), physics.FixedPoint.mul(this.y, this.y));
@@ -1126,12 +1317,41 @@ var gs;
             Vector2.prototype.cross = function (other) {
                 return physics.FixedPoint.sub(physics.FixedPoint.mul(this.x, other.y), physics.FixedPoint.mul(this.y, other.x));
             };
+            /** 计算两个向量的叉积 */
+            Vector2.prototype.crossR = function (other) {
+                return physics.FixedPoint.sub(this.x.mul(other), this.y.mul(other));
+            };
             /** 计算到另一个向量的距离 */
             Vector2.prototype.distanceTo = function (other) {
                 var dx = physics.FixedPoint.sub(this.x, other.x);
                 var dy = physics.FixedPoint.sub(this.y, other.y);
                 var distanceSquared = physics.FixedPoint.add(physics.FixedPoint.mul(dx, dx), physics.FixedPoint.mul(dy, dy));
                 return physics.FixedPoint.from(Math.sqrt(distanceSquared.toFloat()));
+            };
+            /** 获取当前向量逆时针旋转90度的垂直向量 */
+            Vector2.prototype.perp = function () {
+                return new Vector2(this.y.neg(), this.x);
+            };
+            /** 获取当前向量顺时针旋转90度的垂直向量 */
+            Vector2.prototype.perpR = function () {
+                return new Vector2(this.y, this.x.neg());
+            };
+            /**
+            * 创建一个包含指定向量反转的新Vector2
+            * @returns 矢量反演的结果
+            */
+            Vector2.prototype.negate = function () {
+                return new Vector2(this.x.neg(), this.y.neg());
+            };
+            /**
+            * 创建一个包含指定向量反转的新Vector2
+            * @param value
+            * @returns 矢量反演的结果
+            */
+            Vector2.negate = function (value) {
+                value.x = value.x.neg();
+                value.y = value.y.neg();
+                return value;
             };
             return Vector2;
         }());
@@ -1230,6 +1450,11 @@ var gs;
             function CircleCollider() {
                 return _super !== null && _super.apply(this, arguments) || this;
             }
+            CircleCollider.prototype.onInitialize = function (radius) {
+                this.radius = radius;
+                var bounds = new physics.CircleBounds(this.transform.position, this.radius, this.entity);
+                this.setBounds(bounds);
+            };
             return CircleCollider;
         }(physics.Collider));
         physics.CircleCollider = CircleCollider;
@@ -1352,6 +1577,8 @@ var gs;
                     this.result = (distance + boxBoundingCircle.radius.toFloat() <= circle.radius.toFloat());
                 }
             };
+            ContainVisitor.prototype.visitPolygon = function (polygon) {
+            };
             ContainVisitor.prototype.getResult = function () {
                 return this.result;
             };
@@ -1393,6 +1620,16 @@ var gs;
                     this.result = this.intersectsBoxCircle(this.other, circle);
                 }
             };
+            IntersectionVisitor.prototype.visitPolygon = function (polygon) {
+                if (this.other instanceof physics.PolygonBounds) {
+                }
+                else if (this.other instanceof physics.CircleBounds) {
+                    // 处理多边形与圆形的相交
+                }
+                else if (this.other instanceof physics.BoxBounds) {
+                    // 处理多边形与方形的相交
+                }
+            };
             IntersectionVisitor.prototype.intersectsBoxCircle = function (box, circle) {
                 var circleDistanceX = Math.abs(circle.position.x.toFloat() - box.position.x.toFloat() - box.width.toFloat() / 2);
                 var circleDistanceY = Math.abs(circle.position.y.toFloat() - box.position.y.toFloat() - box.height.toFloat() / 2);
@@ -1418,5 +1655,58 @@ var gs;
             return IntersectionVisitor;
         }());
         physics.IntersectionVisitor = IntersectionVisitor;
+    })(physics = gs.physics || (gs.physics = {}));
+})(gs || (gs = {}));
+var gs;
+(function (gs) {
+    var physics;
+    (function (physics) {
+        var PolygonBounds = /** @class */ (function () {
+            function PolygonBounds() {
+            }
+            /**
+             * 提供一个方向，返回多边形在该方向上的最远点
+             * @param direction
+             * @returns
+             */
+            PolygonBounds.prototype.getFarthestPointInDirection = function (direction) {
+                var e_11, _a;
+                var maxDotProduct = -Infinity;
+                var farthestVertex = null;
+                try {
+                    for (var _b = __values(this._vertices), _c = _b.next(); !_c.done; _c = _b.next()) {
+                        var vertex = _c.value;
+                        var dotProduct = vertex.dot(direction).toFloat();
+                        if (dotProduct > maxDotProduct) {
+                            maxDotProduct = dotProduct;
+                            farthestVertex = vertex;
+                        }
+                    }
+                }
+                catch (e_11_1) { e_11 = { error: e_11_1 }; }
+                finally {
+                    try {
+                        if (_c && !_c.done && (_a = _b.return)) _a.call(_b);
+                    }
+                    finally { if (e_11) throw e_11.error; }
+                }
+                return farthestVertex;
+            };
+            PolygonBounds.prototype.intersects = function (other) {
+                var visitor = new physics.IntersectionVisitor(other);
+                this.accept(visitor);
+                return visitor.getResult();
+            };
+            PolygonBounds.prototype.contains = function (other) {
+                var visitor = new physics.ContainVisitor(other);
+                this.accept(visitor);
+                return visitor.getResult();
+            };
+            PolygonBounds.prototype.accept = function (visitor) {
+                visitor.visitPolygon(this);
+            };
+            return PolygonBounds;
+        }());
+        physics.PolygonBounds = PolygonBounds;
     })(physics = gs.physics || (gs.physics = {}));
 })(gs || (gs = {}));

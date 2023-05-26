@@ -32,6 +32,16 @@ module gs.physics {
             }
         }
 
+        visitPolygon(polygon: PolygonBounds): void {
+            if (this.other instanceof PolygonBounds) {
+               
+            } else if (this.other instanceof CircleBounds) {
+                // 处理多边形与圆形的相交
+            } else if (this.other instanceof BoxBounds) {
+                // 处理多边形与方形的相交
+            }
+        }
+
         intersectsBoxCircle(box: BoxBounds, circle: CircleBounds): boolean {
             const circleDistanceX = Math.abs(circle.position.x.toFloat() - box.position.x.toFloat() - box.width.toFloat() / 2);
             const circleDistanceY = Math.abs(circle.position.y.toFloat() - box.position.y.toFloat() - box.height.toFloat() / 2);

@@ -1,4 +1,16 @@
 declare module gs.physics {
+    class CollisionDetector {
+        private shape1;
+        private shape2;
+        constructor(shape1: PolygonBounds, shape2: PolygonBounds);
+        epa(): Vector2;
+        gjk(): boolean;
+        private updateSimplexAndDirection;
+        private addPointToPolytope;
+        private support;
+    }
+}
+declare module gs.physics {
     class CollisionEvent extends Event {
         entity1: Entity;
         entity2: Entity;
@@ -90,6 +102,14 @@ declare module gs.physics {
     }
 }
 declare module gs.physics {
+    class Edge {
+        readonly distance: FixedPoint;
+        readonly pointA: Vector2;
+        readonly pointB: Vector2;
+        constructor(a: Vector2, b: Vector2);
+    }
+}
+declare module gs.physics {
     class FixedPoint {
         rawValue: number;
         precision: number;
@@ -115,10 +135,21 @@ declare module gs.physics {
 }
 declare module gs.physics {
     class RigidBody extends Component {
-        position: Vector2;
-        velocity: Vector2;
+        dependencies: ComponentConstructor<Component>[];
         mass: FixedPoint;
-        size: Vector2;
+        velocity: Vector2;
+        acceleration: Vector2;
+        isKinematic: boolean;
+        onInitialize(mass?: FixedPoint, isKinematic?: boolean): void;
+        applyForce(force: Vector2): void;
+        update(deltaTime: FixedPoint): void;
+    }
+}
+declare module gs.physics {
+    class Simplex {
+        vertices: Vector2[];
+        constructor();
+        add(v: Vector2): void;
     }
 }
 declare module gs.physics {
@@ -165,6 +196,8 @@ declare module gs.physics {
         sub(other: Vector2): Vector2;
         mul(scalar: FixedPoint | number): Vector2;
         div(scalar: FixedPoint | number): Vector2;
+        set(x: FixedPoint, y: FixedPoint): Vector2;
+        setR(value: Vector2): Vector2;
         /** 计算向量的长度 */
         length(): FixedPoint;
         /** 计算向量的平方长度 */
@@ -175,8 +208,25 @@ declare module gs.physics {
         dot(other: Vector2): FixedPoint;
         /** 计算两个向量的叉积 */
         cross(other: Vector2): FixedPoint;
+        /** 计算两个向量的叉积 */
+        crossR(other: FixedPoint): FixedPoint;
         /** 计算到另一个向量的距离 */
         distanceTo(other: Vector2): FixedPoint;
+        /** 获取当前向量逆时针旋转90度的垂直向量 */
+        perp(): Vector2;
+        /** 获取当前向量顺时针旋转90度的垂直向量 */
+        perpR(): Vector2;
+        /**
+        * 创建一个包含指定向量反转的新Vector2
+        * @returns 矢量反演的结果
+        */
+        negate(): Vector2;
+        /**
+        * 创建一个包含指定向量反转的新Vector2
+        * @param value
+        * @returns 矢量反演的结果
+        */
+        static negate(value: Vector2): Vector2;
     }
 }
 declare module gs.physics {
@@ -191,11 +241,11 @@ declare module gs.physics {
 }
 declare module gs.physics {
     class Collider extends Component {
+        dependencies: ComponentConstructor<Component>[];
         private _bounds;
         isColliding: boolean;
         private _transform;
         readonly transform: Transform;
-        dependencies: ComponentConstructor<Component>[];
         getBounds(): Bounds;
         setBounds(bounds: Bounds): void;
         intersects(other: Collider): boolean;
@@ -210,6 +260,8 @@ declare module gs.physics {
 }
 declare module gs.physics {
     class CircleCollider extends Collider {
+        private radius;
+        onInitialize(radius: FixedPoint): void;
     }
 }
 declare module gs.physics {
@@ -231,6 +283,7 @@ declare module gs.physics {
     interface BoundsVisitor {
         visitBox(box: BoxBounds): void;
         visitCircle(circle: CircleBounds): void;
+        visitPolygon(polygon: PolygonBounds): void;
     }
 }
 declare module gs.physics {
@@ -265,6 +318,7 @@ declare module gs.physics {
         constructor(other: Bounds);
         visitBox(box: BoxBounds): void;
         visitCircle(circle: CircleBounds): void;
+        visitPolygon(polygon: PolygonBounds): void;
         getResult(): boolean;
     }
 }
@@ -275,7 +329,26 @@ declare module gs.physics {
         constructor(other: Bounds);
         visitBox(box: BoxBounds): void;
         visitCircle(circle: CircleBounds): void;
+        visitPolygon(polygon: PolygonBounds): void;
         intersectsBoxCircle(box: BoxBounds, circle: CircleBounds): boolean;
         getResult(): boolean;
+    }
+}
+declare module gs.physics {
+    class PolygonBounds implements Bounds {
+        private _vertices;
+        position: Vector2;
+        width: FixedPoint;
+        height: FixedPoint;
+        entity: Entity;
+        /**
+         * 提供一个方向，返回多边形在该方向上的最远点
+         * @param direction
+         * @returns
+         */
+        getFarthestPointInDirection(direction: Vector2): Vector2;
+        intersects(other: Bounds): boolean;
+        contains(other: Bounds): boolean;
+        accept(visitor: BoundsVisitor): void;
     }
 }
