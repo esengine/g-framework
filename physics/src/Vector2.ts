@@ -28,6 +28,10 @@ module gs.physics {
             return new Vector2(FixedPoint.div(this.x, scalar), FixedPoint.div(this.y, scalar));
         }
 
+        isZero(): boolean {
+            return this.x.toFloat() == 0 && this.y.toFloat() == 0;
+        }
+
         set(x: FixedPoint, y: FixedPoint): Vector2 {
             this.x = x;
             this.y = y;
@@ -82,12 +86,12 @@ module gs.physics {
 
         /** 获取当前向量逆时针旋转90度的垂直向量 */
         perp(): Vector2 {
-            return new Vector2(this.y.neg(), this.x);
+            return new Vector2(this.y.negate(), this.x);
         }
 
         /** 获取当前向量顺时针旋转90度的垂直向量 */
         perpR(): Vector2 {
-            return new Vector2(this.y, this.x.neg());
+            return new Vector2(this.y, this.x.negate());
         }
 
         lengthSq(): FixedPoint {
@@ -99,7 +103,7 @@ module gs.physics {
         * @returns 矢量反演的结果
         */
         public negate(): Vector2 {
-            return new Vector2(this.x.neg(), this.y.neg());
+            return new Vector2(this.x.negate(), this.y.negate());
         }
 
         /**
@@ -108,8 +112,8 @@ module gs.physics {
         * @returns 矢量反演的结果
         */
         public static negate(value: Vector2) {
-            value.x = value.x.neg();
-            value.y = value.y.neg();
+            value.x = value.x.negate();
+            value.y = value.y.negate();
 
             return value;
         }

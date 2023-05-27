@@ -271,19 +271,28 @@ var gs;
                 return _this;
             }
             CollisionResponseSystem.prototype.update = function (entities) {
-                var e_4, _a, e_5, _b, e_6, _c, e_7, _d;
-                var _e = this, dynamicTree = _e.dynamicTree, processed = _e.processed, collisionPairs = _e.collisionPairs;
-                dynamicTree.clear();
-                processed.clear();
-                collisionPairs.length = 0;
+                this.resetForNewFrame();
+                var nodeEntityMap = this.initializeNodesAndEntities(entities);
+                this.processCollisions(nodeEntityMap);
+            };
+            CollisionResponseSystem.prototype.resetForNewFrame = function () {
+                this.dynamicTree.clear();
+                this.processed.clear();
+                this.collisionPairs.length = 0;
+            };
+            CollisionResponseSystem.prototype.initializeNodesAndEntities = function (entities) {
+                var e_4, _a;
                 var nodeEntityMap = new Map();
+                var deltaTime = gs.TimeManager.getInstance().deltaTime;
                 var boundsArray = [];
                 try {
                     for (var entities_1 = __values(entities), entities_1_1 = entities_1.next(); !entities_1_1.done; entities_1_1 = entities_1.next()) {
                         var entity = entities_1_1.value;
                         var collider = entity.getComponent(physics.Collider);
-                        if (!collider)
-                            continue;
+                        var rigidBody = entity.getComponent(physics.RigidBody);
+                        if (rigidBody && !rigidBody.isKinematic) {
+                            rigidBody.update(deltaTime);
+                        }
                         var node = {
                             children: [],
                             height: 0,
@@ -292,7 +301,6 @@ var gs;
                         };
                         boundsArray.push(node);
                         nodeEntityMap.set(node, entity);
-                        collider.isColliding = false;
                     }
                 }
                 catch (e_4_1) { e_4 = { error: e_4_1 }; }
@@ -302,34 +310,43 @@ var gs;
                     }
                     finally { if (e_4) throw e_4.error; }
                 }
-                dynamicTree.load(boundsArray);
+                this.dynamicTree.load(boundsArray);
+                return nodeEntityMap;
+            };
+            CollisionResponseSystem.prototype.processCollisions = function (nodeEntityMap) {
+                var e_5, _a, e_6, _b;
+                var checkedPairs = new Set();
                 try {
-                    for (var boundsArray_1 = __values(boundsArray), boundsArray_1_1 = boundsArray_1.next(); !boundsArray_1_1.done; boundsArray_1_1 = boundsArray_1.next()) {
-                        var node = boundsArray_1_1.value;
+                    for (var _c = __values(nodeEntityMap.keys()), _d = _c.next(); !_d.done; _d = _c.next()) {
+                        var node = _d.value;
                         var entity = nodeEntityMap.get(node);
                         var entityId = entity.getId();
-                        var processedPairs = processed.get(entityId);
+                        var processedPairs = this.processed.get(entityId);
                         if (!processedPairs) {
                             processedPairs = new Set();
-                            processed.set(entityId, processedPairs);
+                            this.processed.set(entityId, processedPairs);
                         }
-                        var candidates = dynamicTree.search(node.bounds);
+                        var candidates = this.dynamicTree.search(node.bounds);
                         try {
                             for (var candidates_1 = __values(candidates), candidates_1_1 = candidates_1.next(); !candidates_1_1.done; candidates_1_1 = candidates_1.next()) {
                                 var candidate = candidates_1_1.value;
                                 var candidateEntity = nodeEntityMap.get(candidate);
                                 var candidateId = candidateEntity.getId();
-                                if (entityId === candidateId || processedPairs.has(candidateId)) {
+                                if (entityId === candidateId) {
                                     continue;
                                 }
-                                collisionPairs.push([entity, candidateEntity]);
-                                processedPairs.add(candidateId);
+                                var idPair = entityId < candidateId ? entityId + "," + candidateId : candidateId + "," + entityId;
+                                if (checkedPairs.has(idPair)) {
+                                    continue;
+                                }
+                                this.collisionPairs.push([entity, candidateEntity]);
+                                checkedPairs.add(idPair);
                             }
                         }
                         catch (e_6_1) { e_6 = { error: e_6_1 }; }
                         finally {
                             try {
-                                if (candidates_1_1 && !candidates_1_1.done && (_c = candidates_1.return)) _c.call(candidates_1);
+                                if (candidates_1_1 && !candidates_1_1.done && (_b = candidates_1.return)) _b.call(candidates_1);
                             }
                             finally { if (e_6) throw e_6.error; }
                         }
@@ -338,34 +355,90 @@ var gs;
                 catch (e_5_1) { e_5 = { error: e_5_1 }; }
                 finally {
                     try {
-                        if (boundsArray_1_1 && !boundsArray_1_1.done && (_b = boundsArray_1.return)) _b.call(boundsArray_1);
+                        if (_d && !_d.done && (_a = _c.return)) _a.call(_c);
                     }
                     finally { if (e_5) throw e_5.error; }
                 }
+                this.resolveCollisions();
+            };
+            CollisionResponseSystem.prototype.resolveCollisions = function () {
+                var e_7, _a;
                 try {
-                    for (var collisionPairs_1 = __values(collisionPairs), collisionPairs_1_1 = collisionPairs_1.next(); !collisionPairs_1_1.done; collisionPairs_1_1 = collisionPairs_1.next()) {
-                        var _f = __read(collisionPairs_1_1.value, 2), entity = _f[0], candidate = _f[1];
+                    for (var _b = __values(this.collisionPairs), _c = _b.next(); !_c.done; _c = _b.next()) {
+                        var _d = __read(_c.value, 2), entity = _d[0], candidate = _d[1];
                         var collider = entity.getComponent(physics.Collider);
                         var collider2 = candidate.getComponent(physics.Collider);
+                        collider.handleCollision(candidate);
+                        collider2.handleCollision(entity);
                         var rigidBody = entity.getComponent(physics.RigidBody);
                         var rigidBody2 = candidate.getComponent(physics.RigidBody);
-                        collider.isColliding = true;
-                        collider2.isColliding = true;
-                        // 如果两个刚体都是动态的，那么将他们拆开并反转他们的速度
                         if (rigidBody && !rigidBody.isKinematic && rigidBody2 && !rigidBody2.isKinematic) {
-                            // 反转速度
-                            rigidBody.velocity = rigidBody.velocity.mul(new physics.FixedPoint(-1));
-                            rigidBody2.velocity = rigidBody2.velocity.mul(new physics.FixedPoint(-1));
+                            this.resolveDynamicCollision(rigidBody, rigidBody2, collider, collider2);
                         }
                     }
                 }
                 catch (e_7_1) { e_7 = { error: e_7_1 }; }
                 finally {
                     try {
-                        if (collisionPairs_1_1 && !collisionPairs_1_1.done && (_d = collisionPairs_1.return)) _d.call(collisionPairs_1);
+                        if (_c && !_c.done && (_a = _b.return)) _a.call(_b);
                     }
                     finally { if (e_7) throw e_7.error; }
                 }
+                this.handleCollisionExits();
+            };
+            CollisionResponseSystem.prototype.handleCollisionExits = function () {
+                var e_8, _a, e_9, _b, e_10, _c;
+                try {
+                    for (var _d = __values(this.processed.values()), _e = _d.next(); !_e.done; _e = _d.next()) {
+                        var entitySet = _e.value;
+                        try {
+                            for (var entitySet_1 = __values(entitySet), entitySet_1_1 = entitySet_1.next(); !entitySet_1_1.done; entitySet_1_1 = entitySet_1.next()) {
+                                var entityId = entitySet_1_1.value;
+                                var entity = this.entityManager.getEntity(entityId);
+                                var collider = entity.getComponent(physics.Collider);
+                                try {
+                                    for (var _f = __values(collider.collidingEntities), _g = _f.next(); !_g.done; _g = _f.next()) {
+                                        var otherEntity = _g.value;
+                                        if (!entitySet.has(otherEntity.getId())) {
+                                            collider.handleCollisionExit(otherEntity);
+                                            otherEntity.getComponent(physics.Collider).handleCollisionExit(entity);
+                                        }
+                                    }
+                                }
+                                catch (e_10_1) { e_10 = { error: e_10_1 }; }
+                                finally {
+                                    try {
+                                        if (_g && !_g.done && (_c = _f.return)) _c.call(_f);
+                                    }
+                                    finally { if (e_10) throw e_10.error; }
+                                }
+                            }
+                        }
+                        catch (e_9_1) { e_9 = { error: e_9_1 }; }
+                        finally {
+                            try {
+                                if (entitySet_1_1 && !entitySet_1_1.done && (_b = entitySet_1.return)) _b.call(entitySet_1);
+                            }
+                            finally { if (e_9) throw e_9.error; }
+                        }
+                    }
+                }
+                catch (e_8_1) { e_8 = { error: e_8_1 }; }
+                finally {
+                    try {
+                        if (_e && !_e.done && (_a = _d.return)) _a.call(_d);
+                    }
+                    finally { if (e_8) throw e_8.error; }
+                }
+            };
+            CollisionResponseSystem.prototype.resolveDynamicCollision = function (rigidBody, rigidBody2, collider, collider2) {
+                var collisionNormal = collider.getCollisionNormal(collider2);
+                var velocityAlongNormal1 = rigidBody.velocity.dot(collisionNormal);
+                var velocityAlongNormal2 = rigidBody2.velocity.dot(collisionNormal);
+                var newVelocityAlongNormal1 = physics.FixedPoint.div(physics.FixedPoint.add(physics.FixedPoint.mul(velocityAlongNormal1, physics.FixedPoint.sub(rigidBody.mass, rigidBody2.mass)), physics.FixedPoint.mul(physics.FixedPoint.mul(new physics.FixedPoint(2), rigidBody2.mass), velocityAlongNormal2)), physics.FixedPoint.add(rigidBody.mass, rigidBody2.mass));
+                var newVelocityAlongNormal2 = physics.FixedPoint.div(physics.FixedPoint.add(physics.FixedPoint.mul(velocityAlongNormal2, physics.FixedPoint.sub(rigidBody2.mass, rigidBody.mass)), physics.FixedPoint.mul(physics.FixedPoint.mul(new physics.FixedPoint(2), rigidBody.mass), velocityAlongNormal1)), physics.FixedPoint.add(rigidBody.mass, rigidBody2.mass));
+                rigidBody.velocity = rigidBody.velocity.add(collisionNormal.mul(physics.FixedPoint.sub(newVelocityAlongNormal1, velocityAlongNormal1)));
+                rigidBody2.velocity = rigidBody2.velocity.add(collisionNormal.mul(physics.FixedPoint.sub(newVelocityAlongNormal2, velocityAlongNormal2)));
             };
             return CollisionResponseSystem;
         }(gs.System));
@@ -397,67 +470,67 @@ var gs;
                 destNode = createNode(null);
             }
             destNode.bounds = new physics.BoxBounds(physics.Vector2.zero(), new physics.FixedPoint(), new physics.FixedPoint(), null);
-            var minX = Infinity;
-            var minY = Infinity;
-            var maxX = -Infinity;
-            var maxY = -Infinity;
+            var minX = physics.FixedPoint.from(Infinity);
+            var minY = physics.FixedPoint.from(Infinity);
+            var maxX = physics.FixedPoint.from(-Infinity);
+            var maxY = physics.FixedPoint.from(-Infinity);
             for (var i = k; i < p; i++) {
                 var child = node.children[i];
                 var bounds = toBounds(child);
-                minX = Math.min(minX, bounds.position.x.toFloat());
-                minY = Math.min(minY, bounds.position.y.toFloat());
-                maxX = Math.max(maxX, bounds.position.x.toFloat() + bounds.width.toFloat());
-                maxY = Math.max(maxY, bounds.position.y.toFloat() + bounds.height.toFloat());
+                minX = physics.FixedPoint.min(minX, bounds.position.x);
+                minY = physics.FixedPoint.min(minY, bounds.position.y);
+                maxX = physics.FixedPoint.max(maxX, bounds.position.x.add(bounds.width));
+                maxY = physics.FixedPoint.max(maxY, bounds.position.y.add(bounds.height));
             }
             // 创建一个新的Bounds对象
-            var newBounds = new physics.BoxBounds(new physics.Vector2(minX, minY), new physics.FixedPoint(maxX - minX), new physics.FixedPoint(maxY - minY), destNode.bounds.entity);
+            var newBounds = new physics.BoxBounds(new physics.Vector2(minX.toFloat(), minY.toFloat()), maxX.sub(minX), maxY.sub(minY), destNode.bounds.entity);
             // 设置destNode的Collider的Bounds
             destNode.bounds = newBounds;
             return destNode;
         }
         physics.distBounds = distBounds;
         function extend(a, b) {
-            var minX = Math.min(a.position.x.toFloat(), b.position.x.toFloat());
-            var minY = Math.min(a.position.y.toFloat(), b.position.y.toFloat());
-            var maxX = Math.max(a.position.x.toFloat() + a.width.toFloat(), b.position.x.toFloat() + b.width.toFloat());
-            var maxY = Math.max(a.position.y.toFloat() + a.height.toFloat(), b.position.y.toFloat() + b.height.toFloat());
-            a.position.x = new physics.FixedPoint(minX);
-            a.position.y = new physics.FixedPoint(minY);
-            a.width = new physics.FixedPoint(maxX - minX);
-            a.height = new physics.FixedPoint(maxY - minY);
+            var minX = physics.FixedPoint.min(a.position.x, b.position.x);
+            var minY = physics.FixedPoint.min(a.position.y, b.position.y);
+            var maxX = physics.FixedPoint.max(a.position.x.add(a.width), b.position.x.add(b.width));
+            var maxY = physics.FixedPoint.max(a.position.y.add(a.height), b.position.y.add(b.height));
+            a.position.x = minX;
+            a.position.y = minY;
+            a.width = maxX.sub(minX);
+            a.height = maxY.sub(minY);
             return a;
         }
         physics.extend = extend;
         function compareNodeMinX(a, b) {
-            return a.bounds.position.x.toFloat() - b.bounds.position.x.toFloat();
+            return a.bounds.position.x.sub(b.bounds.position.x);
         }
         physics.compareNodeMinX = compareNodeMinX;
         function compareNodeMinY(a, b) {
-            return a.bounds.position.y.toFloat() - b.bounds.position.y.toFloat();
+            return a.bounds.position.y.sub(b.bounds.position.y);
         }
         physics.compareNodeMinY = compareNodeMinY;
         function boundsArea(a) {
             var bounds = a.bounds;
-            return bounds.width.toFloat() * bounds.height.toFloat();
+            return bounds.width.mul(bounds.height);
         }
         physics.boundsArea = boundsArea;
         function boundsMargin(a) {
             var bounds = a.bounds;
-            return bounds.width.toFloat() + bounds.height.toFloat();
+            return bounds.width.add(bounds.height);
         }
         physics.boundsMargin = boundsMargin;
         function enlargedArea(a, b) {
-            return (Math.max(b.position.x.toFloat() + b.width.toFloat(), a.position.x.toFloat() + a.width.toFloat()) - Math.min(b.position.x.toFloat(), a.position.x.toFloat())) *
-                (Math.max(b.position.y.toFloat() + b.height.toFloat(), a.position.y.toFloat() + a.height.toFloat()) - Math.min(b.position.y.toFloat(), a.position.y.toFloat()));
+            return (physics.FixedPoint.max(b.position.x.add(b.width), a.position.x.add(a.width)).sub(physics.FixedPoint.min(b.position.x, a.position.x)))
+                .mul(physics.FixedPoint.max(b.position.y.add(b.height), a.position.y.add(a.height)).sub(physics.FixedPoint.min(b.position.y, a.position.y)));
         }
         physics.enlargedArea = enlargedArea;
         function intersectionArea(a, b) {
-            var minX = Math.max(a.position.x.toFloat(), b.position.x.toFloat());
-            var minY = Math.max(a.position.y.toFloat(), b.position.y.toFloat());
-            var maxX = Math.min(a.position.x.toFloat() + a.width.toFloat(), b.position.x.toFloat() + b.width.toFloat());
-            var maxY = Math.min(a.position.y.toFloat() + a.height.toFloat(), b.position.y.toFloat() + b.height.toFloat());
-            return Math.max(0, maxX - minX) *
-                Math.max(0, maxY - minY);
+            var minX = physics.FixedPoint.max(a.position.x, b.position.x);
+            var minY = physics.FixedPoint.max(a.position.y, b.position.y);
+            var maxX = physics.FixedPoint.min(a.position.x.add(a.width), b.position.x.add(b.width));
+            var maxY = physics.FixedPoint.min(a.position.y.add(a.height), b.position.y.add(b.height));
+            return physics.FixedPoint.max(physics.FixedPoint.from(0), maxX.sub(minX))
+                .mul(physics.FixedPoint.max(physics.FixedPoint.from(0), maxY.sub(minY)));
         }
         physics.intersectionArea = intersectionArea;
         function createNode(children) {
@@ -499,21 +572,21 @@ var gs;
                 var i = left;
                 var j = right;
                 swap(arr, left, k);
-                if (compare(arr[right], t) > 0) {
+                if (compare(arr[right], t).gt(0)) {
                     swap(arr, left, right);
                 }
                 while (i < j) {
                     swap(arr, i, j);
                     i++;
                     j--;
-                    while (compare(arr[i], t) < 0) {
+                    while (compare(arr[i], t).lt(0)) {
                         i++;
                     }
-                    while (compare(arr[j], t) > 0) {
+                    while (compare(arr[j], t).gt(0)) {
                         j--;
                     }
                 }
-                if (compare(arr[left], t) === 0) {
+                if (compare(arr[left], t).equals(0)) {
                     swap(arr, left, j);
                 }
                 else {
@@ -550,10 +623,10 @@ var gs;
                 this.clear();
             }
             DynamicTree.prototype.compareMinX = function (a, b) {
-                return a.bounds.position.x.toFloat() - b.bounds.position.x.toFloat();
+                return a.bounds.position.x.sub(b.bounds.position.x);
             };
             DynamicTree.prototype.compareMinY = function (a, b) {
-                return a.bounds.position.y.toFloat() - b.bounds.position.y.toFloat();
+                return a.bounds.position.y.sub(b.bounds.position.y);
             };
             DynamicTree.prototype.all = function () {
                 return this._all(this.data, []);
@@ -742,15 +815,15 @@ var gs;
                     path.push(node);
                     if (node.leaf || path.length - 1 === level)
                         break;
-                    var minArea = Infinity;
-                    var minEnlargement = Infinity;
+                    var minArea = new physics.FixedPoint(Infinity);
+                    var minEnlargement = new physics.FixedPoint(Infinity);
                     var targetNode = void 0;
                     for (var i = 0; i < node.children.length; i++) {
                         var child = node.children[i];
                         var area = physics.boundsArea(child);
-                        var enlargement = physics.enlargedArea(bounds, child.bounds) - area;
+                        var enlargement = physics.enlargedArea(bounds, child.bounds).sub(area);
                         // 选择面积扩展最小的条目
-                        if (enlargement < minEnlargement) {
+                        if (enlargement.lt(minEnlargement)) {
                             minEnlargement = enlargement;
                             minArea = area < minArea ? area : minArea;
                             targetNode = child;
@@ -812,15 +885,15 @@ var gs;
             };
             DynamicTree.prototype._chooseSplitIndex = function (node, m, M) {
                 var index;
-                var minOverlap = Infinity;
-                var minArea = Infinity;
+                var minOverlap = new physics.FixedPoint(Infinity);
+                var minArea = new physics.FixedPoint(Infinity);
                 for (var i = m; i <= M - m; i++) {
                     var bbox1 = physics.distBounds(node, 0, i, this.toBounds);
                     var bbox2 = physics.distBounds(node, i, M, this.toBounds);
                     var overlap = physics.intersectionArea(bbox1.bounds, bbox2.bounds);
-                    var area = physics.boundsArea(bbox1) + physics.boundsArea(bbox2);
+                    var area = physics.boundsArea(bbox1).add(physics.boundsArea(bbox2));
                     // 选择重叠最小的分布
-                    if (overlap < minOverlap) {
+                    if (overlap.lt(minOverlap)) {
                         minOverlap = overlap;
                         index = i;
                         minArea = area < minArea ? area : minArea;
@@ -839,12 +912,12 @@ var gs;
             DynamicTree.prototype._chooseSplitAxis = function (node, m, M) {
                 var compareMinX = node.leaf ? this.compareMinX : physics.compareNodeMinX;
                 var compareMinY = node.leaf ? this.compareMinY : physics.compareNodeMinY;
-                var xMargin = this._allDistMargin(node, m, M, compareMinX);
-                var yMargin = this._allDistMargin(node, m, M, compareMinY);
+                var xMargin = this._allDistMargin(node, m, M, function (a, b) { return compareMinX(a, b).toFloat(); });
+                var yMargin = this._allDistMargin(node, m, M, function (a, b) { return compareMinY(a, b).toFloat(); });
                 // 如果总分布边距值对于x最小，则按minX排序，
                 // 否则已经按minY排序
                 if (xMargin < yMargin)
-                    node.children.sort(compareMinX);
+                    node.children.sort(function (a, b) { return compareMinX(a, b).toFloat(); });
             };
             // 所有可能的分布中，每个节点至少为m时的总边距
             DynamicTree.prototype._allDistMargin = function (node, m, M, compare) {
@@ -852,16 +925,16 @@ var gs;
                 var toBounds = this.toBounds;
                 var leftBounds = physics.distBounds(node, 0, m, toBounds);
                 var rightBounds = physics.distBounds(node, M - m, M, toBounds);
-                var margin = physics.boundsMargin(leftBounds) + physics.boundsMargin(rightBounds);
+                var margin = physics.boundsMargin(leftBounds).add(physics.boundsMargin(rightBounds));
                 for (var i = m; i < M - m; i++) {
                     var child = node.children[i];
                     physics.extend(leftBounds.bounds, node.leaf ? toBounds(child) : child.bounds);
-                    margin += physics.boundsMargin(leftBounds);
+                    margin = margin.add(physics.boundsMargin(leftBounds));
                 }
                 for (var i = M - m - 1; i >= m; i--) {
                     var child = node.children[i];
                     physics.extend(rightBounds.bounds, node.leaf ? toBounds(child) : child.bounds);
-                    margin += physics.boundsMargin(rightBounds);
+                    margin = margin.add(physics.boundsMargin(rightBounds));
                 }
                 return margin;
             };
@@ -912,23 +985,40 @@ var gs;
 (function (gs) {
     var physics;
     (function (physics) {
+        /**
+         * FixedPoint 类表示用于物理运算的定点数值。
+         * 这种定点数值在游戏和物理模拟中常常用于解决浮点数精度问题。
+         */
         var FixedPoint = /** @class */ (function () {
+            /**
+             * 创建一个新的 FixedPoint 实例
+             * @param value - 输入的浮点数值，默认为 0
+             * @param precision - 指定的精度，默认为 1000
+             */
             function FixedPoint(value, precision) {
                 if (value === void 0) { value = 0; }
                 if (precision === void 0) { precision = 1000; }
                 this.rawValue = Math.round(value * precision);
                 this.precision = precision;
             }
+            /**
+             * 将当前 FixedPoint 实例与另一个 FixedPoint 实例或数字相加
+             * @param other - 要添加的其他 FixedPoint 实例或数字
+             * @returns 新的 FixedPoint 实例，表示相加的结果
+             */
             FixedPoint.prototype.add = function (other) {
-                var result = new FixedPoint(0, this.precision);
                 if (other instanceof FixedPoint) {
-                    result.rawValue = this.rawValue + other.rawValue;
+                    return FixedPoint.fromRawValue(this.rawValue + other.rawValue, this.precision);
                 }
                 else {
-                    result.rawValue = this.rawValue + Math.round(other * this.precision);
+                    return FixedPoint.fromRawValue(this.rawValue + Math.round(other * this.precision), this.precision);
                 }
-                return result;
             };
+            /**
+             * 将当前 FixedPoint 实例与另一个 FixedPoint 实例或数字相减
+             * @param other - 要减去的其他 FixedPoint 实例或数字
+             * @returns 新的 FixedPoint 实例，表示相减的结果
+             */
             FixedPoint.prototype.sub = function (other) {
                 var result = new FixedPoint(0, this.precision);
                 if (other instanceof FixedPoint) {
@@ -939,35 +1029,72 @@ var gs;
                 }
                 return result;
             };
+            /**
+             * 将当前 FixedPoint 实例与另一个 FixedPoint 实例或数字相乘
+             * @param other - 要相乘的其他 FixedPoint 实例或数字
+             * @returns 新的 FixedPoint 实例，表示相乘的结果
+             */
             FixedPoint.prototype.mul = function (other) {
                 var result = new FixedPoint(0, this.precision);
                 if (other instanceof FixedPoint) {
-                    result.rawValue = Math.round((this.rawValue * other.rawValue) / other.precision);
+                    result.rawValue = Math.round((this.rawValue * other.rawValue) / this.precision);
                 }
                 else {
                     result.rawValue = Math.round(this.rawValue * other);
                 }
                 return result;
             };
+            /**
+             * 将当前 FixedPoint 实例与另一个 FixedPoint 实例或数字相除
+             * @param other - 要相除的其他 FixedPoint 实例或数字
+             * @returns 新的 FixedPoint 实例，表示相除的结果
+             */
             FixedPoint.prototype.div = function (other) {
                 var result = new FixedPoint(0, this.precision);
                 if (other instanceof FixedPoint) {
-                    result.rawValue = Math.round((this.rawValue / other.rawValue) * this.precision);
+                    result.rawValue = Math.round((this.rawValue * this.precision) / other.rawValue);
                 }
                 else {
                     result.rawValue = Math.round(this.rawValue / other);
                 }
                 return result;
             };
+            /**
+             * 返回当前 FixedPoint 实例的绝对值
+             * @returns 新的 FixedPoint 实例，表示绝对值的结果
+             */
             FixedPoint.prototype.abs = function () {
                 var result = new FixedPoint(0, this.precision);
                 result.rawValue = Math.abs(this.rawValue);
                 return result;
             };
+            /**
+             * 将当前 FixedPoint 实例的值取指定次方
+             * @param exponent - 指定的次方数
+             * @returns 新的 FixedPoint 实例，表示次方的结果
+             */
             FixedPoint.prototype.pow = function (exponent) {
                 var floatResult = Math.pow(this.toFloat(), exponent);
                 return FixedPoint.from(floatResult);
             };
+            /**
+             * 判断当前 FixedPoint 实例是否等于另一个 FixedPoint 实例或数字
+             * @param other - 要比较的其他 FixedPoint 实例或数字
+             * @returns 如果相等则返回 true，否则返回 false
+             */
+            FixedPoint.prototype.equals = function (other) {
+                if (other instanceof FixedPoint) {
+                    return this.rawValue === other.rawValue;
+                }
+                else {
+                    return this.rawValue === Math.round(other * this.precision);
+                }
+            };
+            /**
+             * 判断当前 FixedPoint 实例是否小于另一个 FixedPoint 实例或数字
+             * @param other - 要比较的其他 FixedPoint 实例或数字
+             * @returns 如果小于则返回 true，否则返回 false
+             */
             FixedPoint.prototype.lt = function (other) {
                 if (other instanceof FixedPoint) {
                     return this.rawValue < other.rawValue;
@@ -976,6 +1103,11 @@ var gs;
                     return this.rawValue < Math.round(other * this.precision);
                 }
             };
+            /**
+             * 判断当前 FixedPoint 实例是否大于另一个 FixedPoint 实例或数字
+             * @param other - 要比较的其他 FixedPoint 实例或数字
+             * @returns 如果大于则返回 true，否则返回 false
+             */
             FixedPoint.prototype.gt = function (other) {
                 if (other instanceof FixedPoint) {
                     return this.rawValue > other.rawValue;
@@ -984,6 +1116,11 @@ var gs;
                     return this.rawValue > Math.round(other * this.precision);
                 }
             };
+            /**
+             * 判断当前 FixedPoint 实例是否大于等于另一个 FixedPoint 实例或数字
+             * @param other - 要比较的其他 FixedPoint 实例或数字
+             * @returns 如果大于等于则返回 true，否则返回 false
+             */
             FixedPoint.prototype.gte = function (other) {
                 if (other instanceof FixedPoint) {
                     return this.rawValue >= other.rawValue;
@@ -992,6 +1129,11 @@ var gs;
                     return this.rawValue >= Math.round(other * this.precision);
                 }
             };
+            /**
+             * 判断当前 FixedPoint 实例是否小于等于另一个 FixedPoint 实例或数字
+             * @param other - 要比较的其他 FixedPoint 实例或数字
+             * @returns 如果小于等于则返回 true，否则返回 false
+             */
             FixedPoint.prototype.lte = function (other) {
                 if (other instanceof FixedPoint) {
                     return this.rawValue <= other.rawValue;
@@ -1000,63 +1142,118 @@ var gs;
                     return this.rawValue <= Math.round(other * this.precision);
                 }
             };
-            FixedPoint.prototype.neg = function () {
-                var result = new FixedPoint();
-                result.rawValue = -this.rawValue;
-                return result;
+            /**
+             * 对当前 FixedPoint 实例的值取反
+             * @returns 新的 FixedPoint 实例，表示取反的结果
+             */
+            FixedPoint.prototype.negate = function () {
+                return FixedPoint.fromRawValue(-this.rawValue, this.precision);
             };
+            /**
+             * 将当前 FixedPoint 实例转换为浮点数
+             * @returns 转换后的浮点数
+             */
             FixedPoint.prototype.toFloat = function () {
                 return this.rawValue / this.precision;
             };
+            /**
+             * 将当前 FixedPoint 实例转换为固定位数的字符串
+             * @param digits - 指定的小数位数，默认为 0
+             * @returns 转换后的字符串
+             */
+            FixedPoint.prototype.toFixed = function (digits) {
+                if (digits === void 0) { digits = 0; }
+                return this.toFloat().toFixed(digits);
+            };
+            /**
+             * 计算当前 FixedPoint 实例的平方根
+             * @returns 新的 FixedPoint 实例，表示平方根的结果
+             */
+            FixedPoint.prototype.sqrt = function () {
+                return FixedPoint.from(Math.sqrt(this.toFloat()));
+            };
+            /**
+             * 对当前 FixedPoint 实例进行四舍五入
+             * @returns 新的 FixedPoint 实例，表示四舍五入的结果
+             */
+            FixedPoint.prototype.round = function () {
+                return FixedPoint.from(Math.round(this.toFloat()));
+            };
+            /**
+             * 对两个 FixedPoint 实例进行加法运算
+             * @param a - 第一个 FixedPoint 实例
+             * @param b - 第二个 FixedPoint 实例或数字
+             * @returns 新的 FixedPoint 实例，表示相加的结果
+             */
             FixedPoint.add = function (a, b) {
-                var result = new FixedPoint();
-                if (b instanceof FixedPoint) {
-                    result.rawValue = a.rawValue + b.rawValue;
-                }
-                else {
-                    result.rawValue = a.rawValue + Math.round(b * a.precision);
-                }
-                return result;
+                return a.add(b);
             };
+            /**
+             * 对两个 FixedPoint 实例进行减法运算
+             * @param a - 第一个 FixedPoint 实例
+             * @param b - 第二个 FixedPoint 实例或数字
+             * @returns 新的 FixedPoint 实例，表示相减的结果
+             */
             FixedPoint.sub = function (a, b) {
-                var result = new FixedPoint();
-                if (b instanceof FixedPoint) {
-                    result.rawValue = a.rawValue - b.rawValue;
-                }
-                else {
-                    result.rawValue = a.rawValue - Math.round(b * a.precision);
-                }
-                return result;
+                return a.sub(b);
             };
+            /**
+             * 对两个 FixedPoint 实例进行乘法运算
+             * @param a - 第一个 FixedPoint 实例
+             * @param b - 第二个 FixedPoint 实例或数字
+             * @returns 新的 FixedPoint 实例，表示相乘的结果
+             */
             FixedPoint.mul = function (a, b) {
-                var result = new FixedPoint();
-                if (b instanceof FixedPoint) {
-                    result.rawValue = Math.round((a.rawValue * b.rawValue) / b.precision);
-                }
-                else {
-                    result.rawValue = Math.round(a.rawValue * b);
-                }
-                return result;
+                return a.mul(b);
             };
+            /**
+             * 对两个 FixedPoint 实例进行除法运算
+             * @param a - 第一个 FixedPoint 实例
+             * @param b - 第二个 FixedPoint 实例或数字
+             * @returns 新的 FixedPoint 实例，表示相除的结果
+             */
             FixedPoint.div = function (a, b) {
-                var result = new FixedPoint();
-                if (b instanceof FixedPoint) {
-                    result.rawValue = Math.round((a.rawValue / b.rawValue) * a.precision);
-                }
-                else {
-                    result.rawValue = Math.round(a.rawValue / b);
-                }
-                return result;
+                return a.div(b);
             };
+            /**
+             * 比较两个 FixedPoint 实例，返回较大者
+             * @param a - 第一个 FixedPoint 实例
+             * @param b - 第二个 FixedPoint 实例
+             * @returns 较大的 FixedPoint 实例
+             */
             FixedPoint.max = function (a, b) {
                 return a.gt(b) ? a : b;
             };
+            /**
+             * 比较两个 FixedPoint 实例，返回较小者
+             * @param a - 第一个 FixedPoint 实例
+             * @param b - 第二个 FixedPoint 实例
+             * @returns 较小的 FixedPoint 实例
+             */
             FixedPoint.min = function (a, b) {
                 return a.lt(b) ? a : b;
             };
-            FixedPoint.from = function (value) {
-                var parsedValue = typeof value === 'number' ? value : parseFloat(value);
-                return new FixedPoint(parsedValue);
+            /**
+             * 从一个原始值和精度创建一个新的 FixedPoint 实例
+             * @param rawValue - 原始值，根据精度扩大的整数
+             * @param precision - 指定的精度，默认为 1000
+             * @returns 新的 FixedPoint 实例
+             */
+            FixedPoint.fromRawValue = function (rawValue, precision) {
+                if (precision === void 0) { precision = 1000; }
+                var result = new FixedPoint(0, precision);
+                result.rawValue = rawValue;
+                return result;
+            };
+            /**
+             * 从一个浮点数创建一个新的 FixedPoint 实例
+             * @param value - 输入的浮点数值
+             * @param precision - 指定的精度，默认为 1000
+             * @returns 新的 FixedPoint 实例
+             */
+            FixedPoint.from = function (value, precision) {
+                if (precision === void 0) { precision = 1000; }
+                return new FixedPoint(value, precision);
             };
             return FixedPoint;
         }());
@@ -1097,8 +1294,8 @@ var gs;
                 if (mass === void 0) { mass = new physics.FixedPoint(1); }
                 if (isKinematic === void 0) { isKinematic = false; }
                 this.mass = mass;
-                this.velocity = new physics.Vector2(new physics.FixedPoint(0), new physics.FixedPoint(0));
-                this.acceleration = new physics.Vector2(new physics.FixedPoint(0), new physics.FixedPoint(0));
+                this.velocity = new physics.Vector2();
+                this.acceleration = new physics.Vector2();
                 this.isKinematic = isKinematic;
             };
             RigidBody.prototype.applyForce = function (force) {
@@ -1107,10 +1304,10 @@ var gs;
                 this.acceleration = this.acceleration.add(forceAccel);
             };
             RigidBody.prototype.update = function (deltaTime) {
-                // 更新速度和位置
-                this.velocity = this.velocity.add(new physics.Vector2(this.acceleration.x.mul(deltaTime), this.acceleration.y.mul(deltaTime)));
-                var position = this.entity.getComponent(physics.Transform).position;
-                this.entity.getComponent(physics.Transform).position = position.add(new physics.Vector2(this.velocity.x.mul(deltaTime), this.velocity.y.mul(deltaTime)));
+                this.velocity = this.velocity.add(this.acceleration.mul(deltaTime));
+                var transform = this.entity.getComponent(physics.Transform);
+                // 无论加速度是否为零，都应将速度应用于位置
+                transform.position = transform.position.add(this.velocity.mul(deltaTime));
                 // 重置加速度
                 this.acceleration.set(new physics.FixedPoint(0), new physics.FixedPoint(0));
             };
@@ -1211,7 +1408,7 @@ var gs;
                 this.objectTable.set(obj, keys);
             };
             SpatialHash.prototype.retrieve = function (obj, callback) {
-                var e_8, _a, e_9, _b;
+                var e_11, _a, e_12, _b;
                 var keys = this.objectTable.get(obj);
                 if (keys) {
                     try {
@@ -1225,27 +1422,27 @@ var gs;
                                         callback(obj_1);
                                     }
                                 }
-                                catch (e_9_1) { e_9 = { error: e_9_1 }; }
+                                catch (e_12_1) { e_12 = { error: e_12_1 }; }
                                 finally {
                                     try {
                                         if (bucket_1_1 && !bucket_1_1.done && (_b = bucket_1.return)) _b.call(bucket_1);
                                     }
-                                    finally { if (e_9) throw e_9.error; }
+                                    finally { if (e_12) throw e_12.error; }
                                 }
                             }
                         }
                     }
-                    catch (e_8_1) { e_8 = { error: e_8_1 }; }
+                    catch (e_11_1) { e_11 = { error: e_11_1 }; }
                     finally {
                         try {
                             if (keys_1_1 && !keys_1_1.done && (_a = keys_1.return)) _a.call(keys_1);
                         }
-                        finally { if (e_8) throw e_8.error; }
+                        finally { if (e_11) throw e_11.error; }
                     }
                 }
             };
             SpatialHash.prototype.retrieveAll = function () {
-                var e_10, _a;
+                var e_13, _a;
                 var result = [];
                 try {
                     for (var _b = __values(this.hashTable.values()), _c = _b.next(); !_c.done; _c = _b.next()) {
@@ -1253,17 +1450,17 @@ var gs;
                         result.push.apply(result, __spread(bucket));
                     }
                 }
-                catch (e_10_1) { e_10 = { error: e_10_1 }; }
+                catch (e_13_1) { e_13 = { error: e_13_1 }; }
                 finally {
                     try {
                         if (_c && !_c.done && (_a = _b.return)) _a.call(_b);
                     }
-                    finally { if (e_10) throw e_10.error; }
+                    finally { if (e_13) throw e_13.error; }
                 }
                 return result;
             };
             SpatialHash.prototype.remove = function (obj) {
-                var e_11, _a;
+                var e_14, _a;
                 var keys = this.objectTable.get(obj);
                 if (keys) {
                     try {
@@ -1279,30 +1476,30 @@ var gs;
                             }
                         }
                     }
-                    catch (e_11_1) { e_11 = { error: e_11_1 }; }
+                    catch (e_14_1) { e_14 = { error: e_14_1 }; }
                     finally {
                         try {
                             if (keys_2_1 && !keys_2_1.done && (_a = keys_2.return)) _a.call(keys_2);
                         }
-                        finally { if (e_11) throw e_11.error; }
+                        finally { if (e_14) throw e_14.error; }
                     }
                     this.objectTable.delete(obj);
                 }
             };
             SpatialHash.prototype.clear = function () {
-                var e_12, _a;
+                var e_15, _a;
                 try {
                     for (var _b = __values(this.setPool), _c = _b.next(); !_c.done; _c = _b.next()) {
                         var set = _c.value;
                         set.clear();
                     }
                 }
-                catch (e_12_1) { e_12 = { error: e_12_1 }; }
+                catch (e_15_1) { e_15 = { error: e_15_1 }; }
                 finally {
                     try {
                         if (_c && !_c.done && (_a = _b.return)) _a.call(_b);
                     }
-                    finally { if (e_12) throw e_12.error; }
+                    finally { if (e_15) throw e_15.error; }
                 }
                 this.hashTable.clear();
                 this.objectTable.clear();
@@ -1357,6 +1554,9 @@ var gs;
             Vector2.prototype.div = function (scalar) {
                 return new Vector2(physics.FixedPoint.div(this.x, scalar), physics.FixedPoint.div(this.y, scalar));
             };
+            Vector2.prototype.isZero = function () {
+                return this.x.toFloat() == 0 && this.y.toFloat() == 0;
+            };
             Vector2.prototype.set = function (x, y) {
                 this.x = x;
                 this.y = y;
@@ -1402,11 +1602,11 @@ var gs;
             };
             /** 获取当前向量逆时针旋转90度的垂直向量 */
             Vector2.prototype.perp = function () {
-                return new Vector2(this.y.neg(), this.x);
+                return new Vector2(this.y.negate(), this.x);
             };
             /** 获取当前向量顺时针旋转90度的垂直向量 */
             Vector2.prototype.perpR = function () {
-                return new Vector2(this.y, this.x.neg());
+                return new Vector2(this.y, this.x.negate());
             };
             Vector2.prototype.lengthSq = function () {
                 return this.x.mul(this.x).add(this.y.mul(this.y));
@@ -1416,7 +1616,7 @@ var gs;
             * @returns 矢量反演的结果
             */
             Vector2.prototype.negate = function () {
-                return new Vector2(this.x.neg(), this.y.neg());
+                return new Vector2(this.x.negate(), this.y.negate());
             };
             /**
             * 创建一个包含指定向量反转的新Vector2
@@ -1424,8 +1624,8 @@ var gs;
             * @returns 矢量反演的结果
             */
             Vector2.negate = function (value) {
-                value.x = value.x.neg();
-                value.y = value.y.neg();
+                value.x = value.x.negate();
+                value.y = value.y.negate();
                 return value;
             };
             return Vector2;
@@ -1465,6 +1665,10 @@ var gs;
                 _this.dependencies = [
                     physics.Transform
                 ];
+                _this.collidingEntities = new Set();
+                _this.onCollisionEnter = function () { };
+                _this.onCollisionStay = function () { };
+                _this.onCollisionExit = function () { };
                 return _this;
             }
             Object.defineProperty(Collider.prototype, "transform", {
@@ -1483,6 +1687,39 @@ var gs;
             };
             Collider.prototype.setBounds = function (bounds) {
                 this._bounds = bounds;
+            };
+            Collider.prototype.handleCollision = function (other) {
+                if (!this.collidingEntities.has(other)) {
+                    this.collidingEntities.add(other);
+                    this.onCollisionEnter(other);
+                }
+                else {
+                    this.onCollisionStay(other);
+                }
+            };
+            Collider.prototype.handleCollisionExit = function (other) {
+                if (this.collidingEntities.has(other)) {
+                    this.collidingEntities.delete(other);
+                    this.onCollisionExit(other);
+                }
+            };
+            Collider.prototype.getCollisionNormal = function (other) {
+                var boundsA = this.getBounds();
+                var boundsB = other.getBounds();
+                // 计算两个矩形的中心点
+                var centerA = boundsA.position.add(new physics.Vector2(new physics.FixedPoint(boundsA.width.toFloat() / 2), new physics.FixedPoint(boundsA.height.toFloat() / 2)));
+                var centerB = boundsB.position.add(new physics.Vector2(new physics.FixedPoint(boundsB.width.toFloat() / 2), new physics.FixedPoint(boundsB.height.toFloat() / 2)));
+                // 计算相对位置
+                var relativePosition = centerB.sub(centerA);
+                // 计算相对位置在X和Y方向上的分量，然后比较它们，确定碰撞发生在哪个轴上
+                if (Math.abs(relativePosition.x.toFloat()) > Math.abs(relativePosition.y.toFloat())) {
+                    // 如果X分量更大，那么碰撞发生在X轴上，法线应该是(1, 0)或者(-1, 0)
+                    return new physics.Vector2(new physics.FixedPoint(relativePosition.x.toFloat() > 0 ? 1 : -1), new physics.FixedPoint(0));
+                }
+                else {
+                    // 如果Y分量更大或者相等，那么碰撞发生在Y轴上，法线应该是(0, 1)或者(0, -1)
+                    return new physics.Vector2(new physics.FixedPoint(0), new physics.FixedPoint(relativePosition.y.toFloat() > 0 ? 1 : -1));
+                }
             };
             Collider.prototype.intersects = function (other) {
                 return this.getBounds().intersects(other.getBounds());
@@ -1566,7 +1803,7 @@ var gs;
              * @returns
              */
             BoxBounds.prototype.project = function (direction) {
-                var e_13, _a;
+                var e_16, _a;
                 // 方形的四个顶点
                 var vertices = [
                     this.position,
@@ -1584,12 +1821,12 @@ var gs;
                         max = Math.max(max, dot);
                     }
                 }
-                catch (e_13_1) { e_13 = { error: e_13_1 }; }
+                catch (e_16_1) { e_16 = { error: e_16_1 }; }
                 finally {
                     try {
                         if (vertices_1_1 && !vertices_1_1.done && (_a = vertices_1.return)) _a.call(vertices_1);
                     }
-                    finally { if (e_13) throw e_13.error; }
+                    finally { if (e_16) throw e_16.error; }
                 }
                 return new physics.Projection(min, max);
             };
@@ -1774,7 +2011,7 @@ var gs;
                 return cornerDistanceSq.lte(circle.radius.pow(2));
             };
             IntersectionVisitor.prototype.intersectsPolygonCircle = function (polygon, circle) {
-                var e_14, _a;
+                var e_17, _a;
                 // 找到最近的顶点
                 var minDistanceSq = Infinity;
                 var nearestVertex = null;
@@ -1788,12 +2025,12 @@ var gs;
                         }
                     }
                 }
-                catch (e_14_1) { e_14 = { error: e_14_1 }; }
+                catch (e_17_1) { e_17 = { error: e_17_1 }; }
                 finally {
                     try {
                         if (_c && !_c.done && (_a = _b.return)) _a.call(_b);
                     }
-                    finally { if (e_14) throw e_14.error; }
+                    finally { if (e_17) throw e_17.error; }
                 }
                 // 判断该顶点到圆心的距离是否小于等于圆的半径
                 if (nearestVertex) {
@@ -1804,7 +2041,7 @@ var gs;
                 }
             };
             IntersectionVisitor.prototype.intersectsPolygonBox = function (polygon, box) {
-                var e_15, _a;
+                var e_18, _a;
                 // 四个方向向量，表示方形的四个边
                 var directions = [
                     new physics.Vector2(1, 0),
@@ -1830,12 +2067,12 @@ var gs;
                         }
                     }
                 }
-                catch (e_15_1) { e_15 = { error: e_15_1 }; }
+                catch (e_18_1) { e_18 = { error: e_18_1 }; }
                 finally {
                     try {
                         if (directions_1_1 && !directions_1_1.done && (_a = directions_1.return)) _a.call(directions_1);
                     }
-                    finally { if (e_15) throw e_15.error; }
+                    finally { if (e_18) throw e_18.error; }
                 }
                 // 所有方向上的投影都有重叠，所以多边形和方形相交
                 return true;
@@ -1868,7 +2105,7 @@ var gs;
              * @returns
              */
             PolygonBounds.prototype.getFarthestPointInDirection = function (direction) {
-                var e_16, _a;
+                var e_19, _a;
                 var maxDotProduct = -Infinity;
                 var farthestVertex = null;
                 try {
@@ -1881,12 +2118,12 @@ var gs;
                         }
                     }
                 }
-                catch (e_16_1) { e_16 = { error: e_16_1 }; }
+                catch (e_19_1) { e_19 = { error: e_19_1 }; }
                 finally {
                     try {
                         if (_c && !_c.done && (_a = _b.return)) _a.call(_b);
                     }
-                    finally { if (e_16) throw e_16.error; }
+                    finally { if (e_19) throw e_19.error; }
                 }
                 return farthestVertex;
             };
@@ -1896,7 +2133,7 @@ var gs;
              * @returns
              */
             PolygonBounds.prototype.project = function (direction) {
-                var e_17, _a;
+                var e_20, _a;
                 var min = Infinity;
                 var max = -Infinity;
                 try {
@@ -1907,12 +2144,12 @@ var gs;
                         max = Math.max(max, dot);
                     }
                 }
-                catch (e_17_1) { e_17 = { error: e_17_1 }; }
+                catch (e_20_1) { e_20 = { error: e_20_1 }; }
                 finally {
                     try {
                         if (_c && !_c.done && (_a = _b.return)) _a.call(_b);
                     }
-                    finally { if (e_17) throw e_17.error; }
+                    finally { if (e_20) throw e_20.error; }
                 }
                 return new physics.Projection(min, max);
             };
