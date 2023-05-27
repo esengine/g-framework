@@ -23,9 +23,9 @@ module gs.physics {
                 const collider = entity.getComponent(Collider);
                 if (!collider) continue;
                 const node: DynamicTreeNode = {
-                    children: [], 
-                    height: 0, 
-                    leaf: true, 
+                    children: [],
+                    height: 0,
+                    leaf: true,
                     bounds: collider.getBounds()
                 };
                 boundsArray.push(node);
@@ -43,7 +43,7 @@ module gs.physics {
                     processedPairs = new Set();
                     processed.set(entityId, processedPairs);
                 }
-            
+
                 const candidates = dynamicTree.search(node.bounds);
                 for (const candidate of candidates) {
                     const candidateEntity = nodeEntityMap.get(candidate);
@@ -59,9 +59,18 @@ module gs.physics {
             for (const [entity, candidate] of collisionPairs) {
                 const collider = entity.getComponent(Collider);
                 const collider2 = candidate.getComponent(Collider);
+                const rigidBody = entity.getComponent(RigidBody);
+                const rigidBody2 = candidate.getComponent(RigidBody);
 
                 collider.isColliding = true;
                 collider2.isColliding = true;
+
+                // 如果两个刚体都是动态的，那么将他们拆开并反转他们的速度
+                if (rigidBody && !rigidBody.isKinematic && rigidBody2 && !rigidBody2.isKinematic) {
+                    // 反转速度
+                    rigidBody.velocity = rigidBody.velocity.mul(new FixedPoint(-1));
+                    rigidBody2.velocity = rigidBody2.velocity.mul(new FixedPoint(-1));
+                }
             }
         }
     }

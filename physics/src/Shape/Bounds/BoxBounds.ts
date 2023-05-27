@@ -12,6 +12,32 @@ module gs.physics {
             this.entity = entity;
         }
 
+        /**
+         * 计算方形在指定方向上的投影
+         * @param direction 
+         * @returns 
+         */
+        public project(direction: Vector2): Projection {
+            // 方形的四个顶点
+            const vertices = [
+                this.position,
+                this.position.add(new Vector2(this.width.toFloat(), 0)),
+                this.position.add(new Vector2(this.width.toFloat(), this.height.toFloat())),
+                this.position.add(new Vector2(0, this.height.toFloat())),
+            ];
+
+            let min = Infinity;
+            let max = -Infinity;
+
+            for (let vertex of vertices) {
+                let dot = vertex.dot(direction).toFloat();
+                min = Math.min(min, dot);
+                max = Math.max(max, dot);
+            }
+
+            return new Projection(min, max);
+        }
+
         intersects(other: Bounds): boolean {
             const visitor = new IntersectionVisitor(other);
             this.accept(visitor);
