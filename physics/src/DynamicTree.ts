@@ -3,10 +3,10 @@ module gs.physics {
         private _maxEntries: number;
         private _minEntries: number;
         private compareMinX(a: DynamicTreeNode, b: DynamicTreeNode) { 
-            return a.bounds.position.x.toFloat() - b.bounds.position.x.toFloat(); 
+            return a.bounds.position.x.sub(b.bounds.position.x); 
         }
         private compareMinY(a: DynamicTreeNode, b: DynamicTreeNode) { 
-            return a.bounds.position.y.toFloat() - b.bounds.position.y.toFloat(); 
+            return a.bounds.position.y.sub(b.bounds.position.y); 
         }
         private data: DynamicTreeNode;
 
@@ -249,17 +249,17 @@ module gs.physics {
         
                 if (node.leaf || path.length - 1 === level) break;
         
-                let minArea = Infinity;
-                let minEnlargement = Infinity;
+                let minArea = new FixedPoint(Infinity);
+                let minEnlargement = new FixedPoint(Infinity);
                 let targetNode: DynamicTreeNode;
         
                 for (let i = 0; i < node.children.length; i++) {
                     const child = node.children[i];
                     const area = boundsArea(child);
-                    const enlargement = enlargedArea(bounds, child.bounds) - area;
+                    const enlargement = enlargedArea(bounds, child.bounds).sub(area);
         
                     // 选择面积扩展最小的条目
-                    if (enlargement < minEnlargement) {
+                    if (enlargement.lt(minEnlargement)) {
                         minEnlargement = enlargement;
                         minArea = area < minArea ? area : minArea;
                         targetNode = child;
@@ -338,18 +338,18 @@ module gs.physics {
             M: number
         ): number {
             let index;
-            let minOverlap = Infinity;
-            let minArea = Infinity;
+            let minOverlap = new FixedPoint(Infinity);
+            let minArea = new FixedPoint(Infinity);
 
             for (let i = m; i <= M - m; i++) {
                 const bbox1 = distBounds(node, 0, i, this.toBounds);
                 const bbox2 = distBounds(node, i, M, this.toBounds);
 
                 const overlap = intersectionArea(bbox1.bounds, bbox2.bounds);
-                const area = boundsArea(bbox1) + boundsArea(bbox2);
+                const area = boundsArea(bbox1).add(boundsArea(bbox2));
 
                 // 选择重叠最小的分布
-                if (overlap < minOverlap) {
+                if (overlap.lt(minOverlap)) {
                     minOverlap = overlap;
                     index = i;
 
@@ -370,12 +370,12 @@ module gs.physics {
         private _chooseSplitAxis(node: DynamicTreeNode, m: number, M: number): void {
             const compareMinX = node.leaf ? this.compareMinX : compareNodeMinX;
             const compareMinY = node.leaf ? this.compareMinY : compareNodeMinY;
-            const xMargin = this._allDistMargin(node, m, M, compareMinX);
-            const yMargin = this._allDistMargin(node, m, M, compareMinY);
+            const xMargin = this._allDistMargin(node, m, M, (a, b) => compareMinX(a, b).toFloat());
+            const yMargin = this._allDistMargin(node, m, M, (a, b) => compareMinY(a, b).toFloat());
 
             // 如果总分布边距值对于x最小，则按minX排序，
             // 否则已经按minY排序
-            if (xMargin < yMargin) node.children.sort(compareMinX);
+            if (xMargin < yMargin) node.children.sort((a, b) => compareMinX(a, b).toFloat());
         }
 
         // 所有可能的分布中，每个节点至少为m时的总边距
@@ -384,24 +384,24 @@ module gs.physics {
             m: number,
             M: number,
             compare: (a: DynamicTreeNode, b: DynamicTreeNode) => number
-        ): number {
+        ): FixedPoint {
             node.children.sort(compare);
         
             const toBounds = this.toBounds;
             const leftBounds = distBounds(node, 0, m, toBounds);
             const rightBounds = distBounds(node, M - m, M, toBounds);
-            let margin = boundsMargin(leftBounds) + boundsMargin(rightBounds);
+            let margin = boundsMargin(leftBounds).add(boundsMargin(rightBounds));
         
             for (let i = m; i < M - m; i++) {
                 const child = node.children[i];
                 extend(leftBounds.bounds, node.leaf ? toBounds(child) : child.bounds);
-                margin += boundsMargin(leftBounds);
+                margin = margin.add(boundsMargin(leftBounds));
             }
         
             for (let i = M - m - 1; i >= m; i--) {
                 const child = node.children[i];
                 extend(rightBounds.bounds, node.leaf ? toBounds(child) : child.bounds);
-                margin += boundsMargin(rightBounds);
+                margin = margin.add(boundsMargin(rightBounds));
             }
         
             return margin;

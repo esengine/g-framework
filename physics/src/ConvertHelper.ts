@@ -22,25 +22,25 @@ module gs.physics {
         }
         destNode.bounds = new BoxBounds(Vector2.zero(), new FixedPoint(), new FixedPoint(), null);
 
-        let minX = Infinity;
-        let minY = Infinity;
-        let maxX = -Infinity;
-        let maxY = -Infinity;
+        let minX = FixedPoint.from(Infinity);
+        let minY = FixedPoint.from(Infinity);
+        let maxX = FixedPoint.from(-Infinity);
+        let maxY = FixedPoint.from(-Infinity);
 
         for (let i = k; i < p; i++) {
             const child = node.children[i];
             const bounds = toBounds(child);
-            minX = Math.min(minX, bounds.position.x.toFloat());
-            minY = Math.min(minY, bounds.position.y.toFloat());
-            maxX = Math.max(maxX, bounds.position.x.toFloat() + bounds.width.toFloat());
-            maxY = Math.max(maxY, bounds.position.y.toFloat() + bounds.height.toFloat());
+            minX = FixedPoint.min(minX, bounds.position.x);
+            minY = FixedPoint.min(minY, bounds.position.y);
+            maxX = FixedPoint.max(maxX, bounds.position.x.add(bounds.width));
+            maxY = FixedPoint.max(maxY, bounds.position.y.add(bounds.height));
         }
 
         // 创建一个新的Bounds对象
         const newBounds = new BoxBounds(
-            new Vector2(minX, minY),
-            new FixedPoint(maxX - minX),
-            new FixedPoint(maxY - minY),
+            new Vector2(minX.toFloat(), minY.toFloat()),
+            maxX.sub(minX),
+            maxY.sub(minY),
             destNode.bounds.entity
         );
 
@@ -51,50 +51,50 @@ module gs.physics {
     }
 
     export function extend(a: Bounds, b: Bounds): Bounds {
-        const minX = Math.min(a.position.x.toFloat(), b.position.x.toFloat());
-        const minY = Math.min(a.position.y.toFloat(), b.position.y.toFloat());
-        const maxX = Math.max(a.position.x.toFloat() + a.width.toFloat(), b.position.x.toFloat() + b.width.toFloat());
-        const maxY = Math.max(a.position.y.toFloat() + a.height.toFloat(), b.position.y.toFloat() + b.height.toFloat());
-    
-        a.position.x = new FixedPoint(minX);
-        a.position.y = new FixedPoint(minY);
-        a.width = new FixedPoint(maxX - minX);
-        a.height = new FixedPoint(maxY - minY);
-    
+        const minX = FixedPoint.min(a.position.x, b.position.x);
+        const minY = FixedPoint.min(a.position.y, b.position.y);
+        const maxX = FixedPoint.max(a.position.x.add(a.width), b.position.x.add(b.width));
+        const maxY = FixedPoint.max(a.position.y.add(a.height), b.position.y.add(b.height));
+
+        a.position.x = minX;
+        a.position.y = minY;
+        a.width = maxX.sub(minX);
+        a.height = maxY.sub(minY);
+
         return a;
     }
 
-    export function compareNodeMinX(a: DynamicTreeNode, b: DynamicTreeNode): number {
-        return a.bounds.position.x.toFloat() - b.bounds.position.x.toFloat();
-    }
-    
-    export function compareNodeMinY(a: DynamicTreeNode, b: DynamicTreeNode): number {
-        return a.bounds.position.y.toFloat() - b.bounds.position.y.toFloat();
-    }
-    
-    export function boundsArea(a: DynamicTreeNode): number {
-        const bounds = a.bounds;
-        return bounds.width.toFloat() * bounds.height.toFloat();
-    }
-    
-    export function boundsMargin(a: DynamicTreeNode): number {
-        const bounds = a.bounds;
-        return bounds.width.toFloat() + bounds.height.toFloat();
+    export function compareNodeMinX(a: DynamicTreeNode, b: DynamicTreeNode): FixedPoint {
+        return a.bounds.position.x.sub(b.bounds.position.x);
     }
 
-    export function enlargedArea(a: Bounds, b: Bounds): number {
-        return (Math.max(b.position.x.toFloat() + b.width.toFloat(), a.position.x.toFloat() + a.width.toFloat()) - Math.min(b.position.x.toFloat(), a.position.x.toFloat())) *
-            (Math.max(b.position.y.toFloat() + b.height.toFloat(), a.position.y.toFloat() + a.height.toFloat()) - Math.min(b.position.y.toFloat(), a.position.y.toFloat()));
+    export function compareNodeMinY(a: DynamicTreeNode, b: DynamicTreeNode): FixedPoint {
+        return a.bounds.position.y.sub(b.bounds.position.y);
     }
 
-    export function intersectionArea(a: Bounds, b: Bounds): number {
-        const minX = Math.max(a.position.x.toFloat(), b.position.x.toFloat());
-        const minY = Math.max(a.position.y.toFloat(), b.position.y.toFloat());
-        const maxX = Math.min(a.position.x.toFloat() + a.width.toFloat(), b.position.x.toFloat() + b.width.toFloat());
-        const maxY = Math.min(a.position.y.toFloat() + a.height.toFloat(), b.position.y.toFloat() + b.height.toFloat());
+    export function boundsArea(a: DynamicTreeNode): FixedPoint  {
+        const bounds = a.bounds;
+        return bounds.width.mul(bounds.height);
+    }
+
+    export function boundsMargin(a: DynamicTreeNode): FixedPoint  {
+        const bounds = a.bounds;
+        return bounds.width.add(bounds.height);
+    }
+
+    export function enlargedArea(a: Bounds, b: Bounds): FixedPoint  {
+        return (FixedPoint.max(b.position.x.add(b.width), a.position.x.add(a.width)).sub(FixedPoint.min(b.position.x, a.position.x)))
+        .mul(FixedPoint.max(b.position.y.add(b.height), a.position.y.add(a.height)).sub(FixedPoint.min(b.position.y, a.position.y)));
+    }
+
+    export function intersectionArea(a: Bounds, b: Bounds): FixedPoint  {
+        const minX = FixedPoint.max(a.position.x, b.position.x);
+        const minY = FixedPoint.max(a.position.y, b.position.y);
+        const maxX = FixedPoint.min(a.position.x.add(a.width), b.position.x.add(b.width));
+        const maxY = FixedPoint.min(a.position.y.add(a.height), b.position.y.add(b.height));
     
-        return Math.max(0, maxX - minX) *
-            Math.max(0, maxY - minY);
+        return FixedPoint.max(FixedPoint.from(0), maxX.sub(minX))
+            .mul(FixedPoint.max(FixedPoint.from(0), maxY.sub(minY)));
     }
 
     export function createNode(children: DynamicTreeNode[]): DynamicTreeNode {
@@ -105,9 +105,9 @@ module gs.physics {
             bounds: new BoxBounds(Vector2.zero(), new FixedPoint(), new FixedPoint(), null)
         };
     }
-    
 
-    export function multiSelect<T>(arr: T[], left: number, right: number, n: number, compare: (a: T, b: T) => number): void {
+
+    export function multiSelect<T>(arr: T[], left: number, right: number, n: number, compare: (a: T, b: T) => FixedPoint): void {
         const stack = [left, right];
 
         while (stack.length) {
@@ -125,7 +125,7 @@ module gs.physics {
         }
     }
 
-    export function quickselect<T>(arr: T[], k: number, left: number, right: number, compare: (a: T, b: T) => number): void {
+    export function quickselect<T>(arr: T[], k: number, left: number, right: number, compare: (a: T, b: T) => FixedPoint): void {
         while (right > left) {
             if (right - left > 600) {
                 const n = right - left + 1;
@@ -143,7 +143,7 @@ module gs.physics {
             let j = right;
 
             swap(arr, left, k);
-            if (compare(arr[right], t) > 0) {
+            if (compare(arr[right], t).gt(0)) {
                 swap(arr, left, right);
             }
 
@@ -151,15 +151,15 @@ module gs.physics {
                 swap(arr, i, j);
                 i++;
                 j--;
-                while (compare(arr[i], t) < 0) {
+                while (compare(arr[i], t).lt(0)) {
                     i++;
                 }
-                while (compare(arr[j], t) > 0) {
+                while (compare(arr[j], t).gt(0)) {
                     j--;
                 }
             }
 
-            if (compare(arr[left], t) === 0) {
+            if (compare(arr[left], t).equals(0)) {
                 swap(arr, left, j);
             } else {
                 j++;

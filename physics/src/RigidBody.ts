@@ -11,8 +11,8 @@ module gs.physics {
 
         onInitialize(mass: FixedPoint = new FixedPoint(1), isKinematic: boolean = false) {
             this.mass = mass;
-            this.velocity = new Vector2(new FixedPoint(0), new FixedPoint(0));
-            this.acceleration = new Vector2(new FixedPoint(0), new FixedPoint(0));
+            this.velocity = new Vector2();
+            this.acceleration = new Vector2();
             this.isKinematic = isKinematic;
         }
 
@@ -22,11 +22,12 @@ module gs.physics {
             this.acceleration = this.acceleration.add(forceAccel);
         }
 
-        update(deltaTime: FixedPoint): void {
-            // 更新速度和位置
-            this.velocity = this.velocity.add(new Vector2(this.acceleration.x.mul(deltaTime), this.acceleration.y.mul(deltaTime)));
-            const position = this.entity.getComponent(Transform).position;
-            this.entity.getComponent(Transform).position = position.add(new Vector2(this.velocity.x.mul(deltaTime), this.velocity.y.mul(deltaTime)));
+        update(deltaTime: number): void {
+            this.velocity = this.velocity.add(this.acceleration.mul(deltaTime));
+            
+            const transform = this.entity.getComponent(Transform);
+            // 无论加速度是否为零，都应将速度应用于位置
+            transform.position = transform.position.add(this.velocity.mul(deltaTime));
 
             // 重置加速度
             this.acceleration.set(new FixedPoint(0), new FixedPoint(0));
