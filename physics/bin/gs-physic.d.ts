@@ -118,6 +118,8 @@ declare module gs.physics {
         sub(other: FixedPoint | number): FixedPoint;
         mul(other: FixedPoint | number): FixedPoint;
         div(other: FixedPoint | number): FixedPoint;
+        abs(): FixedPoint;
+        pow(exponent: number): FixedPoint;
         lt(other: FixedPoint | number): boolean;
         gt(other: FixedPoint | number): boolean;
         gte(other: FixedPoint | number): boolean;
@@ -131,6 +133,14 @@ declare module gs.physics {
         static max(a: FixedPoint, b: FixedPoint): FixedPoint;
         static min(a: FixedPoint, b: FixedPoint): FixedPoint;
         static from(value: number | string): FixedPoint;
+    }
+}
+declare module gs.physics {
+    class Projection {
+        min: number;
+        max: number;
+        constructor(min: number, max: number);
+        overlaps(other: Projection): boolean;
     }
 }
 declare module gs.physics {
@@ -216,6 +226,7 @@ declare module gs.physics {
         perp(): Vector2;
         /** 获取当前向量顺时针旋转90度的垂直向量 */
         perpR(): Vector2;
+        lengthSq(): FixedPoint;
         /**
         * 创建一个包含指定向量反转的新Vector2
         * @returns 矢量反演的结果
@@ -293,6 +304,12 @@ declare module gs.physics {
         height: FixedPoint;
         entity: Entity;
         constructor(position: Vector2, width: FixedPoint, height: FixedPoint, entity: Entity);
+        /**
+         * 计算方形在指定方向上的投影
+         * @param direction
+         * @returns
+         */
+        project(direction: Vector2): Projection;
         intersects(other: Bounds): boolean;
         contains(other: Bounds): boolean;
         accept(visitor: BoundsVisitor): void;
@@ -331,6 +348,8 @@ declare module gs.physics {
         visitCircle(circle: CircleBounds): void;
         visitPolygon(polygon: PolygonBounds): void;
         intersectsBoxCircle(box: BoxBounds, circle: CircleBounds): boolean;
+        intersectsPolygonCircle(polygon: PolygonBounds, circle: CircleBounds): boolean;
+        intersectsPolygonBox(polygon: PolygonBounds, box: BoxBounds): boolean;
         getResult(): boolean;
     }
 }
@@ -341,12 +360,20 @@ declare module gs.physics {
         width: FixedPoint;
         height: FixedPoint;
         entity: Entity;
+        readonly vertices: Vector2[];
         /**
          * 提供一个方向，返回多边形在该方向上的最远点
          * @param direction
          * @returns
          */
         getFarthestPointInDirection(direction: Vector2): Vector2;
+        /**
+         * 计算多边形在指定方向上的投影
+         * @param direction
+         * @returns
+         */
+        project(direction: Vector2): Projection;
+        containsPoint(point: Vector2): boolean;
         intersects(other: Bounds): boolean;
         contains(other: Bounds): boolean;
         accept(visitor: BoundsVisitor): void;

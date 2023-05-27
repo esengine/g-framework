@@ -90,6 +90,10 @@ module gs.physics {
             return new Vector2(this.y, this.x.neg());
         }
 
+        lengthSq(): FixedPoint {
+            return this.x.mul(this.x).add(this.y.mul(this.y));
+        }
+
         /**
         * 创建一个包含指定向量反转的新Vector2
         * @returns 矢量反演的结果

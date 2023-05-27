@@ -18,11 +18,11 @@ module gs.physics {
                         closestEdge = edge;
                     }
                 }
-    
+
                 // 2. 计算该边的法线方向，并求解support点
                 let normal = closestEdge.pointB.sub(closestEdge.pointA).perp();
                 let newPoint = this.support(normal);
-    
+
                 // 3. 检查新的support点是否带来了明显的改进
                 let improvement = newPoint.sub(closestEdge.pointA).dot(normal);
                 if (improvement.lte(0) || newPoint.distanceTo(Vector2.zero()).sub(closestEdge.distance).lte(0)) {
@@ -64,7 +64,7 @@ module gs.physics {
                 let A = simplex.vertices[0];
                 let AO = A.negate();
                 let AB = B.sub(A);
-        
+
                 // 更新方向
                 if (AB.cross(AO).gt(0)) {
                     // 右手侧
@@ -82,7 +82,7 @@ module gs.physics {
                 let AB = B.sub(A);
                 let AC = C.sub(A);
                 let ABC = AB.cross(AC);
-        
+
                 // 更新方向
                 if (AB.cross(AO).gt(0)) {
                     // 在AB边的外侧
@@ -97,12 +97,43 @@ module gs.physics {
                     return true;
                 }
             }
-        
+
             return false;
         }
-        
+
         private addPointToPolytope(edges: Edge[], newPoint: Vector2) {
-            // TODO: 添加新点到多边形，并更新边
+            let edgesToRemove = [];
+
+            for (let i = 0; i < edges.length; i++) {
+                let edge = edges[i];
+                let A = edge.pointA;
+                let B = edge.pointB;
+
+                let AB = B.sub(A);
+                let AP = newPoint.sub(A);
+
+                // 计算叉积
+                let crossProduct = AB.cross(AP);
+
+                // 如果叉积大于0，新点在边AB的逆时针方向
+                if (crossProduct.gt(0)) {
+                    edgesToRemove.push(edge);
+                }
+            }
+
+            // 移除所有新点在逆时针方向上的边
+            for (let edge of edgesToRemove) {
+                let index = edges.indexOf(edge);
+                if (index !== -1) {
+                    edges.splice(index, 1);
+                }
+            }
+
+            // 对于每条被移除的边，从其顶点到新点创建两条新边
+            for (let edge of edgesToRemove) {
+                edges.push(new Edge(edge.point1, newPoint));
+                edges.push(new Edge(newPoint, edge.point2));
+            }
         }
 
         private support(direction: Vector2): Vector2 {

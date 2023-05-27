@@ -44,7 +44,12 @@ module gs.physics {
         }
 
         visitPolygon(polygon: PolygonBounds): void {
-            
+            if (this.other instanceof PolygonBounds) {
+                const otherPolygon = this.other;
+                this.result = otherPolygon.vertices.every((point) => {
+                    return polygon.containsPoint(point);
+                });
+            }
         }
 
         getResult(): boolean {

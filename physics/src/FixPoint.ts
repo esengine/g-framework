@@ -48,6 +48,17 @@ module gs.physics {
             return result;
         }
 
+        abs(): FixedPoint {
+            const result = new FixedPoint(0, this.precision);
+            result.rawValue = Math.abs(this.rawValue);
+            return result;
+        }
+
+        pow(exponent: number): FixedPoint {
+            const floatResult = Math.pow(this.toFloat(), exponent);
+            return FixedPoint.from(floatResult);
+        }
+
         lt(other: FixedPoint | number): boolean {
             if (other instanceof FixedPoint) {
                 return this.rawValue < other.rawValue;

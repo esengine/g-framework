@@ -147,7 +147,53 @@ var gs;
                 return false;
             };
             CollisionDetector.prototype.addPointToPolytope = function (edges, newPoint) {
-                // TODO: 添加新点到多边形，并更新边
+                var e_2, _a, e_3, _b;
+                var edgesToRemove = [];
+                for (var i = 0; i < edges.length; i++) {
+                    var edge = edges[i];
+                    var A = edge.pointA;
+                    var B = edge.pointB;
+                    var AB = B.sub(A);
+                    var AP = newPoint.sub(A);
+                    // 计算叉积
+                    var crossProduct = AB.cross(AP);
+                    // 如果叉积大于0，新点在边AB的逆时针方向
+                    if (crossProduct.gt(0)) {
+                        edgesToRemove.push(edge);
+                    }
+                }
+                try {
+                    // 移除所有新点在逆时针方向上的边
+                    for (var edgesToRemove_1 = __values(edgesToRemove), edgesToRemove_1_1 = edgesToRemove_1.next(); !edgesToRemove_1_1.done; edgesToRemove_1_1 = edgesToRemove_1.next()) {
+                        var edge = edgesToRemove_1_1.value;
+                        var index = edges.indexOf(edge);
+                        if (index !== -1) {
+                            edges.splice(index, 1);
+                        }
+                    }
+                }
+                catch (e_2_1) { e_2 = { error: e_2_1 }; }
+                finally {
+                    try {
+                        if (edgesToRemove_1_1 && !edgesToRemove_1_1.done && (_a = edgesToRemove_1.return)) _a.call(edgesToRemove_1);
+                    }
+                    finally { if (e_2) throw e_2.error; }
+                }
+                try {
+                    // 对于每条被移除的边，从其顶点到新点创建两条新边
+                    for (var edgesToRemove_2 = __values(edgesToRemove), edgesToRemove_2_1 = edgesToRemove_2.next(); !edgesToRemove_2_1.done; edgesToRemove_2_1 = edgesToRemove_2.next()) {
+                        var edge = edgesToRemove_2_1.value;
+                        edges.push(new physics.Edge(edge.point1, newPoint));
+                        edges.push(new physics.Edge(newPoint, edge.point2));
+                    }
+                }
+                catch (e_3_1) { e_3 = { error: e_3_1 }; }
+                finally {
+                    try {
+                        if (edgesToRemove_2_1 && !edgesToRemove_2_1.done && (_b = edgesToRemove_2.return)) _b.call(edgesToRemove_2);
+                    }
+                    finally { if (e_3) throw e_3.error; }
+                }
             };
             CollisionDetector.prototype.support = function (direction) {
                 var pointOnShape1 = this.shape1.getFarthestPointInDirection(direction);
@@ -225,7 +271,7 @@ var gs;
                 return _this;
             }
             CollisionResponseSystem.prototype.update = function (entities) {
-                var e_2, _a, e_3, _b, e_4, _c, e_5, _d;
+                var e_4, _a, e_5, _b, e_6, _c, e_7, _d;
                 var _e = this, dynamicTree = _e.dynamicTree, processed = _e.processed, collisionPairs = _e.collisionPairs;
                 dynamicTree.clear();
                 processed.clear();
@@ -249,12 +295,12 @@ var gs;
                         collider.isColliding = false;
                     }
                 }
-                catch (e_2_1) { e_2 = { error: e_2_1 }; }
+                catch (e_4_1) { e_4 = { error: e_4_1 }; }
                 finally {
                     try {
                         if (entities_1_1 && !entities_1_1.done && (_a = entities_1.return)) _a.call(entities_1);
                     }
-                    finally { if (e_2) throw e_2.error; }
+                    finally { if (e_4) throw e_4.error; }
                 }
                 dynamicTree.load(boundsArray);
                 try {
@@ -280,21 +326,21 @@ var gs;
                                 processedPairs.add(candidateId);
                             }
                         }
-                        catch (e_4_1) { e_4 = { error: e_4_1 }; }
+                        catch (e_6_1) { e_6 = { error: e_6_1 }; }
                         finally {
                             try {
                                 if (candidates_1_1 && !candidates_1_1.done && (_c = candidates_1.return)) _c.call(candidates_1);
                             }
-                            finally { if (e_4) throw e_4.error; }
+                            finally { if (e_6) throw e_6.error; }
                         }
                     }
                 }
-                catch (e_3_1) { e_3 = { error: e_3_1 }; }
+                catch (e_5_1) { e_5 = { error: e_5_1 }; }
                 finally {
                     try {
                         if (boundsArray_1_1 && !boundsArray_1_1.done && (_b = boundsArray_1.return)) _b.call(boundsArray_1);
                     }
-                    finally { if (e_3) throw e_3.error; }
+                    finally { if (e_5) throw e_5.error; }
                 }
                 try {
                     for (var collisionPairs_1 = __values(collisionPairs), collisionPairs_1_1 = collisionPairs_1.next(); !collisionPairs_1_1.done; collisionPairs_1_1 = collisionPairs_1.next()) {
@@ -313,12 +359,12 @@ var gs;
                         }
                     }
                 }
-                catch (e_5_1) { e_5 = { error: e_5_1 }; }
+                catch (e_7_1) { e_7 = { error: e_7_1 }; }
                 finally {
                     try {
                         if (collisionPairs_1_1 && !collisionPairs_1_1.done && (_d = collisionPairs_1.return)) _d.call(collisionPairs_1);
                     }
-                    finally { if (e_5) throw e_5.error; }
+                    finally { if (e_7) throw e_7.error; }
                 }
             };
             return CollisionResponseSystem;
@@ -913,6 +959,15 @@ var gs;
                 }
                 return result;
             };
+            FixedPoint.prototype.abs = function () {
+                var result = new FixedPoint(0, this.precision);
+                result.rawValue = Math.abs(this.rawValue);
+                return result;
+            };
+            FixedPoint.prototype.pow = function (exponent) {
+                var floatResult = Math.pow(this.toFloat(), exponent);
+                return FixedPoint.from(floatResult);
+            };
             FixedPoint.prototype.lt = function (other) {
                 if (other instanceof FixedPoint) {
                     return this.rawValue < other.rawValue;
@@ -1006,6 +1061,23 @@ var gs;
             return FixedPoint;
         }());
         physics.FixedPoint = FixedPoint;
+    })(physics = gs.physics || (gs.physics = {}));
+})(gs || (gs = {}));
+var gs;
+(function (gs) {
+    var physics;
+    (function (physics) {
+        var Projection = /** @class */ (function () {
+            function Projection(min, max) {
+                this.min = min;
+                this.max = max;
+            }
+            Projection.prototype.overlaps = function (other) {
+                return this.max >= other.min && this.min <= other.max;
+            };
+            return Projection;
+        }());
+        physics.Projection = Projection;
     })(physics = gs.physics || (gs.physics = {}));
 })(gs || (gs = {}));
 var gs;
@@ -1139,7 +1211,7 @@ var gs;
                 this.objectTable.set(obj, keys);
             };
             SpatialHash.prototype.retrieve = function (obj, callback) {
-                var e_6, _a, e_7, _b;
+                var e_8, _a, e_9, _b;
                 var keys = this.objectTable.get(obj);
                 if (keys) {
                     try {
@@ -1153,27 +1225,27 @@ var gs;
                                         callback(obj_1);
                                     }
                                 }
-                                catch (e_7_1) { e_7 = { error: e_7_1 }; }
+                                catch (e_9_1) { e_9 = { error: e_9_1 }; }
                                 finally {
                                     try {
                                         if (bucket_1_1 && !bucket_1_1.done && (_b = bucket_1.return)) _b.call(bucket_1);
                                     }
-                                    finally { if (e_7) throw e_7.error; }
+                                    finally { if (e_9) throw e_9.error; }
                                 }
                             }
                         }
                     }
-                    catch (e_6_1) { e_6 = { error: e_6_1 }; }
+                    catch (e_8_1) { e_8 = { error: e_8_1 }; }
                     finally {
                         try {
                             if (keys_1_1 && !keys_1_1.done && (_a = keys_1.return)) _a.call(keys_1);
                         }
-                        finally { if (e_6) throw e_6.error; }
+                        finally { if (e_8) throw e_8.error; }
                     }
                 }
             };
             SpatialHash.prototype.retrieveAll = function () {
-                var e_8, _a;
+                var e_10, _a;
                 var result = [];
                 try {
                     for (var _b = __values(this.hashTable.values()), _c = _b.next(); !_c.done; _c = _b.next()) {
@@ -1181,17 +1253,17 @@ var gs;
                         result.push.apply(result, __spread(bucket));
                     }
                 }
-                catch (e_8_1) { e_8 = { error: e_8_1 }; }
+                catch (e_10_1) { e_10 = { error: e_10_1 }; }
                 finally {
                     try {
                         if (_c && !_c.done && (_a = _b.return)) _a.call(_b);
                     }
-                    finally { if (e_8) throw e_8.error; }
+                    finally { if (e_10) throw e_10.error; }
                 }
                 return result;
             };
             SpatialHash.prototype.remove = function (obj) {
-                var e_9, _a;
+                var e_11, _a;
                 var keys = this.objectTable.get(obj);
                 if (keys) {
                     try {
@@ -1207,30 +1279,30 @@ var gs;
                             }
                         }
                     }
-                    catch (e_9_1) { e_9 = { error: e_9_1 }; }
+                    catch (e_11_1) { e_11 = { error: e_11_1 }; }
                     finally {
                         try {
                             if (keys_2_1 && !keys_2_1.done && (_a = keys_2.return)) _a.call(keys_2);
                         }
-                        finally { if (e_9) throw e_9.error; }
+                        finally { if (e_11) throw e_11.error; }
                     }
                     this.objectTable.delete(obj);
                 }
             };
             SpatialHash.prototype.clear = function () {
-                var e_10, _a;
+                var e_12, _a;
                 try {
                     for (var _b = __values(this.setPool), _c = _b.next(); !_c.done; _c = _b.next()) {
                         var set = _c.value;
                         set.clear();
                     }
                 }
-                catch (e_10_1) { e_10 = { error: e_10_1 }; }
+                catch (e_12_1) { e_12 = { error: e_12_1 }; }
                 finally {
                     try {
                         if (_c && !_c.done && (_a = _b.return)) _a.call(_b);
                     }
-                    finally { if (e_10) throw e_10.error; }
+                    finally { if (e_12) throw e_12.error; }
                 }
                 this.hashTable.clear();
                 this.objectTable.clear();
@@ -1335,6 +1407,9 @@ var gs;
             /** 获取当前向量顺时针旋转90度的垂直向量 */
             Vector2.prototype.perpR = function () {
                 return new Vector2(this.y, this.x.neg());
+            };
+            Vector2.prototype.lengthSq = function () {
+                return this.x.mul(this.x).add(this.y.mul(this.y));
             };
             /**
             * 创建一个包含指定向量反转的新Vector2
@@ -1485,6 +1560,39 @@ var gs;
                 this.height = height;
                 this.entity = entity;
             }
+            /**
+             * 计算方形在指定方向上的投影
+             * @param direction
+             * @returns
+             */
+            BoxBounds.prototype.project = function (direction) {
+                var e_13, _a;
+                // 方形的四个顶点
+                var vertices = [
+                    this.position,
+                    this.position.add(new physics.Vector2(this.width.toFloat(), 0)),
+                    this.position.add(new physics.Vector2(this.width.toFloat(), this.height.toFloat())),
+                    this.position.add(new physics.Vector2(0, this.height.toFloat())),
+                ];
+                var min = Infinity;
+                var max = -Infinity;
+                try {
+                    for (var vertices_1 = __values(vertices), vertices_1_1 = vertices_1.next(); !vertices_1_1.done; vertices_1_1 = vertices_1.next()) {
+                        var vertex = vertices_1_1.value;
+                        var dot = vertex.dot(direction).toFloat();
+                        min = Math.min(min, dot);
+                        max = Math.max(max, dot);
+                    }
+                }
+                catch (e_13_1) { e_13 = { error: e_13_1 }; }
+                finally {
+                    try {
+                        if (vertices_1_1 && !vertices_1_1.done && (_a = vertices_1.return)) _a.call(vertices_1);
+                    }
+                    finally { if (e_13) throw e_13.error; }
+                }
+                return new physics.Projection(min, max);
+            };
             BoxBounds.prototype.intersects = function (other) {
                 var visitor = new physics.IntersectionVisitor(other);
                 this.accept(visitor);
@@ -1578,6 +1686,12 @@ var gs;
                 }
             };
             ContainVisitor.prototype.visitPolygon = function (polygon) {
+                if (this.other instanceof physics.PolygonBounds) {
+                    var otherPolygon = this.other;
+                    this.result = otherPolygon.vertices.every(function (point) {
+                        return polygon.containsPoint(point);
+                    });
+                }
             };
             ContainVisitor.prototype.getResult = function () {
                 return this.result;
@@ -1599,13 +1713,16 @@ var gs;
             IntersectionVisitor.prototype.visitBox = function (box) {
                 if (this.other instanceof physics.BoxBounds) {
                     var otherBox = this.other;
-                    this.result = !(box.position.x.toFloat() + box.width.toFloat() < otherBox.position.x.toFloat() ||
-                        otherBox.position.x.toFloat() + otherBox.width.toFloat() < box.position.x.toFloat() ||
-                        box.position.y.toFloat() + box.height.toFloat() < otherBox.position.y.toFloat() ||
-                        otherBox.position.y.toFloat() + otherBox.height.toFloat() < box.position.y.toFloat());
+                    this.result = !(box.position.x.add(box.width).lt(otherBox.position.x) ||
+                        otherBox.position.x.add(otherBox.width).lt(box.position.x) ||
+                        box.position.y.add(box.height).lt(otherBox.position.y) ||
+                        otherBox.position.y.add(otherBox.height).lt(box.position.y));
                 }
                 else if (this.other instanceof physics.CircleBounds) {
                     this.result = this.intersectsBoxCircle(box, this.other);
+                }
+                else if (this.other instanceof physics.PolygonBounds) {
+                    this.result = this.intersectsPolygonBox(this.other, box);
                 }
             };
             IntersectionVisitor.prototype.visitCircle = function (circle) {
@@ -1619,35 +1736,109 @@ var gs;
                 else if (this.other instanceof physics.BoxBounds) {
                     this.result = this.intersectsBoxCircle(this.other, circle);
                 }
+                else if (this.other instanceof physics.PolygonBounds) {
+                    this.result = this.intersectsPolygonCircle(this.other, circle);
+                }
             };
             IntersectionVisitor.prototype.visitPolygon = function (polygon) {
                 if (this.other instanceof physics.PolygonBounds) {
+                    var otherPolygon = this.other;
+                    var detector = new physics.CollisionDetector(polygon, otherPolygon);
+                    this.result = detector.gjk();
                 }
                 else if (this.other instanceof physics.CircleBounds) {
                     // 处理多边形与圆形的相交
+                    this.result = this.intersectsPolygonCircle(polygon, this.other);
                 }
                 else if (this.other instanceof physics.BoxBounds) {
                     // 处理多边形与方形的相交
+                    this.result = this.intersectsPolygonBox(polygon, this.other);
                 }
             };
             IntersectionVisitor.prototype.intersectsBoxCircle = function (box, circle) {
-                var circleDistanceX = Math.abs(circle.position.x.toFloat() - box.position.x.toFloat() - box.width.toFloat() / 2);
-                var circleDistanceY = Math.abs(circle.position.y.toFloat() - box.position.y.toFloat() - box.height.toFloat() / 2);
-                if (circleDistanceX > (box.width.toFloat() / 2 + circle.radius.toFloat())) {
+                var circleDistanceX = circle.position.x.sub(box.position.x.add(box.width.div(2))).abs();
+                var circleDistanceY = circle.position.y.sub(box.position.y.add(box.height.div(2))).abs();
+                if (circleDistanceX.gt(box.width.div(2).add(circle.radius))) {
                     return false;
                 }
-                if (circleDistanceY > (box.height.toFloat() / 2 + circle.radius.toFloat())) {
+                if (circleDistanceY.gt(box.height.div(2).add(circle.radius))) {
                     return false;
                 }
-                if (circleDistanceX <= (box.width.toFloat() / 2)) {
+                if (circleDistanceX.lte(box.width.div(2))) {
                     return true;
                 }
-                if (circleDistanceY <= (box.height.toFloat() / 2)) {
+                if (circleDistanceY.lte(box.height.div(2))) {
                     return true;
                 }
-                var cornerDistanceSq = Math.pow(circleDistanceX - box.width.toFloat() / 2, 2) +
-                    Math.pow(circleDistanceY - box.height.toFloat() / 2, 2);
-                return (cornerDistanceSq <= Math.pow(circle.radius.toFloat(), 2));
+                var cornerDistanceSq = circleDistanceX.sub(box.width.div(2)).pow(2).add(circleDistanceY.sub(box.height.div(2)).pow(2));
+                return cornerDistanceSq.lte(circle.radius.pow(2));
+            };
+            IntersectionVisitor.prototype.intersectsPolygonCircle = function (polygon, circle) {
+                var e_14, _a;
+                // 找到最近的顶点
+                var minDistanceSq = Infinity;
+                var nearestVertex = null;
+                try {
+                    for (var _b = __values(polygon.vertices), _c = _b.next(); !_c.done; _c = _b.next()) {
+                        var vertex = _c.value;
+                        var distanceSq = vertex.sub(circle.position).lengthSq().toFloat();
+                        if (distanceSq < minDistanceSq) {
+                            minDistanceSq = distanceSq;
+                            nearestVertex = vertex;
+                        }
+                    }
+                }
+                catch (e_14_1) { e_14 = { error: e_14_1 }; }
+                finally {
+                    try {
+                        if (_c && !_c.done && (_a = _b.return)) _a.call(_b);
+                    }
+                    finally { if (e_14) throw e_14.error; }
+                }
+                // 判断该顶点到圆心的距离是否小于等于圆的半径
+                if (nearestVertex) {
+                    return nearestVertex.sub(circle.position).lengthSq().toFloat() <= Math.pow(circle.radius.toFloat(), 2);
+                }
+                else {
+                    return false;
+                }
+            };
+            IntersectionVisitor.prototype.intersectsPolygonBox = function (polygon, box) {
+                var e_15, _a;
+                // 四个方向向量，表示方形的四个边
+                var directions = [
+                    new physics.Vector2(1, 0),
+                    new physics.Vector2(0, 1),
+                    new physics.Vector2(-1, 0),
+                    new physics.Vector2(0, -1) // 下
+                ];
+                // 添加多边形的每条边的方向向量
+                for (var i = 0; i < polygon.vertices.length; i++) {
+                    var vertex1 = polygon.vertices[i];
+                    var vertex2 = polygon.vertices[(i + 1) % polygon.vertices.length]; // 下一个顶点，考虑到最后一个顶点和第一个顶点的边
+                    var edge = vertex2.sub(vertex1);
+                    directions.push(edge.normalize().perp()); // 取这条边的单位法线向量
+                }
+                try {
+                    // 对每个方向进行投影检查
+                    for (var directions_1 = __values(directions), directions_1_1 = directions_1.next(); !directions_1_1.done; directions_1_1 = directions_1.next()) {
+                        var direction = directions_1_1.value;
+                        var polygonProjection = polygon.project(direction);
+                        var boxProjection = box.project(direction);
+                        if (!polygonProjection.overlaps(boxProjection)) { // 如果在某个方向上的投影没有重叠，那么多边形和方形不相交
+                            return false;
+                        }
+                    }
+                }
+                catch (e_15_1) { e_15 = { error: e_15_1 }; }
+                finally {
+                    try {
+                        if (directions_1_1 && !directions_1_1.done && (_a = directions_1.return)) _a.call(directions_1);
+                    }
+                    finally { if (e_15) throw e_15.error; }
+                }
+                // 所有方向上的投影都有重叠，所以多边形和方形相交
+                return true;
             };
             IntersectionVisitor.prototype.getResult = function () {
                 return this.result;
@@ -1664,13 +1855,20 @@ var gs;
         var PolygonBounds = /** @class */ (function () {
             function PolygonBounds() {
             }
+            Object.defineProperty(PolygonBounds.prototype, "vertices", {
+                get: function () {
+                    return this._vertices;
+                },
+                enumerable: true,
+                configurable: true
+            });
             /**
              * 提供一个方向，返回多边形在该方向上的最远点
              * @param direction
              * @returns
              */
             PolygonBounds.prototype.getFarthestPointInDirection = function (direction) {
-                var e_11, _a;
+                var e_16, _a;
                 var maxDotProduct = -Infinity;
                 var farthestVertex = null;
                 try {
@@ -1683,14 +1881,53 @@ var gs;
                         }
                     }
                 }
-                catch (e_11_1) { e_11 = { error: e_11_1 }; }
+                catch (e_16_1) { e_16 = { error: e_16_1 }; }
                 finally {
                     try {
                         if (_c && !_c.done && (_a = _b.return)) _a.call(_b);
                     }
-                    finally { if (e_11) throw e_11.error; }
+                    finally { if (e_16) throw e_16.error; }
                 }
                 return farthestVertex;
+            };
+            /**
+             * 计算多边形在指定方向上的投影
+             * @param direction
+             * @returns
+             */
+            PolygonBounds.prototype.project = function (direction) {
+                var e_17, _a;
+                var min = Infinity;
+                var max = -Infinity;
+                try {
+                    for (var _b = __values(this._vertices), _c = _b.next(); !_c.done; _c = _b.next()) {
+                        var vertex = _c.value;
+                        var dot = vertex.dot(direction).toFloat();
+                        min = Math.min(min, dot);
+                        max = Math.max(max, dot);
+                    }
+                }
+                catch (e_17_1) { e_17 = { error: e_17_1 }; }
+                finally {
+                    try {
+                        if (_c && !_c.done && (_a = _b.return)) _a.call(_b);
+                    }
+                    finally { if (e_17) throw e_17.error; }
+                }
+                return new physics.Projection(min, max);
+            };
+            PolygonBounds.prototype.containsPoint = function (point) {
+                var inside = false;
+                var x = point.x.toFloat(), y = point.y.toFloat();
+                for (var i = 0, j = this._vertices.length - 1; i < this._vertices.length; j = i++) {
+                    var xi = this._vertices[i].x.toFloat(), yi = this._vertices[i].y.toFloat();
+                    var xj = this._vertices[j].x.toFloat(), yj = this._vertices[j].y.toFloat();
+                    var intersect = ((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+                    if (intersect) {
+                        inside = !inside;
+                    }
+                }
+                return inside;
             };
             PolygonBounds.prototype.intersects = function (other) {
                 var visitor = new physics.IntersectionVisitor(other);
