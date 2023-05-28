@@ -5,7 +5,7 @@ module gs.physics {
         private collisionPairs: [Entity, Entity][] = [];
 
         constructor(entityManager: EntityManager, updateInterval: number) {
-            super(entityManager, 0, Matcher.empty().all(RigidBody, Collider));
+            super(entityManager, 0, Matcher.empty().all(RigidBody, Collider, Transform));
             this.dynamicTree = new DynamicTree();
             this.updateInterval = updateInterval;
         }
@@ -30,11 +30,13 @@ module gs.physics {
             for (const entity of entities) {
                 const collider = entity.getComponent(Collider);
                 const rigidBody = entity.getComponent(RigidBody);
+                const transform = entity.getComponent(Transform);
 
                 if (rigidBody && !rigidBody.isKinematic) {
                     rigidBody.update(deltaTime);
                 }
 
+                rigidBody.lastPosition = transform.position;
                 const node: DynamicTreeNode = {
                     children: [],
                     height: 0,
@@ -88,19 +90,25 @@ module gs.physics {
         }
 
         private resolveCollisions(): void {
+            const penetrationResolutionFactor = new FixedPoint(0.8);
+
             for (const [entity, candidate] of this.collisionPairs) {
                 const collider = entity.getComponent(Collider);
                 const collider2 = candidate.getComponent(Collider);
-
-                collider.handleCollision(candidate);
-                collider2.handleCollision(entity);
 
                 const rigidBody = entity.getComponent(RigidBody);
                 const rigidBody2 = candidate.getComponent(RigidBody);
 
                 if (rigidBody && !rigidBody.isKinematic && rigidBody2 && !rigidBody2.isKinematic) {
-                    this.resolveDynamicCollision(rigidBody, rigidBody2, collider, collider2);
+                    const { penetrationDepth, collisionNormal } = collider.calculatePenetrationDepthAndNormal(collider2);
+                    if (penetrationDepth && collisionNormal) {
+                        this.resolvePBD(rigidBody, rigidBody2, penetrationDepth, collisionNormal, penetrationResolutionFactor);
+                        this.resolveDynamicCollision(rigidBody, rigidBody2, collisionNormal);
+                    }
                 }
+
+                collider.handleCollision(candidate);
+                collider2.handleCollision(entity);
             }
 
             this.handleCollisionExits();
@@ -124,11 +132,8 @@ module gs.physics {
         private resolveDynamicCollision(
             rigidBody: RigidBody,
             rigidBody2: RigidBody,
-            collider: Collider,
-            collider2: Collider
+            collisionNormal: Vector2
         ): void {
-            const collisionNormal = collider.getCollisionNormal(collider2);
-
             const velocityAlongNormal1 = rigidBody.velocity.dot(collisionNormal);
             const velocityAlongNormal2 = rigidBody2.velocity.dot(collisionNormal);
 
@@ -137,6 +142,20 @@ module gs.physics {
 
             rigidBody.velocity = rigidBody.velocity.add(collisionNormal.mul(FixedPoint.sub(newVelocityAlongNormal1, velocityAlongNormal1)));
             rigidBody2.velocity = rigidBody2.velocity.add(collisionNormal.mul(FixedPoint.sub(newVelocityAlongNormal2, velocityAlongNormal2)));
+        }
+
+        private resolvePBD(
+            rigidBody1: RigidBody,
+            rigidBody2: RigidBody,
+            penetrationDepth: FixedPoint,
+            collisionNormal: Vector2,
+            resolutionFactor: FixedPoint
+        ): void {
+            const positionCorrection = collisionNormal.mul(penetrationDepth.mul(resolutionFactor));
+            const totalMass = FixedPoint.add(rigidBody1.mass, rigidBody2.mass);
+        
+            rigidBody1.transform.position = rigidBody1.transform.position.sub(positionCorrection.mul(FixedPoint.div(rigidBody1.mass, totalMass)));
+            rigidBody2.transform.position = rigidBody2.transform.position.add(positionCorrection.mul(FixedPoint.div(rigidBody2.mass, totalMass)));
         }
     }
 }

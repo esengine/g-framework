@@ -1,5 +1,5 @@
 module gs.physics {
-    export class CollisionDetector {
+    export class PolygonCollisionDetector {
         private shape1: PolygonBounds;
         private shape2: PolygonBounds;
 

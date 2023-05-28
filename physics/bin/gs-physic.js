@@ -43,12 +43,12 @@ var gs;
 (function (gs) {
     var physics;
     (function (physics) {
-        var CollisionDetector = /** @class */ (function () {
-            function CollisionDetector(shape1, shape2) {
+        var PolygonCollisionDetector = /** @class */ (function () {
+            function PolygonCollisionDetector(shape1, shape2) {
                 this.shape1 = shape1;
                 this.shape2 = shape2;
             }
-            CollisionDetector.prototype.epa = function () {
+            PolygonCollisionDetector.prototype.epa = function () {
                 var e_1, _a;
                 var edges = [];
                 while (true) {
@@ -84,7 +84,7 @@ var gs;
                     }
                 }
             };
-            CollisionDetector.prototype.gjk = function () {
+            PolygonCollisionDetector.prototype.gjk = function () {
                 var direction = new physics.Vector2(1, 0); // 可以从任意非零向量开始
                 var simplex = new physics.Simplex();
                 simplex.add(this.support(direction));
@@ -102,7 +102,7 @@ var gs;
                     }
                 }
             };
-            CollisionDetector.prototype.updateSimplexAndDirection = function (simplex, direction) {
+            PolygonCollisionDetector.prototype.updateSimplexAndDirection = function (simplex, direction) {
                 if (simplex.vertices.length === 2) {
                     // Simplex是一条线段
                     var B = simplex.vertices[1];
@@ -146,7 +146,7 @@ var gs;
                 }
                 return false;
             };
-            CollisionDetector.prototype.addPointToPolytope = function (edges, newPoint) {
+            PolygonCollisionDetector.prototype.addPointToPolytope = function (edges, newPoint) {
                 var e_2, _a, e_3, _b;
                 var edgesToRemove = [];
                 for (var i = 0; i < edges.length; i++) {
@@ -195,14 +195,14 @@ var gs;
                     finally { if (e_3) throw e_3.error; }
                 }
             };
-            CollisionDetector.prototype.support = function (direction) {
+            PolygonCollisionDetector.prototype.support = function (direction) {
                 var pointOnShape1 = this.shape1.getFarthestPointInDirection(direction);
                 var pointOnShape2 = this.shape2.getFarthestPointInDirection(direction.negate());
                 return pointOnShape1.sub(pointOnShape2);
             };
-            return CollisionDetector;
+            return PolygonCollisionDetector;
         }());
-        physics.CollisionDetector = CollisionDetector;
+        physics.PolygonCollisionDetector = PolygonCollisionDetector;
     })(physics = gs.physics || (gs.physics = {}));
 })(gs || (gs = {}));
 var gs;
@@ -242,28 +242,10 @@ var gs;
 (function (gs) {
     var physics;
     (function (physics) {
-        var CollisionHandlerSystem = /** @class */ (function () {
-            function CollisionHandlerSystem() {
-                gs.GlobalEventEmitter.on('collision', this.handleCollision.bind(this));
-            }
-            CollisionHandlerSystem.prototype.handleCollision = function (event) {
-                var _a = event.data, entity1 = _a.entity1, entity2 = _a.entity2, velocities = _a.velocities;
-                entity1.getComponent(physics.RigidBody).velocity = velocities.v1;
-                entity2.getComponent(physics.RigidBody).velocity = velocities.v2;
-            };
-            return CollisionHandlerSystem;
-        }());
-        physics.CollisionHandlerSystem = CollisionHandlerSystem;
-    })(physics = gs.physics || (gs.physics = {}));
-})(gs || (gs = {}));
-var gs;
-(function (gs) {
-    var physics;
-    (function (physics) {
         var CollisionResponseSystem = /** @class */ (function (_super) {
             __extends(CollisionResponseSystem, _super);
             function CollisionResponseSystem(entityManager, updateInterval) {
-                var _this = _super.call(this, entityManager, 0, gs.Matcher.empty().all(physics.RigidBody, physics.Collider)) || this;
+                var _this = _super.call(this, entityManager, 0, gs.Matcher.empty().all(physics.RigidBody, physics.Collider, physics.Transform)) || this;
                 _this.processed = new Map();
                 _this.collisionPairs = [];
                 _this.dynamicTree = new physics.DynamicTree();
@@ -290,9 +272,11 @@ var gs;
                         var entity = entities_1_1.value;
                         var collider = entity.getComponent(physics.Collider);
                         var rigidBody = entity.getComponent(physics.RigidBody);
+                        var transform = entity.getComponent(physics.Transform);
                         if (rigidBody && !rigidBody.isKinematic) {
                             rigidBody.update(deltaTime);
                         }
+                        rigidBody.lastPosition = transform.position;
                         var node = {
                             children: [],
                             height: 0,
@@ -363,18 +347,23 @@ var gs;
             };
             CollisionResponseSystem.prototype.resolveCollisions = function () {
                 var e_7, _a;
+                var penetrationResolutionFactor = new physics.FixedPoint(0.8);
                 try {
                     for (var _b = __values(this.collisionPairs), _c = _b.next(); !_c.done; _c = _b.next()) {
                         var _d = __read(_c.value, 2), entity = _d[0], candidate = _d[1];
                         var collider = entity.getComponent(physics.Collider);
                         var collider2 = candidate.getComponent(physics.Collider);
-                        collider.handleCollision(candidate);
-                        collider2.handleCollision(entity);
                         var rigidBody = entity.getComponent(physics.RigidBody);
                         var rigidBody2 = candidate.getComponent(physics.RigidBody);
                         if (rigidBody && !rigidBody.isKinematic && rigidBody2 && !rigidBody2.isKinematic) {
-                            this.resolveDynamicCollision(rigidBody, rigidBody2, collider, collider2);
+                            var _e = collider.calculatePenetrationDepthAndNormal(collider2), penetrationDepth = _e.penetrationDepth, collisionNormal = _e.collisionNormal;
+                            if (penetrationDepth && collisionNormal) {
+                                this.resolvePBD(rigidBody, rigidBody2, penetrationDepth, collisionNormal, penetrationResolutionFactor);
+                                this.resolveDynamicCollision(rigidBody, rigidBody2, collisionNormal);
+                            }
                         }
+                        collider.handleCollision(candidate);
+                        collider2.handleCollision(entity);
                     }
                 }
                 catch (e_7_1) { e_7 = { error: e_7_1 }; }
@@ -431,14 +420,19 @@ var gs;
                     finally { if (e_8) throw e_8.error; }
                 }
             };
-            CollisionResponseSystem.prototype.resolveDynamicCollision = function (rigidBody, rigidBody2, collider, collider2) {
-                var collisionNormal = collider.getCollisionNormal(collider2);
+            CollisionResponseSystem.prototype.resolveDynamicCollision = function (rigidBody, rigidBody2, collisionNormal) {
                 var velocityAlongNormal1 = rigidBody.velocity.dot(collisionNormal);
                 var velocityAlongNormal2 = rigidBody2.velocity.dot(collisionNormal);
                 var newVelocityAlongNormal1 = physics.FixedPoint.div(physics.FixedPoint.add(physics.FixedPoint.mul(velocityAlongNormal1, physics.FixedPoint.sub(rigidBody.mass, rigidBody2.mass)), physics.FixedPoint.mul(physics.FixedPoint.mul(new physics.FixedPoint(2), rigidBody2.mass), velocityAlongNormal2)), physics.FixedPoint.add(rigidBody.mass, rigidBody2.mass));
                 var newVelocityAlongNormal2 = physics.FixedPoint.div(physics.FixedPoint.add(physics.FixedPoint.mul(velocityAlongNormal2, physics.FixedPoint.sub(rigidBody2.mass, rigidBody.mass)), physics.FixedPoint.mul(physics.FixedPoint.mul(new physics.FixedPoint(2), rigidBody.mass), velocityAlongNormal1)), physics.FixedPoint.add(rigidBody.mass, rigidBody2.mass));
                 rigidBody.velocity = rigidBody.velocity.add(collisionNormal.mul(physics.FixedPoint.sub(newVelocityAlongNormal1, velocityAlongNormal1)));
                 rigidBody2.velocity = rigidBody2.velocity.add(collisionNormal.mul(physics.FixedPoint.sub(newVelocityAlongNormal2, velocityAlongNormal2)));
+            };
+            CollisionResponseSystem.prototype.resolvePBD = function (rigidBody1, rigidBody2, penetrationDepth, collisionNormal, resolutionFactor) {
+                var positionCorrection = collisionNormal.mul(penetrationDepth.mul(resolutionFactor));
+                var totalMass = physics.FixedPoint.add(rigidBody1.mass, rigidBody2.mass);
+                rigidBody1.transform.position = rigidBody1.transform.position.sub(positionCorrection.mul(physics.FixedPoint.div(rigidBody1.mass, totalMass)));
+                rigidBody2.transform.position = rigidBody2.transform.position.add(positionCorrection.mul(physics.FixedPoint.div(rigidBody2.mass, totalMass)));
             };
             return CollisionResponseSystem;
         }(gs.System));
@@ -1001,6 +995,13 @@ var gs;
                 this.rawValue = Math.round(value * precision);
                 this.precision = precision;
             }
+            Object.defineProperty(FixedPoint, "MAX_VALUE", {
+                get: function () {
+                    return new FixedPoint(Number.MAX_VALUE);
+                },
+                enumerable: true,
+                configurable: true
+            });
             /**
              * 将当前 FixedPoint 实例与另一个 FixedPoint 实例或数字相加
              * @param other - 要添加的其他 FixedPoint 实例或数字
@@ -1143,6 +1144,13 @@ var gs;
                 }
             };
             /**
+            * 判断当前 FixedPoint 实例是否为正数
+            * @returns 如果为正数则返回 true，否则返回 false
+            */
+            FixedPoint.prototype.isPositive = function () {
+                return this.rawValue > 0;
+            };
+            /**
              * 对当前 FixedPoint 实例的值取反
              * @returns 新的 FixedPoint 实例，表示取反的结果
              */
@@ -1178,6 +1186,47 @@ var gs;
              */
             FixedPoint.prototype.round = function () {
                 return FixedPoint.from(Math.round(this.toFloat()));
+            };
+            /**
+             * 将当前 FixedPoint 实例的值限制在指定的范围内
+             * @param min - 范围的最小值
+             * @param max - 范围的最大值
+             * @returns 新的 FixedPoint 实例，表示限制在范围内的值
+             */
+            FixedPoint.prototype.clamp = function (min, max) {
+                var minValue;
+                var maxValue;
+                if (min instanceof FixedPoint) {
+                    minValue = min.rawValue;
+                }
+                else {
+                    minValue = Math.round(min * this.precision);
+                }
+                if (max instanceof FixedPoint) {
+                    maxValue = max.rawValue;
+                }
+                else {
+                    maxValue = Math.round(max * this.precision);
+                }
+                if (this.rawValue < minValue) {
+                    return FixedPoint.fromRawValue(minValue, this.precision);
+                }
+                else if (this.rawValue > maxValue) {
+                    return FixedPoint.fromRawValue(maxValue, this.precision);
+                }
+                else {
+                    return this;
+                }
+            };
+            /**
+             * 对一个 FixedPoint 实例进行范围限制
+             * @param value - 输入的 FixedPoint 实例
+             * @param min - 范围的最小值
+             * @param max - 范围的最大值
+             * @returns 新的 FixedPoint 实例，表示限制在范围内的值
+             */
+            FixedPoint.clamp = function (value, min, max) {
+                return value.clamp(min, max);
             };
             /**
              * 对两个 FixedPoint 实例进行加法运算
@@ -1290,6 +1339,15 @@ var gs;
                 ];
                 return _this;
             }
+            Object.defineProperty(RigidBody.prototype, "transform", {
+                get: function () {
+                    if (!this._transform)
+                        this._transform = this.entity.getComponent(physics.Transform);
+                    return this._transform;
+                },
+                enumerable: true,
+                configurable: true
+            });
             RigidBody.prototype.onInitialize = function (mass, isKinematic) {
                 if (mass === void 0) { mass = new physics.FixedPoint(1); }
                 if (isKinematic === void 0) { isKinematic = false; }
@@ -1297,17 +1355,27 @@ var gs;
                 this.velocity = new physics.Vector2();
                 this.acceleration = new physics.Vector2();
                 this.isKinematic = isKinematic;
+                this.restitution = new physics.FixedPoint(1);
+                // 如果质量为0，为了防止除数为0，设置其倒数为无穷大，否则为1/mass
+                this.inv_mass = this.mass.equals(0) ? physics.FixedPoint.MAX_VALUE : new physics.FixedPoint(1).div(this.mass);
+                // 初始化上次位置为当前位置
+                this.lastPosition = this.transform.position;
             };
+            /**
+             * 对刚体施加力，根据 F = m * a 计算加速度
+             * @param force
+             */
             RigidBody.prototype.applyForce = function (force) {
-                // 使用 F = m * a，或者 a = F / m
                 var forceAccel = new physics.Vector2(force.x.div(this.mass), force.y.div(this.mass));
                 this.acceleration = this.acceleration.add(forceAccel);
             };
             RigidBody.prototype.update = function (deltaTime) {
+                // 根据 a = v / t 计算速度
                 this.velocity = this.velocity.add(this.acceleration.mul(deltaTime));
-                var transform = this.entity.getComponent(physics.Transform);
+                // 更新上次位置
+                this.lastPosition = this.transform.position;
                 // 无论加速度是否为零，都应将速度应用于位置
-                transform.position = transform.position.add(this.velocity.mul(deltaTime));
+                this.transform.position = this.transform.position.add(this.velocity.mul(deltaTime));
                 // 重置加速度
                 this.acceleration.set(new physics.FixedPoint(0), new physics.FixedPoint(0));
             };
@@ -1612,6 +1680,16 @@ var gs;
                 return this.x.mul(this.x).add(this.y.mul(this.y));
             };
             /**
+            * 对该向量进行夹紧操作
+            * @param min 最小值
+            * @param max 最大值
+            */
+            Vector2.prototype.clamp = function (min, max) {
+                var x = physics.FixedPoint.clamp(this.x, min.x, max.x);
+                var y = physics.FixedPoint.clamp(this.y, min.y, max.y);
+                return new Vector2(x, y);
+            };
+            /**
             * 创建一个包含指定向量反转的新Vector2
             * @returns 矢量反演的结果
             */
@@ -1721,6 +1799,9 @@ var gs;
                     return new physics.Vector2(new physics.FixedPoint(0), new physics.FixedPoint(relativePosition.y.toFloat() > 0 ? 1 : -1));
                 }
             };
+            Collider.prototype.calculatePenetrationDepthAndNormal = function (other) {
+                return this.getBounds().calculatePenetrationDepthAndNormal(other.getBounds());
+            };
             Collider.prototype.intersects = function (other) {
                 return this.getBounds().intersects(other.getBounds());
             };
@@ -1790,13 +1871,70 @@ var gs;
 (function (gs) {
     var physics;
     (function (physics) {
-        var BoxBounds = /** @class */ (function () {
-            function BoxBounds(position, width, height, entity) {
+        var AbstractBounds = /** @class */ (function () {
+            function AbstractBounds(position, width, height, entity) {
                 this.position = position;
                 this.width = width;
                 this.height = height;
                 this.entity = entity;
             }
+            AbstractBounds.prototype.intersects = function (other) {
+                var visitor = new physics.IntersectionVisitor(other);
+                this.accept(visitor);
+                return visitor.getResult();
+            };
+            AbstractBounds.prototype.contains = function (other) {
+                var visitor = new physics.ContainVisitor(other);
+                this.accept(visitor);
+                return visitor.getResult();
+            };
+            AbstractBounds.prototype.calculatePenetrationDepthAndNormal = function (other) {
+                var visitor = new physics.CollisionResolver(other);
+                this.accept(visitor);
+                return visitor.getResult();
+            };
+            return AbstractBounds;
+        }());
+        physics.AbstractBounds = AbstractBounds;
+    })(physics = gs.physics || (gs.physics = {}));
+})(gs || (gs = {}));
+///<reference path="AbstractBounds.ts"/>
+var gs;
+///<reference path="AbstractBounds.ts"/>
+(function (gs) {
+    var physics;
+    (function (physics) {
+        var BoxBounds = /** @class */ (function (_super) {
+            __extends(BoxBounds, _super);
+            function BoxBounds(position, width, height, entity) {
+                var _this = _super.call(this, position, width, height, entity) || this;
+                _this._center = new physics.Vector2(_this.position.x.add(_this.width.div(2)), _this.position.y.add(_this.height.div(2)));
+                _this._halfExtents = new physics.Vector2(_this.width.div(2), _this.height.div(2));
+                return _this;
+            }
+            Object.defineProperty(BoxBounds.prototype, "center", {
+                get: function () {
+                    return this._center;
+                },
+                enumerable: true,
+                configurable: true
+            });
+            Object.defineProperty(BoxBounds.prototype, "halfExtents", {
+                get: function () {
+                    return this._halfExtents;
+                },
+                enumerable: true,
+                configurable: true
+            });
+            BoxBounds.prototype.toPolygon = function () {
+                var vertices = [
+                    this.position,
+                    new physics.Vector2(this.position.x.add(this.width), this.position.y),
+                    new physics.Vector2(this.position.x.add(this.width), this.position.y.add(this.height)),
+                    new physics.Vector2(this.position.x, this.position.y.add(this.height)),
+                ];
+                return new physics.PolygonBounds(this.position, vertices, this.entity);
+            };
             /**
              * 计算方形在指定方向上的投影
              * @param direction
@@ -1830,35 +1968,26 @@ var gs;
                 }
                 return new physics.Projection(min, max);
             };
-            BoxBounds.prototype.intersects = function (other) {
-                var visitor = new physics.IntersectionVisitor(other);
-                this.accept(visitor);
-                return visitor.getResult();
-            };
-            BoxBounds.prototype.contains = function (other) {
-                var visitor = new physics.ContainVisitor(other);
-                this.accept(visitor);
-                return visitor.getResult();
-            };
             BoxBounds.prototype.accept = function (visitor) {
                 visitor.visitBox(this);
             };
             return BoxBounds;
-        }());
+        }(physics.AbstractBounds));
         physics.BoxBounds = BoxBounds;
     })(physics = gs.physics || (gs.physics = {}));
 })(gs || (gs = {}));
+///<reference path="AbstractBounds.ts"/>
 var gs;
+///<reference path="AbstractBounds.ts"/>
 (function (gs) {
     var physics;
     (function (physics) {
-        var CircleBounds = /** @class */ (function () {
+        var CircleBounds = /** @class */ (function (_super) {
+            __extends(CircleBounds, _super);
             function CircleBounds(position, radius, entity) {
-                this.position = position;
-                this.radius = radius;
-                this.entity = entity;
-                this.width = radius.mul(2);
-                this.height = radius.mul(2);
+                var _this = _super.call(this, position, radius.mul(2), radius.mul(2), entity) || this;
+                _this.radius = radius;
+                return _this;
             }
             CircleBounds.prototype.intersects = function (other) {
                 var visitor = new physics.IntersectionVisitor(other);
@@ -1874,8 +2003,183 @@ var gs;
                 visitor.visitCircle(this);
             };
             return CircleBounds;
-        }());
+        }(physics.AbstractBounds));
         physics.CircleBounds = CircleBounds;
+    })(physics = gs.physics || (gs.physics = {}));
+})(gs || (gs = {}));
+var gs;
+(function (gs) {
+    var physics;
+    (function (physics) {
+        var CollisionResolver = /** @class */ (function () {
+            function CollisionResolver(other) {
+                this.result = { penetrationDepth: null, collisionNormal: null };
+                this.other = other;
+            }
+            CollisionResolver.prototype.visitCircle = function (bounds) {
+                this.dispatchCircleCollision(bounds);
+            };
+            CollisionResolver.prototype.visitBox = function (bounds) {
+                this.dispatchBoxCollision(bounds);
+            };
+            CollisionResolver.prototype.visitPolygon = function (bounds) {
+                this.dispatchPolygonCollision(bounds);
+            };
+            CollisionResolver.prototype.dispatchCircleCollision = function (circle) {
+                if (this.other instanceof physics.CircleBounds) {
+                    this.resolveCircleCircleCollision(circle, this.other);
+                }
+                else if (this.other instanceof physics.BoxBounds) {
+                    this.resolveCircleBoxCollision(circle, this.other);
+                }
+                else if (this.other instanceof physics.PolygonBounds) {
+                    this.resolveCirclePolygonCollision(circle, this.other);
+                }
+            };
+            CollisionResolver.prototype.dispatchBoxCollision = function (box) {
+                if (this.other instanceof physics.CircleBounds) {
+                    this.resolveCircleBoxCollision(this.other, box);
+                }
+                else if (this.other instanceof physics.BoxBounds) {
+                    this.resolveBoxBoxCollision(box, this.other);
+                }
+                else if (this.other instanceof physics.PolygonBounds) {
+                    this.resolveBoxPolygonCollision(box, this.other);
+                }
+            };
+            CollisionResolver.prototype.dispatchPolygonCollision = function (polygon) {
+                if (this.other instanceof physics.CircleBounds) {
+                    this.resolveCirclePolygonCollision(this.other, polygon);
+                }
+                else if (this.other instanceof physics.BoxBounds) {
+                    this.resolveBoxPolygonCollision(this.other, polygon);
+                }
+                else if (this.other instanceof physics.PolygonBounds) {
+                    this.resolvePolygonPolygonCollision(polygon, this.other);
+                }
+            };
+            CollisionResolver.prototype.resolveBoxBoxCollision = function (box1, box2) {
+                this.resolvePolygonPolygonCollision(box1.toPolygon(), box2.toPolygon());
+            };
+            CollisionResolver.prototype.resolveCircleBoxCollision = function (circle, box) {
+                var boxToCircle = circle.position.sub(box.center);
+                var closestPoint = boxToCircle.clamp(box.halfExtents.negate(), box.halfExtents);
+                var circleToClosestPoint = boxToCircle.sub(closestPoint);
+                if (circleToClosestPoint.lengthSquared().gt(circle.radius.mul(circle.radius))) {
+                    return;
+                }
+                var collisionNormal = circleToClosestPoint.normalize();
+                var penetrationDepth = circle.radius.sub(circleToClosestPoint.length());
+                this.result = { penetrationDepth: penetrationDepth, collisionNormal: collisionNormal };
+            };
+            CollisionResolver.prototype.resolveCirclePolygonCollision = function (circle, polygon) {
+                var minDistanceSquared = new physics.FixedPoint(Number.MAX_VALUE);
+                var collisionNormal;
+                var penetrationDepth;
+                for (var i = 0; i < polygon.vertices.length; i++) {
+                    var nextIndex = (i + 1 == polygon.vertices.length) ? 0 : i + 1;
+                    var edge = polygon.vertices[nextIndex].sub(polygon.vertices[i]);
+                    var circleToVertex = circle.position.sub(polygon.vertices[i]);
+                    var t = circleToVertex.dot(edge).div(edge.lengthSquared());
+                    t = physics.FixedPoint.clamp(t, 0, 1);
+                    var closestPoint = polygon.vertices[i].add(edge.mul(t));
+                    var circleToClosestPoint = circle.position.sub(closestPoint);
+                    var distanceSquared = circleToClosestPoint.lengthSquared();
+                    if (distanceSquared.lt(minDistanceSquared)) {
+                        minDistanceSquared = distanceSquared;
+                        collisionNormal = circleToClosestPoint.normalize();
+                        penetrationDepth = circle.radius.sub(distanceSquared.sqrt());
+                    }
+                }
+                if (minDistanceSquared.gt(circle.radius.mul(circle.radius))) {
+                    return;
+                }
+                this.result = { penetrationDepth: penetrationDepth, collisionNormal: collisionNormal };
+            };
+            CollisionResolver.prototype.resolveBoxPolygonCollision = function (box, polygon) {
+                this.resolvePolygonPolygonCollision(box.toPolygon(), polygon);
+            };
+            CollisionResolver.prototype.resolveCircleCircleCollision = function (circle1, circle2) {
+                var distance = circle1.position.sub(circle2.position).length();
+                if (distance < circle1.radius.add(circle2.radius)) {
+                    var collisionNormal = circle1.position.sub(circle2.position).normalize();
+                    var penetrationDepth = circle1.radius.add(circle2.radius).sub(distance);
+                    this.result = { penetrationDepth: penetrationDepth, collisionNormal: collisionNormal };
+                }
+            };
+            CollisionResolver.prototype.resolvePolygonPolygonCollision = function (polygon1, polygon2) {
+                var e_17, _a, e_18, _b, e_19, _c;
+                var minPenetration = new physics.FixedPoint(Number.MAX_VALUE);
+                var collisionNormal;
+                try {
+                    for (var _d = __values([polygon1, polygon2]), _e = _d.next(); !_e.done; _e = _d.next()) {
+                        var shape = _e.value;
+                        for (var i = 0; i < shape.vertices.length; i++) {
+                            var p1 = shape.vertices[i];
+                            var p2 = shape.vertices[i + 1 == shape.vertices.length ? 0 : i + 1];
+                            var axis = new physics.Vector2(p2.y.sub(p1.y), p1.x.sub(p2.x)).normalize();
+                            var minA = null;
+                            var maxA = null;
+                            try {
+                                for (var _f = __values(polygon1.vertices), _g = _f.next(); !_g.done; _g = _f.next()) {
+                                    var v = _g.value;
+                                    var projection = axis.dot(v);
+                                    minA = (minA === null) ? projection : physics.FixedPoint.min(minA, projection);
+                                    maxA = (maxA === null) ? projection : physics.FixedPoint.max(maxA, projection);
+                                }
+                            }
+                            catch (e_18_1) { e_18 = { error: e_18_1 }; }
+                            finally {
+                                try {
+                                    if (_g && !_g.done && (_b = _f.return)) _b.call(_f);
+                                }
+                                finally { if (e_18) throw e_18.error; }
+                            }
+                            var minB = null;
+                            var maxB = null;
+                            try {
+                                for (var _h = __values(polygon2.vertices), _j = _h.next(); !_j.done; _j = _h.next()) {
+                                    var v = _j.value;
+                                    var projection = axis.dot(v);
+                                    minB = (minB === null) ? projection : physics.FixedPoint.min(minB, projection);
+                                    maxB = (maxB === null) ? projection : physics.FixedPoint.max(maxB, projection);
+                                }
+                            }
+                            catch (e_19_1) { e_19 = { error: e_19_1 }; }
+                            finally {
+                                try {
+                                    if (_j && !_j.done && (_c = _h.return)) _c.call(_h);
+                                }
+                                finally { if (e_19) throw e_19.error; }
+                            }
+                            var overlap = physics.FixedPoint.min(maxA, maxB).sub(physics.FixedPoint.max(minA, minB));
+                            if (overlap.lt(0)) {
+                                return;
+                            }
+                            else {
+                                if (overlap.lt(minPenetration)) {
+                                    minPenetration = overlap;
+                                    collisionNormal = axis;
+                                }
+                            }
+                        }
+                    }
+                }
+                catch (e_17_1) { e_17 = { error: e_17_1 }; }
+                finally {
+                    try {
+                        if (_e && !_e.done && (_a = _d.return)) _a.call(_d);
+                    }
+                    finally { if (e_17) throw e_17.error; }
+                }
+                this.result = { penetrationDepth: minPenetration, collisionNormal: collisionNormal };
+            };
+            CollisionResolver.prototype.getResult = function () {
+                return this.result;
+            };
+            return CollisionResolver;
+        }());
+        physics.CollisionResolver = CollisionResolver;
     })(physics = gs.physics || (gs.physics = {}));
 })(gs || (gs = {}));
 var gs;
@@ -1980,7 +2284,7 @@ var gs;
             IntersectionVisitor.prototype.visitPolygon = function (polygon) {
                 if (this.other instanceof physics.PolygonBounds) {
                     var otherPolygon = this.other;
-                    var detector = new physics.CollisionDetector(polygon, otherPolygon);
+                    var detector = new physics.PolygonCollisionDetector(polygon, otherPolygon);
                     this.result = detector.gjk();
                 }
                 else if (this.other instanceof physics.CircleBounds) {
@@ -1995,10 +2299,10 @@ var gs;
             IntersectionVisitor.prototype.intersectsBoxCircle = function (box, circle) {
                 var circleDistanceX = circle.position.x.sub(box.position.x.add(box.width.div(2))).abs();
                 var circleDistanceY = circle.position.y.sub(box.position.y.add(box.height.div(2))).abs();
-                if (circleDistanceX.gt(box.width.div(2).add(circle.radius))) {
+                if (circleDistanceX.gte(box.width.div(2).add(circle.radius))) {
                     return false;
                 }
-                if (circleDistanceY.gt(box.height.div(2).add(circle.radius))) {
+                if (circleDistanceY.gte(box.height.div(2).add(circle.radius))) {
                     return false;
                 }
                 if (circleDistanceX.lte(box.width.div(2))) {
@@ -2011,7 +2315,7 @@ var gs;
                 return cornerDistanceSq.lte(circle.radius.pow(2));
             };
             IntersectionVisitor.prototype.intersectsPolygonCircle = function (polygon, circle) {
-                var e_17, _a;
+                var e_20, _a;
                 // 找到最近的顶点
                 var minDistanceSq = Infinity;
                 var nearestVertex = null;
@@ -2025,12 +2329,12 @@ var gs;
                         }
                     }
                 }
-                catch (e_17_1) { e_17 = { error: e_17_1 }; }
+                catch (e_20_1) { e_20 = { error: e_20_1 }; }
                 finally {
                     try {
                         if (_c && !_c.done && (_a = _b.return)) _a.call(_b);
                     }
-                    finally { if (e_17) throw e_17.error; }
+                    finally { if (e_20) throw e_20.error; }
                 }
                 // 判断该顶点到圆心的距离是否小于等于圆的半径
                 if (nearestVertex) {
@@ -2041,7 +2345,7 @@ var gs;
                 }
             };
             IntersectionVisitor.prototype.intersectsPolygonBox = function (polygon, box) {
-                var e_18, _a;
+                var e_21, _a;
                 // 四个方向向量，表示方形的四个边
                 var directions = [
                     new physics.Vector2(1, 0),
@@ -2067,12 +2371,12 @@ var gs;
                         }
                     }
                 }
-                catch (e_18_1) { e_18 = { error: e_18_1 }; }
+                catch (e_21_1) { e_21 = { error: e_21_1 }; }
                 finally {
                     try {
                         if (directions_1_1 && !directions_1_1.done && (_a = directions_1.return)) _a.call(directions_1);
                     }
-                    finally { if (e_18) throw e_18.error; }
+                    finally { if (e_21) throw e_21.error; }
                 }
                 // 所有方向上的投影都有重叠，所以多边形和方形相交
                 return true;
@@ -2085,12 +2389,18 @@ var gs;
         physics.IntersectionVisitor = IntersectionVisitor;
     })(physics = gs.physics || (gs.physics = {}));
 })(gs || (gs = {}));
+///<reference path="AbstractBounds.ts"/>
 var gs;
+///<reference path="AbstractBounds.ts"/>
 (function (gs) {
     var physics;
     (function (physics) {
-        var PolygonBounds = /** @class */ (function () {
-            function PolygonBounds() {
+        var PolygonBounds = /** @class */ (function (_super) {
+            __extends(PolygonBounds, _super);
+            function PolygonBounds(position, vertices, entity) {
+                var _this = _super.call(this, position, PolygonBounds.getWidth(vertices), PolygonBounds.getHeight(vertices), entity) || this;
+                _this._vertices = vertices;
+                return _this;
             }
             Object.defineProperty(PolygonBounds.prototype, "vertices", {
                 get: function () {
@@ -2100,12 +2410,112 @@ var gs;
                 configurable: true
             });
             /**
+             * 计算多边形的宽度
+             * @returns
+             */
+            PolygonBounds.prototype.getWidth = function () {
+                var e_22, _a;
+                var minX = Infinity;
+                var maxX = -Infinity;
+                try {
+                    for (var _b = __values(this._vertices), _c = _b.next(); !_c.done; _c = _b.next()) {
+                        var vertex = _c.value;
+                        var x = vertex.x.toFloat();
+                        minX = Math.min(minX, x);
+                        maxX = Math.max(maxX, x);
+                    }
+                }
+                catch (e_22_1) { e_22 = { error: e_22_1 }; }
+                finally {
+                    try {
+                        if (_c && !_c.done && (_a = _b.return)) _a.call(_b);
+                    }
+                    finally { if (e_22) throw e_22.error; }
+                }
+                return new physics.FixedPoint(maxX - minX);
+            };
+            /**
+             * 计算多边形的高度
+             * @returns
+             */
+            PolygonBounds.prototype.getHeight = function () {
+                var e_23, _a;
+                var minY = Infinity;
+                var maxY = -Infinity;
+                try {
+                    for (var _b = __values(this._vertices), _c = _b.next(); !_c.done; _c = _b.next()) {
+                        var vertex = _c.value;
+                        var y = vertex.y.toFloat();
+                        minY = Math.min(minY, y);
+                        maxY = Math.max(maxY, y);
+                    }
+                }
+                catch (e_23_1) { e_23 = { error: e_23_1 }; }
+                finally {
+                    try {
+                        if (_c && !_c.done && (_a = _b.return)) _a.call(_b);
+                    }
+                    finally { if (e_23) throw e_23.error; }
+                }
+                return new physics.FixedPoint(maxY - minY);
+            };
+            /**
+            * 计算多边形的宽度
+            * @returns
+            */
+            PolygonBounds.getWidth = function (vertices) {
+                var e_24, _a;
+                var minX = Infinity;
+                var maxX = -Infinity;
+                try {
+                    for (var vertices_2 = __values(vertices), vertices_2_1 = vertices_2.next(); !vertices_2_1.done; vertices_2_1 = vertices_2.next()) {
+                        var vertex = vertices_2_1.value;
+                        var x = vertex.x.toFloat();
+                        minX = Math.min(minX, x);
+                        maxX = Math.max(maxX, x);
+                    }
+                }
+                catch (e_24_1) { e_24 = { error: e_24_1 }; }
+                finally {
+                    try {
+                        if (vertices_2_1 && !vertices_2_1.done && (_a = vertices_2.return)) _a.call(vertices_2);
+                    }
+                    finally { if (e_24) throw e_24.error; }
+                }
+                return new physics.FixedPoint(maxX - minX);
+            };
+            /**
+             * 计算多边形的高度
+             * @returns
+             */
+            PolygonBounds.getHeight = function (vertices) {
+                var e_25, _a;
+                var minY = Infinity;
+                var maxY = -Infinity;
+                try {
+                    for (var vertices_3 = __values(vertices), vertices_3_1 = vertices_3.next(); !vertices_3_1.done; vertices_3_1 = vertices_3.next()) {
+                        var vertex = vertices_3_1.value;
+                        var y = vertex.y.toFloat();
+                        minY = Math.min(minY, y);
+                        maxY = Math.max(maxY, y);
+                    }
+                }
+                catch (e_25_1) { e_25 = { error: e_25_1 }; }
+                finally {
+                    try {
+                        if (vertices_3_1 && !vertices_3_1.done && (_a = vertices_3.return)) _a.call(vertices_3);
+                    }
+                    finally { if (e_25) throw e_25.error; }
+                }
+                return new physics.FixedPoint(maxY - minY);
+            };
+            /**
              * 提供一个方向，返回多边形在该方向上的最远点
              * @param direction
              * @returns
              */
             PolygonBounds.prototype.getFarthestPointInDirection = function (direction) {
-                var e_19, _a;
+                var e_26, _a;
                 var maxDotProduct = -Infinity;
                 var farthestVertex = null;
                 try {
@@ -2118,12 +2528,12 @@ var gs;
                         }
                     }
                 }
-                catch (e_19_1) { e_19 = { error: e_19_1 }; }
+                catch (e_26_1) { e_26 = { error: e_26_1 }; }
                 finally {
                     try {
                         if (_c && !_c.done && (_a = _b.return)) _a.call(_b);
                     }
-                    finally { if (e_19) throw e_19.error; }
+                    finally { if (e_26) throw e_26.error; }
                 }
                 return farthestVertex;
             };
@@ -2133,7 +2543,7 @@ var gs;
              * @returns
              */
             PolygonBounds.prototype.project = function (direction) {
-                var e_20, _a;
+                var e_27, _a;
                 var min = Infinity;
                 var max = -Infinity;
                 try {
@@ -2144,12 +2554,12 @@ var gs;
                         max = Math.max(max, dot);
                     }
                 }
-                catch (e_20_1) { e_20 = { error: e_20_1 }; }
+                catch (e_27_1) { e_27 = { error: e_27_1 }; }
                 finally {
                     try {
                         if (_c && !_c.done && (_a = _b.return)) _a.call(_b);
                     }
-                    finally { if (e_20) throw e_20.error; }
+                    finally { if (e_27) throw e_27.error; }
                 }
                 return new physics.Projection(min, max);
             };
@@ -2180,7 +2590,7 @@ var gs;
                 visitor.visitPolygon(this);
             };
             return PolygonBounds;
-        }());
+        }(physics.AbstractBounds));
         physics.PolygonBounds = PolygonBounds;
     })(physics = gs.physics || (gs.physics = {}));
 })(gs || (gs = {}));

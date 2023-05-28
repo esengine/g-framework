@@ -13,6 +13,10 @@ module gs.physics {
         */
         precision: number;
 
+        static get MAX_VALUE(): FixedPoint {
+            return new FixedPoint(Number.MAX_VALUE);
+        }
+
         /**
          * 创建一个新的 FixedPoint 实例
          * @param value - 输入的浮点数值，默认为 0
@@ -167,6 +171,14 @@ module gs.physics {
         }
 
         /**
+        * 判断当前 FixedPoint 实例是否为正数
+        * @returns 如果为正数则返回 true，否则返回 false
+        */
+        isPositive(): boolean {
+            return this.rawValue > 0;
+        }
+
+        /**
          * 对当前 FixedPoint 实例的值取反
          * @returns 新的 FixedPoint 实例，表示取反的结果
          */
@@ -205,6 +217,48 @@ module gs.physics {
          */
         round(): FixedPoint {
             return FixedPoint.from(Math.round(this.toFloat()));
+        }
+
+        /**
+         * 将当前 FixedPoint 实例的值限制在指定的范围内
+         * @param min - 范围的最小值
+         * @param max - 范围的最大值
+         * @returns 新的 FixedPoint 实例，表示限制在范围内的值
+         */
+        clamp(min: FixedPoint | number, max: FixedPoint | number): FixedPoint {
+            let minValue: number;
+            let maxValue: number;
+
+            if (min instanceof FixedPoint) {
+                minValue = min.rawValue;
+            } else {
+                minValue = Math.round(min * this.precision);
+            }
+
+            if (max instanceof FixedPoint) {
+                maxValue = max.rawValue;
+            } else {
+                maxValue = Math.round(max * this.precision);
+            }
+
+            if (this.rawValue < minValue) {
+                return FixedPoint.fromRawValue(minValue, this.precision);
+            } else if (this.rawValue > maxValue) {
+                return FixedPoint.fromRawValue(maxValue, this.precision);
+            } else {
+                return this;
+            }
+        }
+
+        /**
+         * 对一个 FixedPoint 实例进行范围限制
+         * @param value - 输入的 FixedPoint 实例
+         * @param min - 范围的最小值
+         * @param max - 范围的最大值
+         * @returns 新的 FixedPoint 实例，表示限制在范围内的值
+         */
+        static clamp(value: FixedPoint, min: FixedPoint | number, max: FixedPoint | number): FixedPoint {
+            return value.clamp(min, max);
         }
 
         /**

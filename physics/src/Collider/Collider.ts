@@ -66,6 +66,10 @@ module gs.physics {
             }
         }
 
+        calculatePenetrationDepthAndNormal(other: Collider): { penetrationDepth: FixedPoint, collisionNormal: Vector2 } {
+            return this.getBounds().calculatePenetrationDepthAndNormal(other.getBounds());
+        }
+
         intersects(other: Collider): boolean {
             return this.getBounds().intersects(other.getBounds());
         }

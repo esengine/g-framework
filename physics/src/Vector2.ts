@@ -99,6 +99,18 @@ module gs.physics {
         }
 
         /**
+        * 对该向量进行夹紧操作
+        * @param min 最小值
+        * @param max 最大值
+        */
+        public clamp(min: Vector2, max: Vector2): Vector2 {
+            let x = FixedPoint.clamp(this.x, min.x, max.x);
+            let y = FixedPoint.clamp(this.y, min.y, max.y);
+
+            return new Vector2(x, y);
+        }
+
+        /**
         * 创建一个包含指定向量反转的新Vector2
         * @returns 矢量反演的结果
         */

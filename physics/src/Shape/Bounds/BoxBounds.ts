@@ -1,15 +1,31 @@
+///<reference path="AbstractBounds.ts"/>
 module gs.physics {
-    export class BoxBounds implements Bounds {
-        position: Vector2;
-        width: FixedPoint;
-        height: FixedPoint;
-        entity: Entity; 
-        
+    export class BoxBounds extends AbstractBounds {
+        private _center: Vector2;
+        private _halfExtents: Vector2;
+
         constructor(position: Vector2, width: FixedPoint, height: FixedPoint, entity: Entity) {
-            this.position = position;
-            this.width = width;
-            this.height = height;
-            this.entity = entity;
+            super(position, width, height, entity);
+            this._center = new Vector2(this.position.x.add(this.width.div(2)), this.position.y.add(this.height.div(2)));
+            this._halfExtents = new Vector2(this.width.div(2), this.height.div(2));
+        }
+
+        get center(): Vector2 {
+            return this._center;
+        }
+
+        get halfExtents(): Vector2 {
+            return this._halfExtents;
+        }
+
+        public toPolygon(): PolygonBounds {
+            const vertices = [
+                this.position,
+                new Vector2(this.position.x.add(this.width), this.position.y),
+                new Vector2(this.position.x.add(this.width), this.position.y.add(this.height)),
+                new Vector2(this.position.x, this.position.y.add(this.height)),
+            ];
+            return new PolygonBounds(this.position, vertices, this.entity);
         }
 
         /**
@@ -36,18 +52,6 @@ module gs.physics {
             }
 
             return new Projection(min, max);
-        }
-
-        intersects(other: Bounds): boolean {
-            const visitor = new IntersectionVisitor(other);
-            this.accept(visitor);
-            return visitor.getResult();
-        }
-
-        contains(other: Bounds): boolean {
-            const visitor = new ContainVisitor(other);
-            this.accept(visitor);
-            return visitor.getResult();
         }
 
         accept(visitor: BoundsVisitor): void {
