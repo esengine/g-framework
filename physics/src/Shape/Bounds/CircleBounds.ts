@@ -1,18 +1,11 @@
+///<reference path="AbstractBounds.ts"/>
 module gs.physics {
-    export class CircleBounds implements Bounds {
-        position: Vector2;
-        width: FixedPoint;
-        height: FixedPoint;
-        entity: Entity;
-        
+    export class CircleBounds extends AbstractBounds {
         radius: FixedPoint;
 
         constructor(position: Vector2, radius: FixedPoint, entity: Entity) {
-            this.position = position;
+            super(position, radius.mul(2), radius.mul(2), entity);
             this.radius = radius;
-            this.entity = entity;
-            this.width = radius.mul(2);
-            this.height = radius.mul(2);
         }
 
         intersects(other: Bounds): boolean {

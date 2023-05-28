@@ -1,5 +1,5 @@
 declare module gs.physics {
-    class CollisionDetector {
+    class PolygonCollisionDetector {
         private shape1;
         private shape2;
         constructor(shape1: PolygonBounds, shape2: PolygonBounds);
@@ -32,12 +32,6 @@ declare module gs.physics {
     }
 }
 declare module gs.physics {
-    class CollisionHandlerSystem {
-        constructor();
-        handleCollision(event: Event): void;
-    }
-}
-declare module gs.physics {
     class CollisionResponseSystem extends System {
         dynamicTree: DynamicTree;
         private processed;
@@ -50,6 +44,7 @@ declare module gs.physics {
         private resolveCollisions;
         private handleCollisionExits;
         private resolveDynamicCollision;
+        private resolvePBD;
     }
 }
 declare module gs.physics {
@@ -129,6 +124,7 @@ declare module gs.physics {
         * 精度，扩大的倍数，例如1000表示小数点后三位
         */
         precision: number;
+        static readonly MAX_VALUE: FixedPoint;
         /**
          * 创建一个新的 FixedPoint 实例
          * @param value - 输入的浮点数值，默认为 0
@@ -201,6 +197,11 @@ declare module gs.physics {
          */
         lte(other: FixedPoint | number): boolean;
         /**
+        * 判断当前 FixedPoint 实例是否为正数
+        * @returns 如果为正数则返回 true，否则返回 false
+        */
+        isPositive(): boolean;
+        /**
          * 对当前 FixedPoint 实例的值取反
          * @returns 新的 FixedPoint 实例，表示取反的结果
          */
@@ -226,6 +227,21 @@ declare module gs.physics {
          * @returns 新的 FixedPoint 实例，表示四舍五入的结果
          */
         round(): FixedPoint;
+        /**
+         * 将当前 FixedPoint 实例的值限制在指定的范围内
+         * @param min - 范围的最小值
+         * @param max - 范围的最大值
+         * @returns 新的 FixedPoint 实例，表示限制在范围内的值
+         */
+        clamp(min: FixedPoint | number, max: FixedPoint | number): FixedPoint;
+        /**
+         * 对一个 FixedPoint 实例进行范围限制
+         * @param value - 输入的 FixedPoint 实例
+         * @param min - 范围的最小值
+         * @param max - 范围的最大值
+         * @returns 新的 FixedPoint 实例，表示限制在范围内的值
+         */
+        static clamp(value: FixedPoint, min: FixedPoint | number, max: FixedPoint | number): FixedPoint;
         /**
          * 对两个 FixedPoint 实例进行加法运算
          * @param a - 第一个 FixedPoint 实例
@@ -295,11 +311,26 @@ declare module gs.physics {
 declare module gs.physics {
     class RigidBody extends Component {
         dependencies: ComponentConstructor<Component>[];
+        lastPosition: Vector2;
+        /** 质量 */
         mass: FixedPoint;
+        /** 速度 */
         velocity: Vector2;
+        /** 刚体的加速度 */
         acceleration: Vector2;
+        /** 是否是运动学刚体 */
         isKinematic: boolean;
+        /** 刚体的弹性 */
+        restitution: FixedPoint;
+        /** 质量的倒数 */
+        inv_mass: FixedPoint;
+        _transform: Transform;
+        readonly transform: Transform;
         onInitialize(mass?: FixedPoint, isKinematic?: boolean): void;
+        /**
+         * 对刚体施加力，根据 F = m * a 计算加速度
+         * @param force
+         */
         applyForce(force: Vector2): void;
         update(deltaTime: number): void;
     }
@@ -378,6 +409,12 @@ declare module gs.physics {
         perpR(): Vector2;
         lengthSq(): FixedPoint;
         /**
+        * 对该向量进行夹紧操作
+        * @param min 最小值
+        * @param max 最大值
+        */
+        clamp(min: Vector2, max: Vector2): Vector2;
+        /**
         * 创建一个包含指定向量反转的新Vector2
         * @returns 矢量反演的结果
         */
@@ -415,6 +452,10 @@ declare module gs.physics {
         handleCollision(other: Entity): void;
         handleCollisionExit(other: Entity): void;
         getCollisionNormal(other: Collider): Vector2;
+        calculatePenetrationDepthAndNormal(other: Collider): {
+            penetrationDepth: FixedPoint;
+            collisionNormal: Vector2;
+        };
         intersects(other: Collider): boolean;
         contains(other: Collider): boolean;
     }
@@ -436,6 +477,22 @@ declare module gs.physics {
     }
 }
 declare module gs.physics {
+    abstract class AbstractBounds implements Bounds {
+        position: Vector2;
+        width: FixedPoint;
+        height: FixedPoint;
+        entity: Entity;
+        constructor(position: Vector2, width: FixedPoint, height: FixedPoint, entity: Entity);
+        intersects(other: Bounds): boolean;
+        contains(other: Bounds): boolean;
+        calculatePenetrationDepthAndNormal(other: Bounds): {
+            penetrationDepth: FixedPoint;
+            collisionNormal: Vector2;
+        };
+        abstract accept(visitor: BoundsVisitor): void;
+    }
+}
+declare module gs.physics {
     interface Bounds {
         position: Vector2;
         width: FixedPoint;
@@ -443,6 +500,10 @@ declare module gs.physics {
         entity: Entity;
         intersects(other: Bounds): boolean;
         contains(other: Bounds): boolean;
+        calculatePenetrationDepthAndNormal(other: Bounds): {
+            penetrationDepth: FixedPoint;
+            collisionNormal: Vector2;
+        };
         accept(visitor: BoundsVisitor): void;
     }
 }
@@ -454,34 +515,52 @@ declare module gs.physics {
     }
 }
 declare module gs.physics {
-    class BoxBounds implements Bounds {
-        position: Vector2;
-        width: FixedPoint;
-        height: FixedPoint;
-        entity: Entity;
+    class BoxBounds extends AbstractBounds {
+        private _center;
+        private _halfExtents;
         constructor(position: Vector2, width: FixedPoint, height: FixedPoint, entity: Entity);
+        readonly center: Vector2;
+        readonly halfExtents: Vector2;
+        toPolygon(): PolygonBounds;
         /**
          * 计算方形在指定方向上的投影
          * @param direction
          * @returns
          */
         project(direction: Vector2): Projection;
+        accept(visitor: BoundsVisitor): void;
+    }
+}
+declare module gs.physics {
+    class CircleBounds extends AbstractBounds {
+        radius: FixedPoint;
+        constructor(position: Vector2, radius: FixedPoint, entity: Entity);
         intersects(other: Bounds): boolean;
         contains(other: Bounds): boolean;
         accept(visitor: BoundsVisitor): void;
     }
 }
 declare module gs.physics {
-    class CircleBounds implements Bounds {
-        position: Vector2;
-        width: FixedPoint;
-        height: FixedPoint;
-        entity: Entity;
-        radius: FixedPoint;
-        constructor(position: Vector2, radius: FixedPoint, entity: Entity);
-        intersects(other: Bounds): boolean;
-        contains(other: Bounds): boolean;
-        accept(visitor: BoundsVisitor): void;
+    class CollisionResolver implements BoundsVisitor {
+        private other;
+        private result;
+        constructor(other: Bounds);
+        visitCircle(bounds: CircleBounds): void;
+        visitBox(bounds: BoxBounds): void;
+        visitPolygon(bounds: PolygonBounds): void;
+        private dispatchCircleCollision;
+        private dispatchBoxCollision;
+        private dispatchPolygonCollision;
+        private resolveBoxBoxCollision;
+        private resolveCircleBoxCollision;
+        private resolveCirclePolygonCollision;
+        private resolveBoxPolygonCollision;
+        private resolveCircleCircleCollision;
+        private resolvePolygonPolygonCollision;
+        getResult(): {
+            penetrationDepth: FixedPoint;
+            collisionNormal: Vector2;
+        };
     }
 }
 declare module gs.physics {
@@ -510,13 +589,30 @@ declare module gs.physics {
     }
 }
 declare module gs.physics {
-    class PolygonBounds implements Bounds {
+    class PolygonBounds extends AbstractBounds {
         private _vertices;
-        position: Vector2;
-        width: FixedPoint;
-        height: FixedPoint;
-        entity: Entity;
         readonly vertices: Vector2[];
+        constructor(position: Vector2, vertices: Vector2[], entity: Entity);
+        /**
+         * 计算多边形的宽度
+         * @returns
+         */
+        getWidth(): FixedPoint;
+        /**
+         * 计算多边形的高度
+         * @returns
+         */
+        getHeight(): FixedPoint;
+        /**
+        * 计算多边形的宽度
+        * @returns
+        */
+        static getWidth(vertices: Vector2[]): FixedPoint;
+        /**
+         * 计算多边形的高度
+         * @returns
+         */
+        static getHeight(vertices: Vector2[]): FixedPoint;
         /**
          * 提供一个方向，返回多边形在该方向上的最远点
          * @param direction

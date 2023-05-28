@@ -39,7 +39,7 @@ module gs.physics {
         visitPolygon(polygon: PolygonBounds): void {
             if (this.other instanceof PolygonBounds) {
                 const otherPolygon = this.other;
-                const detector = new CollisionDetector(polygon, otherPolygon);
+                const detector = new PolygonCollisionDetector(polygon, otherPolygon);
                 this.result = detector.gjk();
             } else if (this.other instanceof CircleBounds) {
                 // 处理多边形与圆形的相交
@@ -54,8 +54,8 @@ module gs.physics {
             const circleDistanceX = circle.position.x.sub(box.position.x.add(box.width.div(2))).abs();
             const circleDistanceY = circle.position.y.sub(box.position.y.add(box.height.div(2))).abs();
 
-            if (circleDistanceX.gt(box.width.div(2).add(circle.radius))) { return false; }
-            if (circleDistanceY.gt(box.height.div(2).add(circle.radius))) { return false; }
+            if (circleDistanceX.gte(box.width.div(2).add(circle.radius))) { return false; }
+            if (circleDistanceY.gte(box.height.div(2).add(circle.radius))) { return false; }
 
             if (circleDistanceX.lte(box.width.div(2))) { return true; }
             if (circleDistanceY.lte(box.height.div(2))) { return true; }
