@@ -40,16 +40,21 @@ G-Framework 通过提供这些实用模块，让您在游戏开发过程中专�
 
 # G-Framework ECS 框架入门
 
+## 核心
+
+核心是该框架的重要目标，它包含了实体、组件、系统的管理。
+
+```ts
+const core = gs.Core.instance;
+```
+
 ## 实体
 
 实体是游戏中的基本对象，每个实体由一个唯一的 ID 标识，并包含一组组件。你可以通过 G-Framework 的 Entity 类来创建和管理实体。
 
 ```typescript
-// 创建实体管理器
-const entityManager = new gs.EntityManager([PositionComponent, VelocityComponent]);
-
 // 创建实体
-const entity = entityManager.createEntity();
+const entity = this.core.entityManager.createEntity();
 ```
 
 ### 创建自定义实体
@@ -68,7 +73,7 @@ class Player extends gs.Entity {
 }
 
 
-const playerEntity = entityManager.createCustomEntity(Player);
+const playerEntity = this.core.entityManager.createCustomEntity(Player);
 ```
 
 > onCreate方法和onDestroy方法由框架调用，分别再实体的创建和销毁时触发
@@ -135,19 +140,17 @@ class MoveSystem extends gs.System {
 }
 
 // 注册系统到系统管理器中
-const systemManager = new gs.SystemManager(entityManager);
-const moveSystem = new MoveSystem(entityManager, 0);
-systemManager.registerSystem(moveSystem);
+const moveSystem = new MoveSystem(this.core.entityManager, 0);
+this.core.systemManager.registerSystem(moveSystem);
 ```
 
-在每个游戏循环中，你可以调用 SystemManager 的 update() 方法来更新所有系统：
+## 循环更新系统
+
+在每个游戏循环中，你可以调用 核心中的 的 update() 方法来更新所有系统：
 
 ```typescript
 function gameLoop(deltaTime: number) {
-    const timeManager = gs.TimeManager.getInstance();
-    timeManager.update(deltaTime);
-
-    systemManager.update();
+    this.core.update(deltaTime);
 }
 ```
 
