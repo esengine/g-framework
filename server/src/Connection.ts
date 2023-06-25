@@ -4,4 +4,5 @@ export interface Connection {
     id: string;
     socket: WebSocket;
     reconnectAttempts: number;
+    isAuthenticated: boolean;
 }

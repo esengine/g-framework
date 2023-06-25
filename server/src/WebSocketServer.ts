@@ -7,6 +7,8 @@ import {Connection} from "./Connection";
 import {Message} from "./Message";
 import {MessageQueueItem} from "./MessageQueueItem";
 import {ServerExtension} from "./ServerExtension";
+import * as bcrypt from 'bcrypt';
+import { MongoClient } from 'mongodb';
 
 export class WebSocketServer {
     private server: http.Server;
@@ -21,26 +23,66 @@ export class WebSocketServer {
     private heartbeatInterval: number = 5000;
     private heartbeatTimer: NodeJS.Timeout | null = null;
     private serverExtensions: ServerExtension[] = [];
+    private db: MongoClient;
 
     constructor(config: WebSocketServerConfig) {
         this.config = config;
-        const server = http.createServer((request, response) => {
 
+        process.on('uncaughtException', this.handleUncaughtException.bind(this));
+        process.on('unhandledRejection', this.handleUnhandledRejection.bind(this));
+
+        // 创建数据库连接
+        this.db = new MongoClient('mongodb://localhost:27017');
+        this.db.connect().then(() => {
+            console.log('[g-server]: Connected to database');
+        }).catch((error: any) => {
+            console.error('[g-server]: Failed to connect to database:', error);
+        });
+
+        const server = http.createServer((request, response) => {
+            // 处理 HTTP 请求
+            response.statusCode = 404;
+            response.end('Not Found');
         });
         this.server = server;
 
+        // 创建 WebSocket 服务器，并绑定到 HTTP 服务器上
         this.wsServer = new WebSocketModule.Server({ server });
         this.connections = new Map<string, Connection>();
 
+        // 当有新的 WebSocket 连接建立时触发回调函数
         this.wsServer.on('connection', socket => {
             const connection: Connection = {
                 id: this.generateUniqueId(),
                 socket: socket,
-                reconnectAttempts: 3
+                reconnectAttempts: 3,
+                isAuthenticated: false
             };
 
             this.registerConnection(connection);
             this.setupConnectionEventHandlers(connection);
+            this.handleClientConnect(connection);
+            this.startHeartbeat(connection);
+        });
+    }
+
+    private handleUncaughtException(error: Error): void {
+        // 这里可以记录错误，并且可能需要关闭服务器以避免处于不一致的状态
+        console.error('[g-server]: Uncaught exception:', error);
+        this.shutdown();
+    }
+
+    private handleUnhandledRejection(reason: {} | null | undefined, promise: Promise<any>): void {
+        // 这里可以记录错误，并且可能需要关闭服务器以避免处于不一致的状态
+        console.error('[g-server]: Unhandled promise rejection:', reason);
+        this.shutdown();
+    }
+
+    private shutdown(): void {
+        // 这里应该执行一些清理操作，如关闭所有连接，停止接受新的连接，并最终关闭服务器
+        this.server.close(() => {
+            console.log('[g-server]: Server shut down.');
+            process.exit(1);
         });
     }
 
@@ -50,7 +92,7 @@ export class WebSocketServer {
 
     private invokeExtensionMethod(method: keyof ServerExtension, ...args: any[]): void {
         this.serverExtensions.forEach((extension) => {
-            const handler = extension[method];
+            const handler = extension[method] as (this: ServerExtension, ...args: any[]) => void;
             if (typeof handler === 'function') {
                 handler.apply(extension, args);
             }
@@ -124,6 +166,10 @@ export class WebSocketServer {
                     this.handleMessage(connection, message);
                 }
             }
+        });
+
+        socket.on('error', (error: any) => {
+            console.error('[g-server]: WebSocket error:', error);
         });
 
         socket.on('close', () => {
@@ -211,23 +257,80 @@ export class WebSocketServer {
     }
 
     private handleMessage(connection: Connection, message: Message): void {
-        switch (message.type) {
-            case 'text':
-                // 处理文本消息
-                this.handleTextMessage(connection, message.payload);
-                break;
-            case 'data':
-                // 处理数据消息
-                this.handleDataMessage(connection, message.payload);
-                break;
-            // 添加其他消息类型的处理逻辑
-            default:
-                console.warn('[g-server]: Unknown message type:', message.type);
-                break;
+        try {
+            if (!connection.isAuthenticated) {
+                // 如果连接还没有经过身份验证，那么它只能发送身份验证消息
+                if (message.type !== 'authentication') {
+                    connection.socket.close();
+                    return;
+                }
+
+                // 验证身份信息
+                if (!this.authenticate(connection, message.payload)) {
+                    connection.socket.close();
+                    return;
+                }
+
+                // 身份验证通过
+                connection.isAuthenticated = true;
+                return;
+            }
+
+            switch (message.type) {
+                case 'text':
+                    // 处理文本消息
+                    this.handleTextMessage(connection, message.payload);
+                    break;
+                case 'data':
+                    // 处理数据消息
+                    this.handleDataMessage(connection, message.payload);
+                    break;
+                case 'authentication':
+                    // 处理身份验证消息
+                    this.handleAuthenticationMessage(connection, message.payload);
+                    break;
+                // 添加其他消息类型的处理逻辑
+                default:
+                    console.warn('[g-server]: Unknown message type:', message.type);
+                    break;
+            }
+        } catch (error) {
+            console.error('[g-server]: Error handling message:', error);
         }
 
         // 调用用户自定义的消息处理方法
         this.invokeExtensionMethod('onMessageReceived', connection, message);
+    }
+
+    /**
+     * 身份验证函数
+     * @param connection
+     * @param payload
+     * @private
+     */
+    private async authenticate(connection: Connection, payload: any): Promise<boolean> {
+        try {
+            // 从数据库中查找用户
+            const collection = this.db.db('mydatabase').collection('users');
+            const user = await collection.findOne({ username: payload.username });
+
+            if (!user) {
+                // 用户名不存在
+                return false;
+            }
+
+            // 比较密码
+            const match = await bcrypt.compare(payload.password, user.passwordHash);
+
+            return match;
+        } catch (error) {
+            console.error('[g-server]: Authentication error:', error);
+            return false;
+        }
+    }
+
+    private handleAuthenticationMessage(connection: Connection, payload: any): void {
+        // 处理身份验证消息
     }
 
     private handleTextMessage(connection: Connection, payload: string): void {
@@ -244,7 +347,12 @@ export class WebSocketServer {
 
     private sendToConnection(connection: Connection, message: Message): void {
         const encodedMessage = this.encodeMessage(message);
-        connection.socket.send(encodedMessage);
+        try {
+            connection.socket.send(encodedMessage);
+        } catch (error) {
+            // 根据具体情况，可能想要重新发送消息，或者只是记录错误
+            console.error('[g-server]: Error sending message:', error);
+        }
     }
 
     private broadcast(message: Message): void {
