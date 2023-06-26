@@ -3,6 +3,7 @@ import {Message} from "./Message";
 import {WebSocketUtils} from "./WebSocketUtils";
 import {MessageQueueItem} from "./MessageQueueItem";
 import {GServices} from "./GServices";
+import logger from "./Logger";
 
 /**
  * 连接管理器类，用于管理 WebSocket 连接。
@@ -14,6 +15,9 @@ export class ConnectionManager {
     private connectionQueue: Connection[] = []; // 连接请求队列
     private connectionRateLimit: number = 100; // 每秒最大连接数
     private connectionRateLimitTimer: NodeJS.Timer | null = null;
+
+    private connectionTimeout: number = 30000; // 连接超时时间（毫秒）
+    private connectionCheckInterval: NodeJS.Timer | null = null;
 
     /**
      * 广播消息给所有连接。
@@ -37,6 +41,39 @@ export class ConnectionManager {
 
         if (!this.connectionRateLimitTimer) {
             this.connectionRateLimitTimer = setInterval(this.processConnectionQueue.bind(this), 1000 / this.connectionRateLimit);
+        }
+
+        // 如果还没有启动，开启定时检查连接
+        if (!this.connectionCheckInterval) {
+            this.connectionCheckInterval = setInterval(this.checkConnectionTimeouts.bind(this), this.connectionTimeout / 2);
+        }
+    }
+
+    /**
+     * 检查所有连接的超时情况，并关闭超时的连接。
+     */
+    private checkConnectionTimeouts(): void {
+        const now = new Date();
+        this.connections.forEach((connection, id) => {
+            if (now.getTime() - connection.lastUpdated.getTime() > this.connectionTimeout) {
+                // 如果连接超时，则关闭它
+                connection.socket.close();
+                this.connections.delete(id);
+                logger.info(`[g-server]: 连接 ${connection.id} 已超时并关闭。上一帧：${connection.lastFrame}。已发送消息数：${connection.sentMessagesCount}。已接收消息数：${connection.receivedMessagesCount}`);
+                this.cacheMessagesForReconnect(connection);
+                const reconnectDelay = this.getReconnectDelay(connection.reconnectAttempts);
+                setTimeout(() => {
+                    this.reconnect(connection);
+                }, reconnectDelay);
+            }
+        });
+
+        // 如果所有的连接都已关闭，则停止检查
+        if (this.connections.size === 0) {
+            if (this.connectionCheckInterval) {
+                clearInterval(this.connectionCheckInterval);
+                this.connectionCheckInterval = null;
+            }
         }
     }
 
@@ -113,7 +150,7 @@ export class ConnectionManager {
      * @param connection - 断开的连接。
      */
     public handleDisconnect(connection: Connection): void {
-        console.log(`[g-server]: 连接 ${connection.id} 已关闭。上一帧：${connection.lastFrame}。已发送消息数：${connection.sentMessagesCount}。已接收消息数：${connection.receivedMessagesCount}`);
+        logger.info(`[g-server]: 连接 ${connection.id} 已关闭。上一帧：${connection.lastFrame}。已发送消息数：${connection.sentMessagesCount}。已接收消息数：${connection.receivedMessagesCount}`);
         this.unregisterConnection(connection);
 
         // 缓存待发送的消息

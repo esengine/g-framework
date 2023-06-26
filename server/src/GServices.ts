@@ -10,6 +10,7 @@ import {HTTPServer} from "./HTTPServer";
 import {WebSocketServer} from "./WebSocketServer";
 import {Authentication} from "./Authentication";
 import {FrameSyncManager} from "./FrameSyncManager";
+import logger from "./Logger";
 
 /**
  * GServices 类，用于管理服务器的各种服务和功能。
@@ -68,18 +69,18 @@ export class GServices {
      */
     private handleUncaughtException(error: Error): void {
         // 这里可以记录错误，并通知相关人员
-        console.error('[g-server]: 未捕获的异常:', error);
+        logger.error('[g-server]: 未捕获的异常: %O', error);
 
         // 针对不同的错误类型进行特殊处理
         // 例如，根据错误类型或错误信息来判断这个错误是否严重到需要关闭服务器
         if (error.message.includes('mongodb')) {
-            console.error('[g-server]: 数据库错误。正在关闭服务器...');
+            logger.error('[g-server]: 数据库错误。正在关闭服务器...');
             this.shutdown();
         } else if (error.message.includes('network')) {
-            console.error('[g-server]: 网络错误。正在尝试恢复...');
+            logger.error('[g-server]: 网络错误。正在尝试恢复...');
             // 试图恢复服务或者其他的处理方式
         } else {
-            console.error('[g-server]: 未知错误。继续运行...');
+            logger.error('[g-server]: 未知错误。继续运行...');
         }
     }
 
@@ -90,19 +91,19 @@ export class GServices {
      */
     private handleUnhandledRejection(reason: {} | null | undefined, promise: Promise<any>): void {
         // 这里可以记录错误，并通知相关人员
-        console.error('[g-server]: 未处理的 Promise 拒绝:', reason);
+        logger.error('[g-server]: 未处理的 Promise 拒绝: %O', reason);
 
         // 如果你能预期到某些特定类型的 Promise 错误，你也可以在这里添加针对性的处理代码
         if (typeof reason === 'object' && reason !== null && 'message' in reason) {
             const message = (reason as { message?: string }).message;
             if (message && message.includes('database')) {
-                console.error('[g-server]: Promise 中的数据库错误。正在关闭服务器...');
+                logger.error('[g-server]: Promise 中的数据库错误。正在关闭服务器...');
                 this.shutdown();
             } else if (message && message.includes('network')) {
-                console.error('[g-server]: Promise 中的网络错误。正在尝试恢复...');
+                logger.error('[g-server]: Promise 中的网络错误。正在尝试恢复...');
                 // 试图恢复服务或者其他的处理方式
             } else {
-                console.error('[g-server]: 未知 Promise 拒绝。继续运行...');
+                logger.error('[g-server]: 未知 Promise 拒绝。继续运行...');
             }
         }
     }
@@ -175,7 +176,7 @@ export class GServices {
         });
 
         socket.on('error', (error: any) => {
-            console.error('[g-server]: WebSocket error:', error);
+            logger.error('[g-server]: WebSocket error: %0', error);
         });
 
         socket.on('close', () => {
@@ -231,11 +232,11 @@ export class GServices {
                     this.frameSyncManager.collectClientAction(this.frameSyncManager.CurrentFrame, message.payload);
                     break;
                 default:
-                    console.warn('[g-server]: 未知的消息类型:', message.type);
+                    logger.warn('[g-server]: 未知的消息类型: %0', message.type);
                     break;
             }
         } catch (error) {
-            console.error('[g-server]: 处理消息时出错:', error);
+            logger.error('[g-server]: 处理消息时出错: %0', error);
         }
 
         // 调用用户自定义的消息处理方法

@@ -2,6 +2,11 @@ import {Database} from "./Database";
 import {Connection} from "./Connection";
 import {WebSocketUtils} from "./WebSocketUtils";
 import {Message} from "./Message";
+import logger from "./Logger";
+
+import * as passport from "passport";
+import {Strategy as LocalStrategy} from "passport-local";
+import {Strategy as BearerStrategy} from "passport-http-bearer";
 
 /**
  * 身份验证类，用于处理连接的身份验证过程。
@@ -14,6 +19,34 @@ export class Authentication {
      */
     constructor() {
         this.dataBase = new Database();
+
+        // 使用本地策略进行身份验证
+        passport.use(new LocalStrategy(
+            (username, password, done) => {
+                this.dataBase.authenticate(username, password)
+                    .then(user => {
+                        if (!user) {
+                            return done(null, false, { message: 'Invalid username or password.' });
+                        }
+                        return done(null, user);
+                    })
+                    .catch(err => done(err));
+            }
+        ));
+
+        // 使用 Bearer 策略进行身份验证
+        passport.use(new BearerStrategy(
+            (token, done) => {
+                this.dataBase.findUserByToken(token)
+                    .then(user => {
+                        if (!user) {
+                            return done(null, false, "Invalid token." );
+                        }
+                        return done(null, user);
+                    })
+                    .catch(err => done(err));
+            }
+        ));
     }
 
     /**
@@ -27,7 +60,7 @@ export class Authentication {
             // 从数据库中查找用户
             return this.dataBase.authenticate(payload.username, payload.passwordHash);
         } catch (error) {
-            console.error('[g-server]: 身份验证错误:', error);
+            logger.error('[g-server]: 身份验证错误: %0', error);
             return false;
         }
     }
@@ -52,7 +85,7 @@ export class Authentication {
                 this.handleToken(connection, message.payload);
                 break;
             default:
-                console.warn('[g-server]: 未知的身份验证消息子类型:', message.subtype);
+                logger.warn('[g-server]: 未知的身份验证消息子类型: %0', message.subtype);
                 break;
         }
     }
