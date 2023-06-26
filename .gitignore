@@ -11,3 +11,4 @@
 /test/node_modules
 /physics/node_modules
 /server/node_modules
+/server/dist

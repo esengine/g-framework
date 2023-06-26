@@ -1,11 +1,13 @@
 {
-  "name": "gs-server",
-  "version": "1.0.0",
+  "name": "@esengine/gs-server",
+  "version": "1.0.1",
   "description": "",
-  "main": "index.js",
+  "main": "dist/index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node dist/index.js"
+    "start": "node dist/index.js",
+    "build": "tsc",
+    "publish": "npm run-script build && npm publish"
   },
   "author": "",
   "license": "ISC",
@@ -29,5 +31,8 @@
     "uuid": "^9.0.0",
     "winston": "^3.9.0",
     "ws": "^8.13.0"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

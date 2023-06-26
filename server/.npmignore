@@ -1,0 +1,9 @@
+# 忽略所有文件
+/*
+
+# 但是不忽略 dist 目录
+!/dist
+
+# 也不忽略 package.json 和 README.md
+!/package.json
+!/README.md
