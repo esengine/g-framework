@@ -13,3 +13,5 @@
 /server/node_modules
 /server/dist
 /server-test/node_modules
+/server-test/error.log
+/server-test/combined.log

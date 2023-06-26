@@ -1,14 +1,12 @@
 {
   "name": "@esengine/g-framework",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "",
   "main": "bin/gs.js",
   "directories": {
     "lib": "lib"
   },
   "scripts": {
-    "test": "mocha --recursive --reporter tap --growl",
-    "eslint": "eslint src --ext .ts",
     "deploy": "npm publish"
   },
   "author": "yhh",
@@ -33,12 +31,7 @@
     "watchify": "^4.0.0"
   },
   "publishConfig": {
-    "access": "public",
-    "registry": "https://npm.pkg.github.com/"
-  },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/esengine/g-framework.git"
+    "access": "public"
   },
   "dependencies": {}
 }
