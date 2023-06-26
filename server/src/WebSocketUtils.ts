@@ -2,6 +2,7 @@ import {Connection, FrameInfo} from "./Connection";
 import {Message} from "./Message";
 import WebSocket from "ws";
 import {v4 as uuidv4} from "uuid";
+import logger from "./Logger";
 
 /**
  * 提供WebSocket相关的实用方法
@@ -19,7 +20,7 @@ export class WebSocketUtils {
             connection.socket.send(encodedMessage);
         } catch (error) {
             // 根据具体情况，可能想要重新发送消息，或者只是记录错误
-            console.error('[g-server]: 发送消息时出错:', error);
+            logger.error('[g-server]: 发送消息时出错: %0', error);
             throw error; // 如果出错，抛出异常
         }
 
@@ -60,7 +61,7 @@ export class WebSocketUtils {
         try {
             return JSON.parse(data.toString()) as Message;
         } catch (error) {
-            console.error('[g-server]: 解码消息失败:', error);
+            logger.error('[g-server]: 解码消息失败: %0', error);
             return null;
         }
     }

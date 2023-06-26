@@ -1,5 +1,6 @@
 import * as bcrypt from 'bcrypt';
 import { MongoClient } from 'mongodb';
+import logger from "./Logger";
 
 /**
  * 数据库类，用于连接和操作 MongoDB 数据库。
@@ -21,9 +22,9 @@ export class Database {
     public async createConnection(): Promise<void> {
         try {
             await this.db.connect();
-            console.log('[g-server]: 已连接到数据库');
+            logger.info('[g-server]: 已连接到数据库');
         } catch (error: any) {
-            console.error('[g-server]: 连接数据库失败:', error);
+            logger.error('[g-server]: 连接数据库失败: %0', error);
         }
     }
 
@@ -33,20 +34,42 @@ export class Database {
      * @param password - 密码。
      * @returns 一个 Promise，表示身份验证操作的异步结果。
      */
-    public async authenticate(username: string, password: string): Promise<boolean> {
+    public async authenticate(username: string, password: string): Promise<any> {
         try {
             const collection = this.db.db('g-database').collection('users');
             const user = await collection.findOne({username: username});
 
             if (!user) {
                 // 用户名不存在
-                return false;
+                return null;
             }
 
-            return await bcrypt.compare(password, user.passwordHash);
+            const passwordMatch = await bcrypt.compare(password, user.passwordHash);
+            if (passwordMatch) {
+                return user;
+            } else {
+                return null;
+            }
         } catch (error) {
-            console.error('[g-server]: 身份验证错误:', error);
+            logger.error('[g-server]: 身份验证错误: %0', error);
             return false;
+        }
+    }
+
+    /**
+     * 根据令牌查找用户。
+     * @param token - 令牌。
+     * @returns 一个 Promise，表示根据令牌查找用户的异步结果。
+     */
+    public async findUserByToken(token: string): Promise<any> {
+        try {
+            const collection = this.db.db('g-database').collection('users');
+            const user = await collection.findOne({token: token});
+
+            return user;
+        } catch (error) {
+            logger.error('[g-server]: 找不到使用该令牌的用户: %0', error);
+            return null;
         }
     }
 }

@@ -1,4 +1,5 @@
 import * as http from "http";
+import logger from "./Logger";
 
 /**
  * HTTP 服务器类，用于创建和管理 HTTP 服务器。
@@ -30,7 +31,7 @@ export class HTTPServer {
      */
     public start(port: number) {
         this.server.listen(port, () => {
-            console.log(`[g-server]: HTTP 服务器正在监听端口 ${port}`);
+            logger.info(`[g-server]: HTTP 服务器正在监听端口 ${port}`);
         });
     }
 
@@ -39,7 +40,7 @@ export class HTTPServer {
      */
     public shutdown() {
         this.server.close(() => {
-            console.log('[g-server]: 服务器已关闭。');
+            logger.info('[g-server]: 服务器已关闭');
             process.exit(1);
         });
     }
