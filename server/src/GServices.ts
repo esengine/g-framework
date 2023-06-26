@@ -16,17 +16,20 @@ import logger from "./Logger";
  * GServices 类，用于管理服务器的各种服务和功能。
  */
 export class GServices {
-    private config: WebSocketServerConfig;
+    private config!: WebSocketServerConfig;
     private serverExtensions: ServerExtension[] = [];
-    private heartbeatManager: HeartbeatManager;
-    private connectionManager: ConnectionManager;
-    private frameSyncManager: FrameSyncManager;
-    private httpServer: HTTPServer;
-    private webSocketServer: WebSocketServer;
-    private authentication: Authentication;
+    private heartbeatManager!: HeartbeatManager;
+    private connectionManager!: ConnectionManager;
+    private frameSyncManager!: FrameSyncManager;
+    private httpServer!: HTTPServer;
+    private webSocketServer!: WebSocketServer;
+    private authentication!: Authentication;
 
     private static _services: GServices;
     public static I() {
+        if (this._services == null)
+            this._services = new GServices();
+
         return this._services;
     }
 
@@ -44,11 +47,13 @@ export class GServices {
         return this.connectionManager;
     }
 
+    private constructor() { }
+
     /**
      * 创建一个新的 GServices 实例。
      * @param config - WebSocket 服务器配置。
      */
-    constructor(config: WebSocketServerConfig) {
+    public init(config: WebSocketServerConfig) {
         this.config = config;
 
         process.on('uncaughtException', this.handleUncaughtException.bind(this));
