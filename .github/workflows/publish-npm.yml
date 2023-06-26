@@ -2,19 +2,35 @@ name: Publish NPM
 on:
   workflow_dispatch:
 jobs:
-  build-and-release:
-    name: Build and Release
+  build-and-release-framework:
+    name: Build and Release Framework
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
-      - name: Use Node.js 10.20.1
+      - name: Use Node.js 18.0.0
         uses: actions/setup-node@v3
         with:
-          node-version: 10.20.1
+          node-version: 18.0.0
           registry-url: https://npm.pkg.github.com
-      - name: Publish to npm
+      - name: Publish Framework to npm
         run: npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{secrets.GITHUB_TOKEN}}
         working-directory: source
+  build-and-release-server:
+    name: Build and Release Server
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+      - name: Use Node.js 18.0.0
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18.0.0
+          registry-url: https://npm.pkg.github.com
+      - name: Publish Server to npm
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{secrets.GITHUB_TOKEN}}
+        working-directory: server
