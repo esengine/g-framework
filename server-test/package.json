@@ -14,6 +14,7 @@
     "typescript": "^5.1.3"
   },
   "dependencies": {
-    "@esengine/gs-server": "^1.0.1"
+    "@esengine/gs-server": "^1.0.4",
+    "http": "^0.0.1-security"
   }
 }

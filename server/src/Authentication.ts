@@ -4,7 +4,7 @@ import {WebSocketUtils} from "./WebSocketUtils";
 import {Message} from "./Message";
 import logger from "./Logger";
 
-import * as passport from "passport";
+const passport = require('passport');
 import {Strategy as LocalStrategy} from "passport-local";
 import {Strategy as BearerStrategy} from "passport-http-bearer";
 

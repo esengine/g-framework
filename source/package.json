@@ -9,7 +9,7 @@
   "scripts": {
     "test": "mocha --recursive --reporter tap --growl",
     "eslint": "eslint src --ext .ts",
-    "publish": "npm publish"
+    "deploy": "npm publish"
   },
   "author": "yhh",
   "license": "MIT",

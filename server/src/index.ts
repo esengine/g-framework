@@ -1,2 +1,2 @@
-export { GServices } from './GServices';
-export { ServerExtension } from './ServerExtension';
+export { GServices } from './GServices'
+export { WebSocketUtils } from './WebSocketUtils'
