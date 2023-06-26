@@ -13,10 +13,13 @@ jobs:
         with:
           node-version: 18.0.0
           registry-url: https://npm.pkg.github.com
+      - name: Install dependencies
+        run: npm install
+        working-directory: source
       - name: Publish Framework to npm
         run: npm publish --access public
         env:
-          NODE_AUTH_TOKEN: ${{secrets.GITHUB_TOKEN}}
+          NODE_AUTH_TOKEN: ${{secrets.NODE_AUTH_TOKEN}}
         working-directory: source
   build-and-release-server:
     name: Build and Release Server
@@ -29,8 +32,11 @@ jobs:
         with:
           node-version: 18.0.0
           registry-url: https://npm.pkg.github.com
+      - name: Install dependencies
+        run: npm install
+        working-directory: server
       - name: Publish Server to npm
         run: npm publish --access public
         env:
-          NODE_AUTH_TOKEN: ${{secrets.GITHUB_TOKEN}}
+          NODE_AUTH_TOKEN: ${{secrets.NODE_AUTH_TOKEN}}
         working-directory: server
