@@ -1,5 +1,5 @@
 {
-  "name": "@esengine/gs-framework",
+  "name": "@esengine/g-framework",
   "version": "1.0.4",
   "description": "",
   "main": "bin/gs.js",
@@ -7,8 +7,6 @@
     "lib": "lib"
   },
   "scripts": {
-    "test": "mocha --recursive --reporter tap --growl",
-    "eslint": "eslint src --ext .ts",
     "deploy": "npm publish"
   },
   "author": "yhh",
