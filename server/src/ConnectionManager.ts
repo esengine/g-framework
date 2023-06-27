@@ -215,4 +215,13 @@ export class ConnectionManager {
 
         return Math.min(baseDelay * Math.pow(2, reconnectAttempts), maxDelay);
     }
+
+    /**
+     * 根据 ID 获取连接。
+     * @param id - 连接的 ID。
+     * @returns 返回与 ID 相对应的连接，如果没有找到则返回 null。
+     */
+    public getConnectionById(id: string): Connection | null {
+        return this.connections.get(id) || null;
+    }
 }

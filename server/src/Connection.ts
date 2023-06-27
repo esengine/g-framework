@@ -80,4 +80,9 @@ export interface Connection {
      * 最后接收或发送的 WebSocket 帧的信息。
      */
     lastFrame?: FrameInfo;
+
+    /**
+     * 连接所在的房间 ID。
+     */
+    roomId?: string;
 }
