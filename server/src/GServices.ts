@@ -12,6 +12,7 @@ import {Authentication} from "./Authentication";
 import {FrameSyncManager} from "./FrameSyncManager";
 import logger from "./Logger";
 import {ErrorHandler} from "./ErrorHandler";
+import {RoomManager} from "./RoomManager";
 
 /**
  * GServices 类，用于管理服务器的各种服务和功能。
@@ -22,6 +23,7 @@ export class GServices {
     private heartbeatManager!: HeartbeatManager;
     private connectionManager!: ConnectionManager;
     private frameSyncManager!: FrameSyncManager;
+    private roomManager!: RoomManager;
     private httpServer!: HTTPServer;
     private webSocketServer!: WebSocketServer;
     private authentication!: Authentication;
@@ -48,6 +50,10 @@ export class GServices {
         return this.connectionManager;
     }
 
+    public get RoomManager() {
+        return this.roomManager;
+    }
+
     private constructor() { }
 
     /**
@@ -63,6 +69,7 @@ export class GServices {
         this.heartbeatManager = new HeartbeatManager(config.heartbeatInterval, config.heartbeatTimeout);
         this.connectionManager = new ConnectionManager();
         this.frameSyncManager = new FrameSyncManager();
+        this.roomManager = new RoomManager();
 
         this.authentication = new Authentication();
         this.httpServer = new HTTPServer();
@@ -190,7 +197,15 @@ export class GServices {
                     this.handleStateUpdate(connection, message);
                     break;
                 case 'action':
-                    this.frameSyncManager.collectClientAction(this.frameSyncManager.CurrentFrame, message.payload);
+                    const roomId = connection.roomId;
+                    if (roomId) {
+                        const frame = this.frameSyncManager.getRoomCurrentFrame(roomId);
+                        if (frame !== undefined) {
+                            this.frameSyncManager.collectClientAction(roomId, frame, message.payload);
+                        }
+                    } else {
+                        logger.error('[g-server]: 用户 %0 还未加入房间: %1', connection.id, message.type);
+                    }
                     break;
                 default:
                     logger.warn('[g-server]: 未知的消息类型: %0', message.type);
@@ -247,8 +262,5 @@ export class GServices {
      */
     public start() {
         this.httpServer.start(this.config.port);
-
-        // 开始帧同步
-        this.frameSyncManager.startFrameSync();
     }
 }
