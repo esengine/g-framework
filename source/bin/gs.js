@@ -1883,6 +1883,238 @@ var gs;
     }());
     gs.TimeManager = TimeManager;
 })(gs || (gs = {}));
+System.register("Network/Connection", [], function (exports_1, context_1) {
+    "use strict";
+    var Connection;
+    var __moduleName = context_1 && context_1.id;
+    return {
+        setters: [],
+        execute: function () {
+            Connection = /** @class */ (function () {
+                function Connection(url) {
+                    this.isAuthenticated = false;
+                    this.token = null;
+                    this.verificationCode = null;
+                    this.socket = new WebSocket(url);
+                }
+                Object.defineProperty(Connection.prototype, "Socket", {
+                    get: function () {
+                        return this.socket;
+                    },
+                    enumerable: true,
+                    configurable: true
+                });
+                Connection.prototype.send = function (message) {
+                    this.socket.send(JSON.stringify(message));
+                };
+                return Connection;
+            }());
+            exports_1("Connection", Connection);
+        }
+    };
+});
+System.register("Network/Message", [], function (exports_2, context_2) {
+    "use strict";
+    var __moduleName = context_2 && context_2.id;
+    return {
+        setters: [],
+        execute: function () {
+        }
+    };
+});
+System.register("Network/WebSocketUtils", [], function (exports_3, context_3) {
+    "use strict";
+    var WebSocketUtils;
+    var __moduleName = context_3 && context_3.id;
+    return {
+        setters: [],
+        execute: function () {
+            WebSocketUtils = /** @class */ (function () {
+                function WebSocketUtils() {
+                }
+                WebSocketUtils.hashPassword = function (password) {
+                    var hash = 0, i, chr;
+                    for (i = 0; i < password.length; i++) {
+                        chr = password.charCodeAt(i);
+                        hash = ((hash << 5) - hash) + chr;
+                        hash |= 0;
+                    }
+                    return hash.toString();
+                };
+                WebSocketUtils.sendToConnection = function (connection, message) {
+                    connection.send(message);
+                };
+                return WebSocketUtils;
+            }());
+            exports_3("WebSocketUtils", WebSocketUtils);
+        }
+    };
+});
+System.register("Network/Authentication", ["Network/WebSocketUtils"], function (exports_4, context_4) {
+    "use strict";
+    var WebSocketUtils_1, Authentication;
+    var __moduleName = context_4 && context_4.id;
+    return {
+        setters: [
+            function (WebSocketUtils_1_1) {
+                WebSocketUtils_1 = WebSocketUtils_1_1;
+            }
+        ],
+        execute: function () {
+            Authentication = /** @class */ (function () {
+                function Authentication(connection) {
+                    this.token = null;
+                    this.verificationCode = null;
+                    this.connection = connection;
+                }
+                /**
+                 * 启动身份验证过程。
+                 * @param username - 用户名。
+                 * @param password - 密码。
+                 */
+                Authentication.prototype.startAuthentication = function (username, password) {
+                    var payload = {
+                        username: username,
+                        passwordHash: WebSocketUtils_1.WebSocketUtils.hashPassword(password),
+                    };
+                    WebSocketUtils_1.WebSocketUtils.sendToConnection(this.connection, {
+                        type: 'authentication',
+                        subtype: 'usernamePassword',
+                        payload: payload,
+                    });
+                };
+                /**
+                 * 处理服务器端发来的身份验证消息。
+                 * @param message - 身份验证消息对象。
+                 */
+                Authentication.prototype.handleAuthenticationMessage = function (message) {
+                    switch (message.subtype) {
+                        case 'verificationCode':
+                            this.handleVerificationCode(message.payload);
+                            break;
+                        case 'token':
+                            this.handleToken(message.payload);
+                            break;
+                        default:
+                            console.warn('[g-client]: 未知的身份验证消息子类型: %0', message.subtype);
+                            break;
+                    }
+                };
+                /**
+                 * 处理服务器端发来的验证码。
+                 * @param payload - 身份验证消息的有效载荷数据。
+                 */
+                Authentication.prototype.handleVerificationCode = function (payload) {
+                    this.verificationCode = payload;
+                    WebSocketUtils_1.WebSocketUtils.sendToConnection(this.connection, {
+                        type: 'authentication',
+                        subtype: 'verificationCode',
+                        payload: this.verificationCode,
+                    });
+                };
+                /**
+                 * 处理服务器端发来的令牌。
+                 * @param payload - 身份验证消息的有效载荷数据。
+                 */
+                Authentication.prototype.handleToken = function (payload) {
+                    this.token = payload;
+                    WebSocketUtils_1.WebSocketUtils.sendToConnection(this.connection, {
+                        type: 'authentication',
+                        subtype: 'token',
+                        payload: this.token,
+                    });
+                    // 认证完成后，可以进行其他操作，比如加入房间或者开始游戏等等
+                    this.afterAuthenticated();
+                };
+                /**
+                 * 在身份验证完成后执行一些操作。
+                 */
+                Authentication.prototype.afterAuthenticated = function () {
+                    // 身份验证完成后，可以进行一些操作，例如向服务器发送消息表示已经准备好开始游戏
+                    // 或者在 UI 中显示一个消息表示身份验证成功
+                };
+                return Authentication;
+            }());
+            exports_4("Authentication", Authentication);
+        }
+    };
+});
+System.register("Network/GNetworkAdapter", ["Network/Authentication", "Network/Connection"], function (exports_5, context_5) {
+    "use strict";
+    var Authentication_1, Connection_1, GNetworkAdapter;
+    var __moduleName = context_5 && context_5.id;
+    return {
+        setters: [
+            function (Authentication_1_1) {
+                Authentication_1 = Authentication_1_1;
+            },
+            function (Connection_1_1) {
+                Connection_1 = Connection_1_1;
+            }
+        ],
+        execute: function () {
+            GNetworkAdapter = /** @class */ (function () {
+                function GNetworkAdapter(serverUrl, username, password) {
+                    this.serverUrl = serverUrl;
+                    this.reconnectionAttempts = 0;
+                    this.maxReconnectionAttempts = 10;
+                    this.connection = new Connection_1.Connection(serverUrl);
+                    this.authentication = new Authentication_1.Authentication(this.connection);
+                    this.connect(username, password);
+                }
+                GNetworkAdapter.prototype.connect = function (username, password) {
+                    var _this = this;
+                    this.socket = this.connection.Socket;
+                    this.socket.addEventListener('open', function () {
+                        console.info('[g-client]: 连接到服务器');
+                        _this.reconnectionAttempts = 0;
+                        _this.authentication.startAuthentication(username, password);
+                    });
+                    this.socket.addEventListener('error', function (error) {
+                        console.error('[g-client]: 发生错误:', error);
+                    });
+                    this.socket.addEventListener('close', function () {
+                        if (_this.reconnectionAttempts < _this.maxReconnectionAttempts) {
+                            console.warn('[g-client]: 连接关闭, 尝试重新连接...');
+                            setTimeout(function () { return _this.connect(username, password); }, _this.getReconnectDelay());
+                            _this.reconnectionAttempts++;
+                        }
+                        else {
+                            console.error('[g-client] 连接关闭, 超出最大重连次数.');
+                        }
+                    });
+                    this.socket.addEventListener('message', function (event) {
+                        var message = JSON.parse(event.data);
+                        if (message.type === 'authentication') {
+                            _this.authentication.handleAuthenticationMessage(message);
+                        }
+                        else {
+                        }
+                    });
+                };
+                GNetworkAdapter.prototype.sendInput = function (frameNumber, inputData) {
+                    var message = {
+                        type: 'input',
+                        frameNumber: frameNumber,
+                        inputData: inputData,
+                    };
+                    this.socket.send(JSON.stringify(message));
+                };
+                GNetworkAdapter.prototype.onServerUpdate = function (callback) {
+                    this.socket.addEventListener('message', function (event) {
+                        var serverState = JSON.parse(event.data.toString());
+                        callback(serverState);
+                    });
+                };
+                GNetworkAdapter.prototype.getReconnectDelay = function () {
+                    return Math.min(1000 * Math.pow(2, this.reconnectionAttempts), 10000);
+                };
+                return GNetworkAdapter;
+            }());
+            exports_5("GNetworkAdapter", GNetworkAdapter);
+        }
+    };
+});
 var gs;
 (function (gs) {
     var NetworkManager = /** @class */ (function () {

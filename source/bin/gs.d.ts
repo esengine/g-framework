@@ -695,6 +695,83 @@ declare module gs {
         isGamePaused(): boolean;
     }
 }
+declare module "Network/Connection" {
+    export class Connection {
+        private socket;
+        isAuthenticated: boolean;
+        token: string | null;
+        verificationCode: string | null;
+        readonly Socket: WebSocket;
+        constructor(url: string);
+        send(message: any): void;
+    }
+}
+declare module "Network/Message" {
+    export interface Message {
+        type: string;
+        subtype: string;
+        payload: any;
+    }
+}
+declare module "Network/WebSocketUtils" {
+    import { Connection } from "Network/Connection";
+    import { Message } from "Network/Message";
+    export class WebSocketUtils {
+        static hashPassword(password: string): string;
+        static sendToConnection(connection: Connection, message: Message): void;
+    }
+}
+declare module "Network/Authentication" {
+    import { Message } from "Network/Message";
+    import { Connection } from "Network/Connection";
+    export class Authentication {
+        private connection;
+        private token;
+        private verificationCode;
+        constructor(connection: Connection);
+        /**
+         * 启动身份验证过程。
+         * @param username - 用户名。
+         * @param password - 密码。
+         */
+        startAuthentication(username: string, password: string): void;
+        /**
+         * 处理服务器端发来的身份验证消息。
+         * @param message - 身份验证消息对象。
+         */
+        handleAuthenticationMessage(message: Message): void;
+        /**
+         * 处理服务器端发来的验证码。
+         * @param payload - 身份验证消息的有效载荷数据。
+         */
+        private handleVerificationCode;
+        /**
+         * 处理服务器端发来的令牌。
+         * @param payload - 身份验证消息的有效载荷数据。
+         */
+        private handleToken;
+        /**
+         * 在身份验证完成后执行一些操作。
+         */
+        private afterAuthenticated;
+    }
+}
+declare module "Network/GNetworkAdapter" {
+    import NetworkAdapter = gs.NetworkAdapter;
+    export class GNetworkAdapter implements NetworkAdapter {
+        private serverUrl;
+        private socket;
+        private reconnectionAttempts;
+        private maxReconnectionAttempts;
+        private connection;
+        private authentication;
+        constructor(serverUrl: string, username: string, password: string);
+        private connect;
+        sendInput(frameNumber: number, inputData: any): void;
+        onServerUpdate(callback: (serverState: any) => void): void;
+        private getReconnectDelay;
+    }
+}
 declare module gs {
     interface NetworkAdapter {
         /**
