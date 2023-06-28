@@ -1,6 +1,6 @@
 import {GServices} from "./GServices";
-import {Connection} from "./Connection";
-import {Message} from "./Message";
+import {Connection} from "../Communication/Connection";
+import {Message} from "../Communication/Message";
 
 /**
  * 服务器扩展接口，用于扩展服务器功能。

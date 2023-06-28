@@ -1,10 +1,10 @@
 import { v4 as uuidv4 } from 'uuid';
 import {Player} from "./Player";
 import {Room} from "./Room";
-import {Message} from "./Message";
-import {GServices} from "./GServices";
-import {WebSocketUtils} from "./WebSocketUtils";
-import logger from "./Logger";
+import {Message} from "../Communication/Message";
+import {GServices} from "../Service/GServices";
+import {WebSocketUtils} from "../Communication/WebSocketUtils";
+import logger from "../ErrorAndLog/Logger";
 
 export class RoomManager {
     private rooms: { [id: string]: Room } = {};
@@ -39,7 +39,7 @@ export class RoomManager {
         if (room) {
             room.addPlayer(player);
         } else {
-            logger.error('房间未找到');
+            logger.error('[g-server]: 房间未找到');
         }
     }
 
@@ -53,7 +53,7 @@ export class RoomManager {
         if (room) {
             room.removePlayer(player);
         } else {
-            logger.error('房间未找到');
+            logger.error('[g-server]: 房间未找到');
         }
     }
 

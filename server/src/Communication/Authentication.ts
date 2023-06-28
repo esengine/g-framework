@@ -1,8 +1,8 @@
-import {Database} from "./Database";
+import {Database} from "../Data/Database";
 import {Connection} from "./Connection";
 import {WebSocketUtils} from "./WebSocketUtils";
 import {Message} from "./Message";
-import logger from "./Logger";
+import logger from "../ErrorAndLog/Logger";
 
 const passport = require('passport');
 import {Strategy as LocalStrategy} from "passport-local";
@@ -62,13 +62,8 @@ export class Authentication {
      * @returns 一个 Promise，表示身份验证操作的异步结果。
      */
     public authenticate(connection: Connection, payload: any) {
-        try {
-            // 从数据库中查找用户
-            return this.dataBase.authenticate(payload.username, payload.passwordHash);
-        } catch (error) {
-            logger.error('[g-server]: 身份验证错误: %0', error);
-            return false;
-        }
+        // 从数据库中查找用户
+        return this.dataBase.authenticate(payload.username, payload.passwordHash);
     }
 
     public register(connection: Connection, payload: any) {
@@ -95,7 +90,7 @@ export class Authentication {
                 this.handleToken(connection, message.payload);
                 break;
             default:
-                logger.warn('[g-server]: 未知的身份验证消息子类型: %0', message.subtype);
+                logger.warn('[g-server]: 未知的身份验证消息子类型: %s', message.subtype);
                 break;
         }
     }

@@ -1,5 +1,5 @@
 import logger from "./Logger";
-import {GServices} from "./GServices";
+import {GServices} from "../Service/GServices";
 
 export class ErrorHandler {
     /**
@@ -8,7 +8,7 @@ export class ErrorHandler {
      */
     public static handleUncaughtException(error: Error): void {
         // 这里可以记录错误，并通知相关人员
-        logger.error('[g-server]: 未捕获的异常: %O', error);
+        logger.error('[g-server]: 未捕获的异常: %s', error);
 
         // 针对不同的错误类型进行特殊处理
         // 例如，根据错误类型或错误信息来判断这个错误是否严重到需要关闭服务器

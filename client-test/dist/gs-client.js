@@ -109,7 +109,7 @@ playerEntity.addComponent(VelocityComponent);
 var moveSystem = new MoveSystem(core.entityManager, 0);
 core.systemManager.registerSystem(moveSystem);
 // 使用你的服务器URL实例化网络适配器
-var networkAdapter = new gs.GNetworkAdapter('ws://localhost:8080', "admin", "admin");
+var networkAdapter = new gs.GNetworkAdapter('ws://localhost:8080', "admin", "admin1");
 // 添加网络适配器到EntityManager
 core.entityManager.getNetworkManager().setNetworkAdapter(networkAdapter);
 var lastTimestamp = performance.now();

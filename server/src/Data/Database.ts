@@ -1,6 +1,7 @@
 import * as bcrypt from 'bcrypt';
-import {MongoClient, ServerApiVersion} from 'mongodb';
-import logger from "./Logger";
+import {MongoClient} from 'mongodb';
+import logger from "../ErrorAndLog/Logger";
+import {UserNotExistError, WrongPasswordError} from "../ErrorAndLog/GError";
 
 /**
  * 数据库类，用于连接和操作 MongoDB 数据库。
@@ -31,7 +32,7 @@ export class Database {
             await this.db.connect();
             logger.info('[g-server]: 已连接到数据库');
         } catch (error: any) {
-            logger.error('[g-server]: 连接数据库失败: %0', error);
+            logger.error('[g-server]: 连接数据库失败: %s', error);
             throw error;
         }
     }
@@ -45,7 +46,7 @@ export class Database {
             await this.db.close();
             logger.info('[g-server]: 已断开数据库连接');
         } catch (error: any) {
-            logger.error('[g-server]: 断开数据库连接失败: %0', error);
+            logger.error('[g-server]: 断开数据库连接失败: %s', error);
             throw error;
         }
     }
@@ -64,18 +65,18 @@ export class Database {
 
             if (!user) {
                 // 用户名不存在
-                throw new Error("用户名或密码错误");
+                throw new UserNotExistError();
             }
 
             const passwordMatch = await bcrypt.compare(password, user.passwordHash);
             if (passwordMatch) {
                 return user;
             } else {
-                throw new Error("用户名或密码错误");
+                throw new WrongPasswordError();
             }
         } catch (error) {
-            logger.error('[g-server]: 身份验证错误: %0', error);
-            return false;
+            logger.error('[g-server]: 身份验证错误: %s', error);
+            return error;
         } finally {
             await this.db.close();
         }
@@ -102,7 +103,7 @@ export class Database {
                 throw new Error("注册失败");
             }
         } catch (error) {
-            logger.error('[g-server]: 注册错误: %0', error);
+            logger.error('[g-server]: 注册错误: %s', error);
             return false;
         }
         finally {
@@ -122,7 +123,7 @@ export class Database {
 
             return user;
         } catch (error) {
-            logger.error('[g-server]: 找不到使用该令牌的用户: %0', error);
+            logger.error('[g-server]: 找不到使用该令牌的用户: %s', error);
             return null;
         }
     }

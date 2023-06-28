@@ -1,4 +1,4 @@
-import {Connection} from "./Connection";
+import {Connection} from "../Communication/Connection";
 
 /**
  * 玩家类，表示一个玩家对象。

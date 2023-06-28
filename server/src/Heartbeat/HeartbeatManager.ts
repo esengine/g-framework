@@ -1,7 +1,7 @@
-import {Connection} from "./Connection";
-import {Message} from "./Message";
-import {WebSocketUtils} from "./WebSocketUtils";
-import {GServices} from "./GServices";
+import {Connection} from "../Communication/Connection";
+import {Message} from "../Communication/Message";
+import {WebSocketUtils} from "../Communication/WebSocketUtils";
+import {GServices} from "../Service/GServices";
 
 /**
  * 管理服务器和客户端之间的心跳

@@ -2,8 +2,8 @@ import {Connection, FrameInfo} from "./Connection";
 import {Message} from "./Message";
 import {WebSocketUtils} from "./WebSocketUtils";
 import {MessageQueueItem} from "./MessageQueueItem";
-import {GServices} from "./GServices";
-import logger from "./Logger";
+import {GServices} from "../Service/GServices";
+import logger from "../ErrorAndLog/Logger";
 
 /**
  * 连接管理器类，用于管理 WebSocket 连接。
@@ -25,8 +25,7 @@ export class ConnectionManager {
      */
     public broadcast(message: Message): void {
         this.connections.forEach(connection => {
-            const frameInfo: FrameInfo = WebSocketUtils.sendToConnection(connection, message);
-            this.updateConnectionStats(connection, frameInfo, false);
+            WebSocketUtils.sendToConnection(connection, message);
         });
     }
 
@@ -135,7 +134,7 @@ export class ConnectionManager {
      * @param frame - 最近收到或发送的 WebSocket 帧的信息。
      * @param received - 如果是接收到的消息，则为 true；否则为 false。
      */
-    private updateConnectionStats(connection: Connection, frame: FrameInfo, received: boolean): void {
+    public updateConnectionStats(connection: Connection, frame: FrameInfo, received: boolean): void {
         connection.lastFrame = frame;
         if (received) {
             connection.receivedMessagesCount += 1;
@@ -150,7 +149,7 @@ export class ConnectionManager {
      * @param connection - 断开的连接。
      */
     public handleDisconnect(connection: Connection): void {
-        logger.info(`[g-server]: 连接 ${connection.id} 已关闭。上一帧：${connection.lastFrame}。已发送消息数：${connection.sentMessagesCount}。已接收消息数：${connection.receivedMessagesCount}`);
+        logger.info(`[g-server]: 连接 ${connection.id} 已关闭。上一帧：%s。已发送消息数：${connection.sentMessagesCount}。已接收消息数：${connection.receivedMessagesCount}`, connection.lastFrame);
         this.unregisterConnection(connection);
 
         // 缓存待发送的消息
@@ -191,10 +190,7 @@ export class ConnectionManager {
             const { message } = item;
 
             // 发送消息给客户端
-            const frameInfo: FrameInfo = WebSocketUtils.sendToConnection(connection, message);
-
-            // 更新连接的统计信息
-            this.updateConnectionStats(connection, frameInfo, false);
+           WebSocketUtils.sendToConnection(connection, message);
 
             // 从消息队列中移除已发送的消息
             this.messageQueue = this.messageQueue.filter((queuedItem) => queuedItem !== item);

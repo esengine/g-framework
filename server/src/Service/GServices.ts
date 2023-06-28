@@ -1,18 +1,20 @@
 import WebSocket from 'ws';
-import {WebSocketServerConfig} from "./WebSocketServerConfig";
-import {Connection} from "./Connection";
-import {Message} from "./Message";
+import {WebSocketServerConfig} from "../Communication/WebSocketServerConfig";
+import {Connection} from "../Communication/Connection";
+import {Message} from "../Communication/Message";
 import {ServerExtension} from "./ServerExtension";
-import {WebSocketUtils} from "./WebSocketUtils";
-import {HeartbeatManager} from "./HeartbeatManager";
-import {ConnectionManager} from "./ConnectionManager";
-import {HTTPServer} from "./HTTPServer";
-import {WebSocketServer} from "./WebSocketServer";
-import {Authentication} from "./Authentication";
-import {FrameSyncManager} from "./FrameSyncManager";
-import logger from "./Logger";
-import {ErrorHandler} from "./ErrorHandler";
-import {RoomManager} from "./RoomManager";
+import {WebSocketUtils} from "../Communication/WebSocketUtils";
+import {HeartbeatManager} from "../Heartbeat/HeartbeatManager";
+import {ConnectionManager} from "../Communication/ConnectionManager";
+import {HTTPServer} from "../Communication/HTTPServer";
+import {WebSocketServer} from "../Communication/WebSocketServer";
+import {Authentication} from "../Communication/Authentication";
+import {FrameSyncManager} from "../GameLogic/FrameSyncManager";
+import logger from "../ErrorAndLog/Logger";
+import {ErrorHandler} from "../ErrorAndLog/ErrorHandler";
+import {RoomManager} from "../GameLogic/RoomManager";
+import {UserNotExistError, WrongPasswordError} from "../ErrorAndLog/GError";
+import {Player} from "../GameLogic/Player"
 
 /**
  * GServices 类，用于管理服务器的各种服务和功能。
@@ -92,7 +94,7 @@ export class GServices {
             await this.authentication.DataBase.closeConnection();
             logger.info("[g-server]: 数据库连接关闭.");
         } catch (error) {
-            logger.error(`[g-server]: 关闭数据库连接错误: %0`, error);
+            logger.error(`[g-server]: 关闭数据库连接错误: %s`, error);
         }
     }
 
@@ -156,7 +158,7 @@ export class GServices {
         });
 
         socket.on('error', (error: any) => {
-            logger.error('[g-server]: WebSocket error: %0', error);
+            logger.error('[g-server]: WebSocket error: %s', error);
         });
 
         socket.on('close', () => {
@@ -182,18 +184,24 @@ export class GServices {
                 }
 
                 // 验证身份信息
-                const user = await this.authentication.authenticate(connection, message.payload);
-                if (!user) {
-                    // 如果身份验证失败，尝试注册新用户
+                const result = await this.authentication.authenticate(connection, message.payload);
+                if (result instanceof UserNotExistError) {
+                    // 用户名不存在，尝试注册新用户
                     const registerResult = await this.authentication.register(connection, message.payload);
                     if (!registerResult.success) {
                         connection.socket.close();
                         return;
                     }
+                } else if (result instanceof WrongPasswordError) {
+                    // 密码错误，直接关闭连接
+                    connection.socket.close();
+                    return;
+                } else {
+                    // 身份验证通过
+                    connection.isAuthenticated = true;
+                    return;
                 }
 
-                // 身份验证通过
-                connection.isAuthenticated = true;
                 return;
             }
 
@@ -221,15 +229,21 @@ export class GServices {
                             this.frameSyncManager.collectClientAction(roomId, frame, message.payload);
                         }
                     } else {
-                        logger.error('[g-server]: 用户 %0 还未加入房间: %1', connection.id, message.type);
+                        logger.error('[g-server]: 用户 %s 还未加入房间: %s', connection.id, message.type);
                     }
                     break;
+                case 'joinRoom':
+                    this.handleJoinRoomMessage(connection, message.payload);
+                    break;
+                case 'startGame':
+                    this.handleStartGameMessage(connection, message.payload);
+                    break;
                 default:
-                    logger.warn('[g-server]: 未知的消息类型: %0', message.type);
+                    logger.warn('[g-server]: 未知的消息类型: %s', message.type);
                     break;
             }
         } catch (error) {
-            logger.error('[g-server]: 处理消息时出错: %0', error);
+            logger.error('[g-server]: 处理消息时出错: %s', error);
         }
 
         // 调用用户自定义的消息处理方法
@@ -272,6 +286,36 @@ export class GServices {
      */
     private handleDataMessage(connection: Connection, payload: any): void {
         // 处理数据消息
+    }
+
+    /**
+     * 处理加入房间消息。
+     * @param connection - 连接对象。
+     * @param payload - 加入房间消息的有效载荷数据。
+     */
+    private handleJoinRoomMessage(connection: Connection, payload: any): void {
+        const { roomId, playerId } = payload;
+        const player = new Player(playerId, connection);
+        this.RoomManager.addPlayerToRoom(player, roomId);
+
+        connection.roomId = roomId;
+        // 需要向房间内的所有其他玩家广播一条消息，告诉他们有新玩家加入
+        const joinMessage: Message = {
+            type: 'playerJoined',
+            payload: { playerId },
+        };
+        this.RoomManager.broadcastToRoom(roomId, joinMessage);
+    }
+
+    /**
+     * 处理开始游戏消息。
+     * @param connection - 连接对象。
+     * @param payload - 开始游戏消息的有效载荷数据。
+     */
+    private handleStartGameMessage(connection: Connection, payload: any): void {
+        const {roomId} = payload;
+
+        this.frameSyncManager.startRoomFrameSync(roomId);
     }
 
     /**

@@ -1,5 +1,5 @@
 import {Player} from "./Player";
-import logger from "./Logger";
+import logger from "../ErrorAndLog/Logger";
 
 /**
  * 房间类，代表一个房间。
@@ -31,7 +31,7 @@ export class Room {
         if (this.players.length < this.maxPlayers) {
             this.players.push(player);
         } else {
-            logger.error('房间已满');
+            logger.error('[g-server]: 房间已满');
         }
     }
 
@@ -45,7 +45,7 @@ export class Room {
         if (index > -1) {
             this.players.splice(index, 1);
         } else {
-            logger.error('未在房间找到该玩家 %0', player.id);
+            logger.error('[g-server]: 未在房间找到该玩家 %s', player.id);
         }
     }
 

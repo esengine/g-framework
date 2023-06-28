@@ -1,5 +1,5 @@
-import {Message} from "./Message";
-import {GServices} from "./GServices";
+import {Message} from "../Communication/Message";
+import {GServices} from "../Service/GServices";
 
 /**
  * 帧同步管理器类，用于管理游戏帧同步。

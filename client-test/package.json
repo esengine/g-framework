@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "npx webpack"
+    "start": "tsc"
   },
   "keywords": [],
   "author": "",

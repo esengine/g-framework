@@ -2,11 +2,18 @@ import * as WebSocketModule from "ws";
 import {Connection} from "./Connection";
 import http from "http";
 import {WebSocketUtils} from "./WebSocketUtils";
-import {GServices} from "./GServices";
+import {GServices} from "../Service/GServices";
 
+/**
+ * WebSocket 服务器类，用于处理 WebSocket 连接。
+ */
 export class WebSocketServer {
     private wsServer: WebSocketModule.Server;
 
+    /**
+     * 创建一个新的 WebSocket 服务器实例。
+     * @param server - HTTP 服务器实例，WebSocket 服务器将绑定到该服务器上。
+     */
     constructor(server: http.Server) {
         // 创建 WebSocket 服务器，并绑定到 HTTP 服务器上
         this.wsServer = new WebSocketModule.Server({ server });

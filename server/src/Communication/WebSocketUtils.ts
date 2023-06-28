@@ -2,7 +2,8 @@ import {Connection, FrameInfo} from "./Connection";
 import {Message} from "./Message";
 import WebSocket from "ws";
 import {v4 as uuidv4} from "uuid";
-import logger from "./Logger";
+import logger from "../ErrorAndLog/Logger";
+import {GServices} from "../Service/GServices";
 
 /**
  * 提供WebSocket相关的实用方法
@@ -14,7 +15,7 @@ export class WebSocketUtils {
      * @param message - 要发送的消息。
      * @returns 发送的帧信息。
      */
-    public static sendToConnection(connection: Connection, message: Message): FrameInfo {
+    public static sendToConnection(connection: Connection, message: Message) {
         const encodedMessage = this.encodeMessage(message);
         try {
             connection.socket.send(encodedMessage);
@@ -36,11 +37,12 @@ export class WebSocketUtils {
             length = encodedMessage.byteLength;
         }
 
-        return {
+        const frameInfo = {
             type: 'text',
             length: length,
             isFinalFrame: true,
         };
+        GServices.I().ConnectionManager.updateConnectionStats(connection, frameInfo, false);
     }
 
     /**
@@ -61,7 +63,7 @@ export class WebSocketUtils {
         try {
             return JSON.parse(data.toString()) as Message;
         } catch (error) {
-            logger.error('[g-server]: 解码消息失败: %0', error);
+            logger.error('[g-server]: 解码消息失败: %s', error);
             return null;
         }
     }
