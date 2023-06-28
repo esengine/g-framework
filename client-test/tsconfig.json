@@ -1,14 +1,29 @@
 {
     "compilerOptions": {
-        "module": "commonjs",
-        "esModuleInterop": true,
-        "target": "es6",
-        "outDir": "dist",
-        "sourceMap": true,
-        "experimentalDecorators": true,
+        "downlevelIteration": true,
+        "importHelpers": true,
+        "pretty": true,
+        "preserveConstEnums": true,
+        "alwaysStrict": true,
+        "module": "system",
+        "target": "es5",
         "declaration": true,
-        "lib": ["dom", "es5", "es2015.promise", "es6"]
+        "sourceMap": false,
+        "removeComments": false,
+        "experimentalDecorators": true,
+        "outFile": "./dist/gs-client.js",
+        "lib": [
+            "es5",
+            "dom",
+            "es2015.promise",
+            "es6"
+        ]
     },
-    "include": ["src/**/*.ts"],
-    "exclude": ["node_modules"]
+    "include": [
+        "src",
+        "lib"
+    ],
+    "exclude": [
+        "node_modules"
+    ]
 }

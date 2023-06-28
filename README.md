@@ -59,7 +59,7 @@ const entity = this.core.entityManager.createEntity();
 
 ### 创建自定义实体
 
-使用createCustomEntity你可以轻松的创建自定义实体
+使用createEntity你可以轻松的创建自定义实体
 
 ```ts
 class Player extends gs.Entity {
@@ -73,7 +73,7 @@ class Player extends gs.Entity {
 }
 
 
-const playerEntity = this.core.entityManager.createCustomEntity(Player);
+const playerEntity = entityManager.createEntity(Player);
 ```
 
 > onCreate方法和onDestroy方法由框架调用，分别再实体的创建和销毁时触发
@@ -129,6 +129,7 @@ class MoveSystem extends gs.System {
     }
 
     update(entities: gs.Entity[]): void {
+        const deltaTime = gs.TimeManager.getInstance().deltaTime;
         for (const entity of entities) {
             const position = entity.getComponent(PositionComponent);
             const velocity = entity.getComponent(VelocityComponent);

@@ -1,5 +1,5 @@
 module gs {
-    export class Event {
+    export class GEvent {
         type: string;
         data: any;
 

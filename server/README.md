@@ -44,14 +44,13 @@ services.init({
     port: 8080,
     heartbeatInterval: 10000,
     heartbeatTimeout: 30000,
+}).then(()=>{
+    services.start();
 });
 ```
 
 4. 接下来，你可以使用GServices实例来管理服务器的各种服务和功能
 
-```ts
-services.start();
-```
 
 ## 身份验证
 

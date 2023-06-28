@@ -60,18 +60,23 @@ export class GServices {
      * 创建一个新的 GServices 实例。
      * @param config - WebSocket 服务器配置。
      */
-    public init(config: WebSocketServerConfig) {
+    public async init(config: WebSocketServerConfig) {
         this.config = config;
 
         process.on('uncaughtException', ErrorHandler.handleUncaughtException);
         process.on('unhandledRejection', ErrorHandler.handleUnhandledRejection);
+
+        process.on('SIGINT', this.shutdown.bind(this));
+        process.on('SIGTERM', this.shutdown.bind(this));
+
+        this.authentication = new Authentication(config);
+        await this.authentication.DataBase.createConnection();
 
         this.heartbeatManager = new HeartbeatManager(config.heartbeatInterval, config.heartbeatTimeout);
         this.connectionManager = new ConnectionManager();
         this.frameSyncManager = new FrameSyncManager();
         this.roomManager = new RoomManager();
 
-        this.authentication = new Authentication();
         this.httpServer = new HTTPServer();
         this.webSocketServer = new WebSocketServer(this.httpServer.Server);
     }
@@ -79,9 +84,16 @@ export class GServices {
     /**
      * 关闭服务器。
      */
-    public shutdown(): void {
+    public async shutdown() {
         // 这里应该执行一些清理操作，如关闭所有连接，停止接受新的连接，并最终关闭服务器
         this.httpServer.shutdown();
+
+        try {
+            await this.authentication.DataBase.closeConnection();
+            logger.info("[g-server]: 数据库连接关闭.");
+        } catch (error) {
+            logger.error(`[g-server]: 关闭数据库连接错误: %0`, error);
+        }
     }
 
     /**
@@ -160,7 +172,7 @@ export class GServices {
      * @param connection - 连接对象。
      * @param message - 接收到的消息。
      */
-    public handleMessage(connection: Connection, message: Message): void {
+    public async handleMessage(connection: Connection, message: Message) {
         try {
             if (!connection.isAuthenticated) {
                 // 如果连接还没有经过身份验证，那么它只能发送身份验证消息
@@ -170,9 +182,14 @@ export class GServices {
                 }
 
                 // 验证身份信息
-                if (!this.authentication.authenticate(connection, message.payload)) {
-                    connection.socket.close();
-                    return;
+                const user = await this.authentication.authenticate(connection, message.payload);
+                if (!user) {
+                    // 如果身份验证失败，尝试注册新用户
+                    const registerResult = await this.authentication.register(connection, message.payload);
+                    if (!registerResult.success) {
+                        connection.socket.close();
+                        return;
+                    }
                 }
 
                 // 身份验证通过

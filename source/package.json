@@ -3,6 +3,7 @@
   "version": "1.0.5",
   "description": "",
   "main": "bin/gs.js",
+  "types": "bin/gs.d.ts",
   "directories": {
     "lib": "lib"
   },

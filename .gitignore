@@ -16,3 +16,5 @@
 /server-test/error.log
 /server-test/combined.log
 /client-test/node_modules
+/server/combined.log
+/server/error.log
