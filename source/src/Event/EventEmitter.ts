@@ -29,8 +29,8 @@ module gs {
          * @param eventType 
          * @param callback 
          */
-        once(eventType: string, callback: (event: Event) => void): void {
-            const wrappedCallback = (event: Event) => {
+        once(eventType: string, callback: (event: GEvent) => void): void {
+            const wrappedCallback = (event: GEvent) => {
                 // 在回调函数被执行后，移除监听器
                 this.off(eventType, wrappedCallback);
                 callback(event);
@@ -57,7 +57,7 @@ module gs {
          * 用于触发事件。该方法将遍历所有订阅给定事件类型的侦听器，并调用它们
          * @param event 
          */
-         emitEvent(event: Event): void {
+         emitEvent(event: GEvent): void {
             const eventType = event.getType();
             const listeners = this.listeners.get(eventType);
 

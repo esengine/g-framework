@@ -1,10 +1,10 @@
 ///<reference path="./ObjectPool.ts" />
 module gs {
-    export class EventPool extends ObjectPool<Event> {
+    export class EventPool extends ObjectPool<GEvent> {
         constructor() {
             super(
-                () => new Event("", null),
-                (event: Event) => event.reset()
+                () => new GEvent("", null),
+                (event: GEvent) => event.reset()
             );
         }
     }

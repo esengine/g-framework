@@ -7,6 +7,8 @@ import logger from "./Logger";
 const passport = require('passport');
 import {Strategy as LocalStrategy} from "passport-local";
 import {Strategy as BearerStrategy} from "passport-http-bearer";
+import * as bcrypt from "bcrypt";
+import {WebSocketServerConfig} from "./WebSocketServerConfig";
 
 /**
  * 身份验证类，用于处理连接的身份验证过程。
@@ -14,11 +16,15 @@ import {Strategy as BearerStrategy} from "passport-http-bearer";
 export class Authentication {
     private dataBase: Database;
 
+    public get DataBase() {
+        return this.dataBase;
+    }
+
     /**
      * 创建一个新的身份验证实例。
      */
-    constructor() {
-        this.dataBase = new Database();
+    constructor(config: WebSocketServerConfig) {
+        this.dataBase = new Database(config.connectDBStr, 'g-database', 'users');
 
         // 使用本地策略进行身份验证
         passport.use(new LocalStrategy(
@@ -26,7 +32,7 @@ export class Authentication {
                 this.dataBase.authenticate(username, password)
                     .then(user => {
                         if (!user) {
-                            return done(null, false, { message: 'Invalid username or password.' });
+                            return done(null, false, { message: '用户名或密码错误.' });
                         }
                         return done(null, user);
                     })
@@ -55,7 +61,7 @@ export class Authentication {
      * @param payload - 身份验证的有效载荷数据。
      * @returns 一个 Promise，表示身份验证操作的异步结果。
      */
-    public async authenticate(connection: Connection, payload: any): Promise<boolean> {
+    public authenticate(connection: Connection, payload: any) {
         try {
             // 从数据库中查找用户
             return this.dataBase.authenticate(payload.username, payload.passwordHash);
@@ -63,6 +69,10 @@ export class Authentication {
             logger.error('[g-server]: 身份验证错误: %0', error);
             return false;
         }
+    }
+
+    public register(connection: Connection, payload: any) {
+        return this.dataBase.register(payload.username, payload.passwordHash);
     }
 
     /**

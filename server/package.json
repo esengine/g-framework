@@ -1,12 +1,13 @@
 {
   "name": "@esengine/gs-server",
-  "version": "1.0.10",
+  "version": "1.0.12",
   "description": "",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
     "build": "tsc",
-    "deploy": "npm run build && npm publish"
+    "deploy": "npm run build && npm publish",
+    "start": "tsc && npx ts-node ../server/test/index.ts"
   },
   "author": "",
   "license": "ISC",

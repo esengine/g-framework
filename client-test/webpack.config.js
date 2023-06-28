@@ -11,8 +11,12 @@ module.exports = {
             },
         ],
     },
+    mode: 'development',
     resolve: {
         extensions: [ '.tsx', '.ts', '.js' ],
+        alias: {
+            'gs': path.resolve(__dirname, 'libs/gs/gs'),
+        }
     },
     output: {
         filename: 'bundle.js',

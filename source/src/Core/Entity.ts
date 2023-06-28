@@ -310,7 +310,7 @@ module gs {
             this.eventEmitter.on(eventType, listener);
         }
 
-        public once(eventType: string, callback: (event: Event) => void): void {
+        public once(eventType: string, callback: (event: GEvent) => void): void {
             this.eventEmitter.once(eventType, callback);
         }
 
@@ -318,7 +318,7 @@ module gs {
             this.eventEmitter.off(eventType, listener);
         }
 
-        public emit(event: Event): void {
+        public emit(event: GEvent): void {
             this.eventEmitter.emitEvent(event);
         }
     }

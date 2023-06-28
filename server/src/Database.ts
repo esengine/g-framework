@@ -1,5 +1,5 @@
 import * as bcrypt from 'bcrypt';
-import { MongoClient } from 'mongodb';
+import {MongoClient, ServerApiVersion} from 'mongodb';
 import logger from "./Logger";
 
 /**
@@ -7,12 +7,19 @@ import logger from "./Logger";
  */
 export class Database {
     private db: MongoClient;
+    private dbName: string;
+    private collectionName: string;
 
     /**
      * 创建一个新的数据库连接实例。
+     * @param connectionStr - 数据库连接字符串
+     * @param dbName - 数据库名
+     * @param collectionName - 集合名
      */
-    constructor() {
-        this.db = new MongoClient('mongodb://localhost:27017');
+    constructor(connectionStr: string, dbName: string, collectionName: string) {
+        this.db = new MongoClient(connectionStr);
+        this.dbName = dbName;
+        this.collectionName = collectionName;
     }
 
     /**
@@ -25,6 +32,21 @@ export class Database {
             logger.info('[g-server]: 已连接到数据库');
         } catch (error: any) {
             logger.error('[g-server]: 连接数据库失败: %0', error);
+            throw error;
+        }
+    }
+
+    /**
+     * 关闭数据库连接。
+     * @returns 一个 Promise，表示关闭连接操作的异步结果。
+     */
+    public async closeConnection(): Promise<void> {
+        try {
+            await this.db.close();
+            logger.info('[g-server]: 已断开数据库连接');
+        } catch (error: any) {
+            logger.error('[g-server]: 断开数据库连接失败: %0', error);
+            throw error;
         }
     }
 
@@ -36,23 +58,55 @@ export class Database {
      */
     public async authenticate(username: string, password: string): Promise<any> {
         try {
-            const collection = this.db.db('g-database').collection('users');
+            await this.db.connect();
+            const collection = this.db.db(this.dbName).collection(this.collectionName);
             const user = await collection.findOne({username: username});
 
             if (!user) {
                 // 用户名不存在
-                return null;
+                throw new Error("用户名或密码错误");
             }
 
             const passwordMatch = await bcrypt.compare(password, user.passwordHash);
             if (passwordMatch) {
                 return user;
             } else {
-                return null;
+                throw new Error("用户名或密码错误");
             }
         } catch (error) {
             logger.error('[g-server]: 身份验证错误: %0', error);
             return false;
+        } finally {
+            await this.db.close();
+        }
+    }
+
+    public async register(username: string, password: string): Promise<any> {
+        try {
+            await this.db.connect();
+            const collection = this.db.db(this.dbName).collection(this.collectionName);
+            const user = await collection.findOne({username: username});
+
+            if (user) {
+                // 用户名已存在
+                throw new Error("用户名已被注册");
+            }
+
+            const passwordHash = await bcrypt.hash(password, 10); // 10是bcrypt算法的盐值(salt)
+
+            // 将新用户的信息保存到数据库中
+            const result = await collection.insertOne({username: username, passwordHash: passwordHash});
+            if (result.acknowledged) {
+                return {success: true};
+            } else {
+                throw new Error("注册失败");
+            }
+        } catch (error) {
+            logger.error('[g-server]: 注册错误: %0', error);
+            return false;
+        }
+        finally {
+            await this.db.close();
         }
     }
 
