@@ -747,6 +747,8 @@ declare module gs {
         private maxReconnectionAttempts;
         private connection;
         private authentication;
+        private sessionId;
+        private lastKnownState;
         constructor(serverUrl: string, username: string, password: string);
         private connect;
         sendInput(frameNumber: number, inputData: any): void;

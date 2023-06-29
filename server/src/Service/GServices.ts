@@ -15,6 +15,7 @@ import {ErrorHandler} from "../ErrorAndLog/ErrorHandler";
 import {RoomManager} from "../GameLogic/RoomManager";
 import {UserNotExistError, WrongPasswordError} from "../ErrorAndLog/GError";
 import {Player} from "../GameLogic/Player"
+import {SessionManager} from "../Communication/SessionManager";
 
 /**
  * GServices 类，用于管理服务器的各种服务和功能。
@@ -29,6 +30,7 @@ export class GServices {
     private httpServer!: HTTPServer;
     private webSocketServer!: WebSocketServer;
     private authentication!: Authentication;
+    private sessionManager!: SessionManager;
 
     private static _services: GServices;
     public static I() {
@@ -71,6 +73,7 @@ export class GServices {
         process.on('SIGINT', this.shutdown.bind(this));
         process.on('SIGTERM', this.shutdown.bind(this));
 
+        this.sessionManager = new SessionManager();
         this.authentication = new Authentication(config);
         await this.authentication.DataBase.createConnection();
 
@@ -125,6 +128,9 @@ export class GServices {
      * @param connection - 连接对象。
      */
     public handleClientConnect(connection: Connection): void {
+        const sessionId = this.sessionManager.createSession(connection);
+        // 发送sessionId给客户端
+        WebSocketUtils.sendToConnection(connection, { type: 'sessionId', payload: sessionId });
         // 调用用户自定义的连接建立处理方法
         this.invokeExtensionMethod('onClientConnect', connection);
     }
@@ -134,6 +140,9 @@ export class GServices {
      * @param connection - 连接对象。
      */
     public handleClientDisconnect(connection: Connection): void {
+        // 当客户端断开连接时，我们不立即删除其session
+        // 可以设置一个定时器，在一段时间后删除session
+        setTimeout(() => this.sessionManager.deleteSession(connection.sessionId), this.config.sessionExpireTime);
         // 调用用户自定义的连接断开处理方法
         this.invokeExtensionMethod('onClientDisconnect', connection);
     }
@@ -176,6 +185,12 @@ export class GServices {
      */
     public async handleMessage(connection: Connection, message: Message) {
         try {
+            // 对重连请求进行特殊处理
+            if (message.type === 'reconnect') {
+                this.handleReconnect(connection, message.payload);
+                return;
+            }
+
             if (!connection.isAuthenticated) {
                 // 如果连接还没有经过身份验证，那么它只能发送身份验证消息
                 if (message.type !== 'authentication') {
@@ -199,6 +214,10 @@ export class GServices {
                 } else {
                     // 身份验证通过
                     connection.isAuthenticated = true;
+                    // 获取sessionId
+                    const sessionId = connection.sessionId;
+                    // 发送身份验证消息，带有sessionId
+                    WebSocketUtils.sendToConnection(connection, { type: 'authentication', payload: { sessionId: sessionId }});
                     return;
                 }
 
@@ -213,10 +232,6 @@ export class GServices {
                 case 'data':
                     // 处理数据消息
                     this.handleDataMessage(connection, message.payload);
-                    break;
-                case 'authentication':
-                    // 处理身份验证消息
-                    this.authentication.handleAuthenticationMessage(connection, message);
                     break;
                 case 'stateUpdate':
                     this.handleStateUpdate(connection, message);
@@ -248,6 +263,24 @@ export class GServices {
 
         // 调用用户自定义的消息处理方法
         this.invokeExtensionMethod('onMessageReceived', connection, message);
+    }
+
+    private handleReconnect(connection: Connection, payload: any): void {
+        const { sessionId } = payload;
+        const oldConnection = this.sessionManager.getSession(sessionId);
+        if (oldConnection) {
+            // 重新绑定sessionId到新连接
+            connection.sessionId = sessionId;
+            this.sessionManager.createSession(connection);
+            // 恢复状态
+            connection.state = oldConnection.state;
+            connection.roomId = oldConnection.roomId;
+            // 发送重连成功消息
+            WebSocketUtils.sendToConnection(connection, { type: 'reconnectSuccess', payload: null });
+        } else {
+            // sessionId无效，发送重连失败消息
+            WebSocketUtils.sendToConnection(connection, { type: 'reconnectFail', payload: null });
+        }
     }
 
     /**

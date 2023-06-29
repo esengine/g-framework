@@ -5,6 +5,8 @@ module gs {
         private maxReconnectionAttempts: number = 10;
         private connection: Connection;
         private authentication: Authentication;
+        private sessionId: string | null = null;
+        private lastKnownState: any = null;
 
         constructor(private serverUrl: string, username: string, password: string) {
             this.connection = new Connection(serverUrl);
@@ -19,7 +21,14 @@ module gs {
                 console.info('[g-client]: 连接到服务器');
                 this.reconnectionAttempts = 0;
 
-                this.authentication.startAuthentication(username, password);
+                if (this.sessionId) {
+                    // 发送断线重连请求
+                    const reconnectMsg = { type: 'reconnect', sessionId: this.sessionId, lastKnownState: this.lastKnownState };
+                    this.socket.send(JSON.stringify(reconnectMsg));
+                } else {
+                    // 开始身份验证
+                    this.authentication.startAuthentication(username, password);
+                }
             });
 
             this.socket.addEventListener('error', (error: Event) => {
@@ -39,9 +48,14 @@ module gs {
             this.socket.addEventListener('message', (event) => {
                 const message: Message = JSON.parse(event.data);
                 if (message.type === 'authentication') {
+                    this.sessionId = message.payload.sessionId; // 存储sessionId
                     this.authentication.handleAuthenticationMessage(message);
+                } else if (message.type === 'sessionId') {
+                    this.sessionId = message.payload;
+                } else if (message.type === 'stateUpdate') {
+                    this.lastKnownState = message.payload; // 更新lastKnownState
                 } else {
-
+                    console.warn(`[g-client]: 未知的消息类型: ${message.type}`);
                 }
             });
         }

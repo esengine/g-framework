@@ -18,4 +18,6 @@ export interface WebSocketServerConfig {
      * 数据库连接字符串。
      */
     connectDBStr: string;
+
+    sessionExpireTime: number;
 }

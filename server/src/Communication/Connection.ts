@@ -85,4 +85,6 @@ export interface Connection {
      * 连接所在的房间 ID。
      */
     roomId?: string;
+
+    sessionId: string;
 }

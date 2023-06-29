@@ -1991,6 +1991,8 @@ var gs;
             this.serverUrl = serverUrl;
             this.reconnectionAttempts = 0;
             this.maxReconnectionAttempts = 10;
+            this.sessionId = null;
+            this.lastKnownState = null;
             this.connection = new gs.Connection(serverUrl);
             this.authentication = new gs.Authentication(this.connection);
             this.connect(username, password);
@@ -2001,7 +2003,15 @@ var gs;
             this.socket.addEventListener('open', function () {
                 console.info('[g-client]: 连接到服务器');
                 _this.reconnectionAttempts = 0;
-                _this.authentication.startAuthentication(username, password);
+                if (_this.sessionId) {
+                    // 发送断线重连请求
+                    var reconnectMsg = { type: 'reconnect', sessionId: _this.sessionId, lastKnownState: _this.lastKnownState };
+                    _this.socket.send(JSON.stringify(reconnectMsg));
+                }
+                else {
+                    // 开始身份验证
+                    _this.authentication.startAuthentication(username, password);
+                }
             });
             this.socket.addEventListener('error', function (error) {
                 console.error('[g-client]: 发生错误:', error);
@@ -2019,9 +2029,17 @@ var gs;
             this.socket.addEventListener('message', function (event) {
                 var message = JSON.parse(event.data);
                 if (message.type === 'authentication') {
+                    _this.sessionId = message.payload.sessionId; // 存储sessionId
                     _this.authentication.handleAuthenticationMessage(message);
                 }
+                else if (message.type === 'sessionId') {
+                    _this.sessionId = message.payload;
+                }
+                else if (message.type === 'stateUpdate') {
+                    _this.lastKnownState = message.payload; // 更新lastKnownState
+                }
                 else {
+                    console.warn("[g-client]: \u672A\u77E5\u7684\u6D88\u606F\u7C7B\u578B: " + message.type);
                 }
             });
         };

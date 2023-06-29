@@ -1,5 +1,5 @@
 import * as bcrypt from 'bcrypt';
-import {MongoClient} from 'mongodb';
+import {MongoClient, ServerApiVersion} from 'mongodb';
 import logger from "../ErrorAndLog/Logger";
 import {UserNotExistError, WrongPasswordError} from "../ErrorAndLog/GError";
 
@@ -18,7 +18,13 @@ export class Database {
      * @param collectionName - 集合名
      */
     constructor(connectionStr: string, dbName: string, collectionName: string) {
-        this.db = new MongoClient(connectionStr);
+        this.db = new MongoClient(connectionStr, {
+            serverApi: {
+                version: ServerApiVersion.v1,
+                strict: true,
+                deprecationErrors: true,
+            }
+        });
         this.dbName = dbName;
         this.collectionName = collectionName;
     }

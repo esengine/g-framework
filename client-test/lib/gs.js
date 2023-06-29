@@ -2022,6 +2022,7 @@ var gs;
                     _this.authentication.handleAuthenticationMessage(message);
                 }
                 else {
+                    console.warn("[g-client]: \u672A\u77E5\u7684\u6D88\u606F\u7C7B\u578B: " + message.type);
                 }
             });
         };
