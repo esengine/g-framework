@@ -38,7 +38,7 @@ public registerPrefab(name: string, entity: Entity): void;
 使用示例
 ```typescript
 let entityManager = gs.Core.instnace.entityManager;
-let monster = new gs.Entity();
+let monster = entityManager.createEntity();
 entityManager.registerPrefab("monster", monster);
 ```
 
