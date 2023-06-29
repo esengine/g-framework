@@ -20,4 +20,5 @@ export interface WebSocketServerConfig {
     connectDBStr: string;
 
     sessionExpireTime: number;
+    frameInterval: number;
 }

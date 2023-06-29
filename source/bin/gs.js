@@ -1903,7 +1903,6 @@ var gs;
             };
             gs.WebSocketUtils.sendToConnection(this.connection, {
                 type: 'authentication',
-                subtype: 'usernamePassword',
                 payload: payload,
             });
         };
@@ -1912,43 +1911,11 @@ var gs;
          * @param message - 身份验证消息对象。
          */
         Authentication.prototype.handleAuthenticationMessage = function (message) {
-            switch (message.subtype) {
-                case 'verificationCode':
-                    this.handleVerificationCode(message.payload);
-                    break;
-                case 'token':
-                    this.handleToken(message.payload);
-                    break;
-                default:
-                    console.warn('[g-client]: 未知的身份验证消息子类型: %0', message.subtype);
+            switch (message.type) {
+                case 'authentication':
+                    this.afterAuthenticated();
                     break;
             }
-        };
-        /**
-         * 处理服务器端发来的验证码。
-         * @param payload - 身份验证消息的有效载荷数据。
-         */
-        Authentication.prototype.handleVerificationCode = function (payload) {
-            this.verificationCode = payload;
-            gs.WebSocketUtils.sendToConnection(this.connection, {
-                type: 'authentication',
-                subtype: 'verificationCode',
-                payload: this.verificationCode,
-            });
-        };
-        /**
-         * 处理服务器端发来的令牌。
-         * @param payload - 身份验证消息的有效载荷数据。
-         */
-        Authentication.prototype.handleToken = function (payload) {
-            this.token = payload;
-            gs.WebSocketUtils.sendToConnection(this.connection, {
-                type: 'authentication',
-                subtype: 'token',
-                payload: this.token,
-            });
-            // 认证完成后，可以进行其他操作，比如加入房间或者开始游戏等等
-            this.afterAuthenticated();
         };
         /**
          * 在身份验证完成后执行一些操作。
@@ -2081,7 +2048,7 @@ var gs;
          * 获取网络适配器
          * @returns
          */
-        NetworkManager.prototype.getNetworkAdpater = function () {
+        NetworkManager.prototype.getNetworkAdapter = function () {
             return this.networkAdapter;
         };
         return NetworkManager;

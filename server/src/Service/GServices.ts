@@ -16,6 +16,7 @@ import {RoomManager} from "../GameLogic/RoomManager";
 import {UserNotExistError, WrongPasswordError} from "../ErrorAndLog/GError";
 import {Player} from "../GameLogic/Player"
 import {SessionManager} from "../Communication/SessionManager";
+import {ErrorCodes} from "../ErrorAndLog/ErrorCode";
 
 /**
  * GServices 类，用于管理服务器的各种服务和功能。
@@ -79,7 +80,7 @@ export class GServices {
 
         this.heartbeatManager = new HeartbeatManager(config.heartbeatInterval, config.heartbeatTimeout);
         this.connectionManager = new ConnectionManager();
-        this.frameSyncManager = new FrameSyncManager();
+        this.frameSyncManager = new FrameSyncManager(config.frameInterval);
         this.roomManager = new RoomManager();
 
         this.httpServer = new HTTPServer();
@@ -179,6 +180,17 @@ export class GServices {
     }
 
     /**
+     * 消息处理器映射
+     * @private
+     */
+    private messageHandlers: Record<string, (connection: Connection, payload: any) => void> = {
+        'stateUpdate': this.handleStateUpdate,
+        'action': this.handleActionMessage,
+        'joinRoom': this.handleJoinRoomMessage,
+        'startGame': this.handleStartGameMessage,
+    };
+
+    /**
      * 处理接收到的消息。
      * @param connection - 连接对象。
      * @param message - 接收到的消息。
@@ -194,6 +206,7 @@ export class GServices {
             if (!connection.isAuthenticated) {
                 // 如果连接还没有经过身份验证，那么它只能发送身份验证消息
                 if (message.type !== 'authentication') {
+                    WebSocketUtils.sendToConnection(connection, { type: 'error', payload: { code: ErrorCodes.AUTH_FAIL }});
                     connection.socket.close();
                     return;
                 }
@@ -204,12 +217,12 @@ export class GServices {
                     // 用户名不存在，尝试注册新用户
                     const registerResult = await this.authentication.register(connection, message.payload);
                     if (!registerResult.success) {
-                        connection.socket.close();
+                        WebSocketUtils.sendToConnection(connection, { type: 'error', payload: { code: ErrorCodes.REGISTRATION_FAILED }});
                         return;
                     }
                 } else if (result instanceof WrongPasswordError) {
                     // 密码错误，直接关闭连接
-                    connection.socket.close();
+                    WebSocketUtils.sendToConnection(connection, { type: 'error', payload: { code: ErrorCodes.WRONG_PASSWORD }});
                     return;
                 } else {
                     // 身份验证通过
@@ -217,45 +230,18 @@ export class GServices {
                     // 获取sessionId
                     const sessionId = connection.sessionId;
                     // 发送身份验证消息，带有sessionId
-                    WebSocketUtils.sendToConnection(connection, { type: 'authentication', payload: { sessionId: sessionId }});
+                    WebSocketUtils.sendToConnection(connection, { type: 'authentication', payload: { code: ErrorCodes.SUCCESS, sessionId: sessionId }});
                     return;
                 }
 
                 return;
             }
 
-            switch (message.type) {
-                case 'text':
-                    // 处理文本消息
-                    this.handleTextMessage(connection, message.payload);
-                    break;
-                case 'data':
-                    // 处理数据消息
-                    this.handleDataMessage(connection, message.payload);
-                    break;
-                case 'stateUpdate':
-                    this.handleStateUpdate(connection, message);
-                    break;
-                case 'action':
-                    const roomId = connection.roomId;
-                    if (roomId) {
-                        const frame = this.frameSyncManager.getRoomCurrentFrame(roomId);
-                        if (frame !== undefined) {
-                            this.frameSyncManager.collectClientAction(roomId, frame, message.payload);
-                        }
-                    } else {
-                        logger.error('[g-server]: 用户 %s 还未加入房间: %s', connection.id, message.type);
-                    }
-                    break;
-                case 'joinRoom':
-                    this.handleJoinRoomMessage(connection, message.payload);
-                    break;
-                case 'startGame':
-                    this.handleStartGameMessage(connection, message.payload);
-                    break;
-                default:
-                    logger.warn('[g-server]: 未知的消息类型: %s', message.type);
-                    break;
+            const handler = this.messageHandlers[message.type];
+            if (handler) {
+                handler.call(this, connection, message.payload);
+            } else {
+                logger.warn('[g-server]: 未知的消息类型: %s', message.type);
             }
         } catch (error) {
             logger.error('[g-server]: 处理消息时出错: %s', error);
@@ -270,16 +256,15 @@ export class GServices {
         const oldConnection = this.sessionManager.getSession(sessionId);
         if (oldConnection) {
             // 重新绑定sessionId到新连接
-            connection.sessionId = sessionId;
-            this.sessionManager.createSession(connection);
+            connection.sessionId = this.sessionManager.createSession(connection);
             // 恢复状态
             connection.state = oldConnection.state;
             connection.roomId = oldConnection.roomId;
             // 发送重连成功消息
-            WebSocketUtils.sendToConnection(connection, { type: 'reconnectSuccess', payload: null });
+            WebSocketUtils.sendToConnection(connection, { type: 'reconnect', payload: { code: ErrorCodes.SUCCESS } });
         } else {
             // sessionId无效，发送重连失败消息
-            WebSocketUtils.sendToConnection(connection, { type: 'reconnectFail', payload: null });
+            WebSocketUtils.sendToConnection(connection, { type: 'reconnect', payload: { code: ErrorCodes.RECONNECT_FAIL} });
         }
     }
 
@@ -301,24 +286,6 @@ export class GServices {
             };
             WebSocketUtils.sendToConnection(connection, errorMessage);
         }
-    }
-
-    /**
-     * 处理文本消息。
-     * @param connection - 连接对象。
-     * @param payload - 文本消息的内容。
-     */
-    private handleTextMessage(connection: Connection, payload: string): void {
-        // 处理文本消息
-    }
-
-    /**
-     * 处理数据消息。
-     * @param connection - 连接对象。
-     * @param payload - 数据消息的内容。
-     */
-    private handleDataMessage(connection: Connection, payload: any): void {
-        // 处理数据消息
     }
 
     /**
@@ -349,6 +316,18 @@ export class GServices {
         const {roomId} = payload;
 
         this.frameSyncManager.startRoomFrameSync(roomId);
+    }
+
+    private handleActionMessage(connection: Connection, payload: any) {
+        const roomId = connection.roomId;
+        if (roomId) {
+            const frame = this.frameSyncManager.getRoomCurrentFrame(roomId);
+            if (frame !== undefined) {
+                this.frameSyncManager.collectClientAction(roomId, frame, payload);
+            }
+        } else {
+            logger.error('[g-server]: 用户 %s 还未加入房间: %s', connection.id, 'action');
+        }
     }
 
     /**

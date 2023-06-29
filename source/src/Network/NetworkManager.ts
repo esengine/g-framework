@@ -14,7 +14,7 @@ module gs {
          * 获取网络适配器
          * @returns 
          */
-        getNetworkAdpater(): NetworkAdapter | null {
+        getNetworkAdapter(): NetworkAdapter | null {
             return this.networkAdapter;
         }
     }

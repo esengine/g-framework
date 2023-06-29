@@ -1903,7 +1903,6 @@ var gs;
             };
             gs.WebSocketUtils.sendToConnection(this.connection, {
                 type: 'authentication',
-                subtype: 'usernamePassword',
                 payload: payload,
             });
         };
@@ -1912,43 +1911,11 @@ var gs;
          * @param message - 身份验证消息对象。
          */
         Authentication.prototype.handleAuthenticationMessage = function (message) {
-            switch (message.subtype) {
-                case 'verificationCode':
-                    this.handleVerificationCode(message.payload);
-                    break;
-                case 'token':
-                    this.handleToken(message.payload);
-                    break;
-                default:
-                    console.warn('[g-client]: 未知的身份验证消息子类型: %0', message.subtype);
+            switch (message.type) {
+                case 'authentication':
+                    this.afterAuthenticated();
                     break;
             }
-        };
-        /**
-         * 处理服务器端发来的验证码。
-         * @param payload - 身份验证消息的有效载荷数据。
-         */
-        Authentication.prototype.handleVerificationCode = function (payload) {
-            this.verificationCode = payload;
-            gs.WebSocketUtils.sendToConnection(this.connection, {
-                type: 'authentication',
-                subtype: 'verificationCode',
-                payload: this.verificationCode,
-            });
-        };
-        /**
-         * 处理服务器端发来的令牌。
-         * @param payload - 身份验证消息的有效载荷数据。
-         */
-        Authentication.prototype.handleToken = function (payload) {
-            this.token = payload;
-            gs.WebSocketUtils.sendToConnection(this.connection, {
-                type: 'authentication',
-                subtype: 'token',
-                payload: this.token,
-            });
-            // 认证完成后，可以进行其他操作，比如加入房间或者开始游戏等等
-            this.afterAuthenticated();
         };
         /**
          * 在身份验证完成后执行一些操作。
@@ -1991,6 +1958,8 @@ var gs;
             this.serverUrl = serverUrl;
             this.reconnectionAttempts = 0;
             this.maxReconnectionAttempts = 10;
+            this.sessionId = null;
+            this.lastKnownState = null;
             this.connection = new gs.Connection(serverUrl);
             this.authentication = new gs.Authentication(this.connection);
             this.connect(username, password);
@@ -2001,7 +1970,15 @@ var gs;
             this.socket.addEventListener('open', function () {
                 console.info('[g-client]: 连接到服务器');
                 _this.reconnectionAttempts = 0;
-                _this.authentication.startAuthentication(username, password);
+                if (_this.sessionId) {
+                    // 发送断线重连请求
+                    var reconnectMsg = { type: 'reconnect', sessionId: _this.sessionId, lastKnownState: _this.lastKnownState };
+                    _this.socket.send(JSON.stringify(reconnectMsg));
+                }
+                else {
+                    // 开始身份验证
+                    _this.authentication.startAuthentication(username, password);
+                }
             });
             this.socket.addEventListener('error', function (error) {
                 console.error('[g-client]: 发生错误:', error);
@@ -2019,7 +1996,14 @@ var gs;
             this.socket.addEventListener('message', function (event) {
                 var message = JSON.parse(event.data);
                 if (message.type === 'authentication') {
+                    _this.sessionId = message.payload.sessionId; // 存储sessionId
                     _this.authentication.handleAuthenticationMessage(message);
+                }
+                else if (message.type === 'sessionId') {
+                    _this.sessionId = message.payload;
+                }
+                else if (message.type === 'stateUpdate') {
+                    _this.lastKnownState = message.payload; // 更新lastKnownState
                 }
                 else {
                     console.warn("[g-client]: \u672A\u77E5\u7684\u6D88\u606F\u7C7B\u578B: " + message.type);
@@ -2064,7 +2048,7 @@ var gs;
          * 获取网络适配器
          * @returns
          */
-        NetworkManager.prototype.getNetworkAdpater = function () {
+        NetworkManager.prototype.getNetworkAdapter = function () {
             return this.networkAdapter;
         };
         return NetworkManager;

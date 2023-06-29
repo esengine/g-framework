@@ -13,9 +13,13 @@ const moveSystem = new MoveSystem(core.entityManager, 0);
 core.systemManager.registerSystem(moveSystem);
 
 // 使用你的服务器URL实例化网络适配器
-let networkAdapter = new gs.GNetworkAdapter('wss://8080-esengine-gframework-i1149hh1fae.ws-us101.gitpod.io\n', "test", "test");
+let networkAdapter = new gs.GNetworkAdapter('ws://127.0.0.1:8080', "test", "test");
 // 添加网络适配器到EntityManager
 core.entityManager.getNetworkManager().setNetworkAdapter(networkAdapter);
+// 监听服务器更新
+core.entityManager.getNetworkManager().getNetworkAdapter().onServerUpdate((serverState) => {
+    console.warn('更新游戏状态', serverState);
+});
 
 let lastTimestamp = performance.now();
 let timestamp = 0;

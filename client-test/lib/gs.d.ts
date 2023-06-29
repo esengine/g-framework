@@ -713,16 +713,6 @@ declare module gs {
          */
         handleAuthenticationMessage(message: Message): void;
         /**
-         * 处理服务器端发来的验证码。
-         * @param payload - 身份验证消息的有效载荷数据。
-         */
-        private handleVerificationCode;
-        /**
-         * 处理服务器端发来的令牌。
-         * @param payload - 身份验证消息的有效载荷数据。
-         */
-        private handleToken;
-        /**
          * 在身份验证完成后执行一些操作。
          */
         private afterAuthenticated;
@@ -747,6 +737,8 @@ declare module gs {
         private maxReconnectionAttempts;
         private connection;
         private authentication;
+        private sessionId;
+        private lastKnownState;
         constructor(serverUrl: string, username: string, password: string);
         private connect;
         sendInput(frameNumber: number, inputData: any): void;
@@ -757,7 +749,7 @@ declare module gs {
 declare module gs {
     interface Message {
         type: string;
-        subtype: string;
+        subtype?: string;
         payload: any;
     }
 }
@@ -788,7 +780,7 @@ declare module gs {
          * 获取网络适配器
          * @returns
          */
-        getNetworkAdpater(): NetworkAdapter | null;
+        getNetworkAdapter(): NetworkAdapter | null;
     }
 }
 declare module gs {
