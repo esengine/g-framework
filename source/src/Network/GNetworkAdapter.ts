@@ -48,8 +48,10 @@ module gs {
             this.socket.addEventListener('message', (event) => {
                 const message: Message = JSON.parse(event.data);
                 if (message.type === 'authentication') {
-                    this.sessionId = message.payload.sessionId; // 存储sessionId
-                    this.authentication.handleAuthenticationMessage(message);
+                    if (message.payload.code == ErrorCodes.SUCCESS) {
+                        this.sessionId = message.payload.sessionId; // 存储sessionId
+                        this.authentication.handleAuthenticationMessage(message);
+                    }
                 } else if (message.type === 'sessionId') {
                     this.sessionId = message.payload;
                 } else if (message.type === 'stateUpdate') {

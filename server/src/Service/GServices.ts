@@ -201,7 +201,7 @@ export class GServices {
             if (!connection.isAuthenticated) {
                 // 如果连接还没有经过身份验证，那么它只能发送身份验证消息
                 if (message.type !== 'authentication') {
-                    WebSocketUtils.sendToConnection(connection, { type: 'error', payload: { code: ErrorCodes.AUTH_FAIL }});
+                    WebSocketUtils.sendToConnection(connection, { type: 'authentication', payload: { code: ErrorCodes.AUTH_FAIL }});
                     connection.socket.close();
                     return;
                 }
@@ -212,12 +212,12 @@ export class GServices {
                     // 用户名不存在，尝试注册新用户
                     const registerResult = await this.authentication.register(connection, message.payload);
                     if (!registerResult.success) {
-                        WebSocketUtils.sendToConnection(connection, { type: 'error', payload: { code: ErrorCodes.REGISTRATION_FAILED }});
+                        WebSocketUtils.sendToConnection(connection, { type: 'authentication', payload: { code: ErrorCodes.REGISTRATION_FAILED }});
                         return;
                     }
                 } else if (result instanceof WrongPasswordError) {
                     // 密码错误，直接关闭连接
-                    WebSocketUtils.sendToConnection(connection, { type: 'error', payload: { code: ErrorCodes.WRONG_PASSWORD }});
+                    WebSocketUtils.sendToConnection(connection, { type: 'authentication', payload: { code: ErrorCodes.WRONG_PASSWORD }});
                     return;
                 } else {
                     // 身份验证通过
