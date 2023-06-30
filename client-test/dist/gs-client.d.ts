@@ -20,6 +20,8 @@ declare const core: gs.Core;
 declare const entity: gs.Entity;
 declare const playerEntity: gs.Entity;
 declare const moveSystem: MoveSystem;
+declare const userName = "test";
+declare const password = "test";
 declare let networkAdapter: gs.GNetworkAdapter;
 declare let lastTimestamp: number;
 declare let timestamp: number;

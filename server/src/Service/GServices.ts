@@ -91,15 +91,10 @@ export class GServices {
      * 关闭服务器。
      */
     public async shutdown() {
+        logger.info('[g-server]: 正在关闭服务端...');
         // 这里应该执行一些清理操作，如关闭所有连接，停止接受新的连接，并最终关闭服务器
+        await this.authentication.DataBase.closeConnection();
         this.httpServer.shutdown();
-
-        try {
-            await this.authentication.DataBase.closeConnection();
-            logger.info("[g-server]: 数据库连接关闭.");
-        } catch (error) {
-            logger.error(`[g-server]: 关闭数据库连接错误: %s`, error);
-        }
     }
 
     /**
@@ -230,7 +225,7 @@ export class GServices {
                     // 获取sessionId
                     const sessionId = connection.sessionId;
                     // 发送身份验证消息，带有sessionId
-                    WebSocketUtils.sendToConnection(connection, { type: 'authentication', payload: { code: ErrorCodes.SUCCESS, sessionId: sessionId }});
+                    WebSocketUtils.sendToConnection(connection, { type: 'authentication', payload: { code: ErrorCodes.SUCCESS, sessionId: sessionId, id: connection.id }});
                     return;
                 }
 

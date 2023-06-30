@@ -1,11 +1,17 @@
 import * as http from "http";
+import bodyParser from 'body-parser';
+import cors from 'cors';
+import helmet from 'helmet';
+import express = require("express");
 import logger from "../ErrorAndLog/Logger";
+import {GServices} from "../Service/GServices";
 
 /**
  * HTTP 服务器类，用于创建和管理 HTTP 服务器。
  */
 export class HTTPServer {
     private server: http.Server;
+    private app: express.Application;
 
     /**
      * 获取服务器实例。
@@ -18,11 +24,17 @@ export class HTTPServer {
      * 创建一个新的 HTTP 服务器实例。
      */
     constructor() {
+        this.app = express();
         this.server = http.createServer((request, response) => {
             // 处理 HTTP 请求
             response.statusCode = 404;
             response.end('Not Found');
         });
+
+        this.app.use(bodyParser.json());
+        this.app.use(cors());
+        this.app.use(helmet());
+        this.handleRoute();
     }
 
     /**
@@ -41,7 +53,16 @@ export class HTTPServer {
     public shutdown() {
         this.server.close(() => {
             logger.info('[g-server]: 服务器已关闭');
+
             process.exit(1);
+        });
+    }
+
+    private handleRoute() {
+        this.app.get('/rooms', (req, res) => {
+            // 获取所有的房间
+            const rooms = GServices.I().RoomManager.getRooms();
+            res.json(rooms);
         });
     }
 }

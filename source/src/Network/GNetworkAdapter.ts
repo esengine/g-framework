@@ -54,6 +54,8 @@ module gs {
                     this.sessionId = message.payload;
                 } else if (message.type === 'stateUpdate') {
                     this.lastKnownState = message.payload; // 更新lastKnownState
+                } else if(message.type == 'heartbeat') {
+                    // 心跳包
                 } else {
                     console.warn(`[g-client]: 未知的消息类型: ${message.type}`);
                 }
@@ -63,9 +65,12 @@ module gs {
         sendInput(frameNumber: number, inputData: any): void {
             const message = {
                 type: 'input',
-                frameNumber,
-                inputData,
+                payload: {frameNumber: frameNumber, inputData: inputData},
             };
+            this.socket.send(JSON.stringify(message));
+        }
+
+        send(message: Message) {
             this.socket.send(JSON.stringify(message));
         }
 

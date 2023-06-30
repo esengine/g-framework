@@ -1,5 +1,7 @@
 module gs {
     export interface NetworkAdapter {
+        send(message: Message): void;
+
         /**
          * 将输入数据发送到服务器
          * @param frameNumber 客户端帧编号

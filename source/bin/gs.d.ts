@@ -742,6 +742,7 @@ declare module gs {
         constructor(serverUrl: string, username: string, password: string);
         private connect;
         sendInput(frameNumber: number, inputData: any): void;
+        send(message: Message): void;
         onServerUpdate(callback: (serverState: any) => void): void;
         private getReconnectDelay;
     }

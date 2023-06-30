@@ -2005,6 +2005,9 @@ var gs;
                 else if (message.type === 'stateUpdate') {
                     _this.lastKnownState = message.payload; // 更新lastKnownState
                 }
+                else if (message.type == 'heartbeat') {
+                    // 心跳包
+                }
                 else {
                     console.warn("[g-client]: \u672A\u77E5\u7684\u6D88\u606F\u7C7B\u578B: " + message.type);
                 }
@@ -2013,9 +2016,11 @@ var gs;
         GNetworkAdapter.prototype.sendInput = function (frameNumber, inputData) {
             var message = {
                 type: 'input',
-                frameNumber: frameNumber,
-                inputData: inputData,
+                payload: { frameNumber: frameNumber, inputData: inputData },
             };
+            this.socket.send(JSON.stringify(message));
+        };
+        GNetworkAdapter.prototype.send = function (message) {
             this.socket.send(JSON.stringify(message));
         };
         GNetworkAdapter.prototype.onServerUpdate = function (callback) {

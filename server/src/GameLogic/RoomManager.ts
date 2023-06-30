@@ -82,4 +82,8 @@ export class RoomManager {
     public getRoomById(id: string): Room | null {
         return this.rooms[id] || null;
     }
+
+    public getRooms() {
+        return this.rooms;
+    }
 }

@@ -108,13 +108,26 @@ playerEntity.addComponent(VelocityComponent);
 // 注册系统到系统管理器中
 var moveSystem = new MoveSystem(core.entityManager, 0);
 core.systemManager.registerSystem(moveSystem);
+var userName = 'test';
+var password = 'test';
 // 使用你的服务器URL实例化网络适配器
-var networkAdapter = new gs.GNetworkAdapter('ws://127.0.0.1:8080', "test", "test");
+var networkAdapter = new gs.GNetworkAdapter('ws://127.0.0.1:8080', userName, password);
 // 添加网络适配器到EntityManager
 core.entityManager.getNetworkManager().setNetworkAdapter(networkAdapter);
 // 监听服务器更新
 core.entityManager.getNetworkManager().getNetworkAdapter().onServerUpdate(function (serverState) {
-    console.warn('更新游戏状态', serverState);
+    if (serverState.type == "authentication") {
+        document.getElementById('player-session').textContent = "SESSION:" + serverState.payload.sessionId;
+        document.getElementById('player-id').textContent = 'ID:' + serverState.payload.id;
+        document.getElementById('player-name').textContent = "Name:" + userName;
+    }
+    else if (serverState.type == 'sessionId') {
+        document.getElementById('player-session').textContent = "SESSION:" + serverState.payload;
+    }
+    if (serverState.type != 'heartbeat') {
+        document.getElementById('loggerArea').append("[".concat(serverState.type, "]: ").concat(JSON.stringify(serverState.payload), "\n"));
+        console.warn('更新游戏状态', serverState);
+    }
 });
 var lastTimestamp = performance.now();
 var timestamp = 0;

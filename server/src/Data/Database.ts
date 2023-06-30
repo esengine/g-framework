@@ -50,7 +50,7 @@ export class Database {
     public async closeConnection(): Promise<void> {
         try {
             await this.db.close();
-            logger.info('[g-server]: 已断开数据库连接');
+            logger.info('[g-server]: 数据库已断开连接...');
         } catch (error: any) {
             logger.error('[g-server]: 断开数据库连接失败: %s', error);
             throw error;
