@@ -42,6 +42,7 @@ export class WebSocketUtils {
             length: length,
             isFinalFrame: true,
         };
+        connection.totalSentBytes += length;
         GServices.I().ConnectionManager.updateConnectionStats(connection, frameInfo, false);
     }
 

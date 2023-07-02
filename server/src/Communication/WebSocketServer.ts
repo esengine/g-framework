@@ -30,6 +30,8 @@ export class WebSocketServer {
                 sentMessagesCount: 0,
                 receivedMessagesCount: 0,
                 sessionId: "",
+                totalReceivedBytes: 0,
+                totalSentBytes: 0
             };
 
             GServices.I().ConnectionManager.registerConnection(connection);

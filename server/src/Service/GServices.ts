@@ -192,6 +192,7 @@ export class GServices {
      */
     public async handleMessage(connection: Connection, message: Message) {
         try {
+            this.recordMessageBytes(connection, message);
             // 对重连请求进行特殊处理
             if (message.type === 'reconnect') {
                 this.handleReconnect(connection, message.payload);
@@ -244,6 +245,11 @@ export class GServices {
 
         // 调用用户自定义的消息处理方法
         this.invokeExtensionMethod('onMessageReceived', connection, message);
+    }
+
+    private recordMessageBytes(connection: Connection, message: Message) {
+        let length: number = Buffer.byteLength(JSON.stringify(message), 'utf-8');
+        connection.totalReceivedBytes += length;
     }
 
     private handleReconnect(connection: Connection, payload: any): void {

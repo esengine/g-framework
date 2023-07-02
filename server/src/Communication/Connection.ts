@@ -87,4 +87,6 @@ export interface Connection {
     roomId?: string;
 
     sessionId: string;
+    totalReceivedBytes: number;
+    totalSentBytes: number;
 }
