@@ -1,8 +1,6 @@
 module gs {
     export class Authentication {
         private connection: Connection;
-        private token: string | null = null;
-        private verificationCode: string | null = null;
 
         constructor(connection: Connection) {
             this.connection = connection;
@@ -29,10 +27,8 @@ module gs {
          * @param message - 身份验证消息对象。
          */
         public handleAuthenticationMessage(message: Message): void {
-            switch (message.type) {
-                case 'authentication':
-                    this.afterAuthenticated();
-                    break;
+            if (message.payload.code == ErrorCodes.SUCCESS) {
+                this.afterAuthenticated();
             }
         }
 

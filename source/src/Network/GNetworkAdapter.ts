@@ -7,9 +7,11 @@ module gs {
         private authentication: Authentication;
         private sessionId: string | null = null;
         private lastKnownState: any = null;
+        private messageHandler: MessageHandler;
 
         constructor(private serverUrl: string, username: string, password: string) {
             this.connection = new Connection(serverUrl);
+            this.messageHandler = new MessageHandler();
             this.authentication = new Authentication(this.connection);
             this.connect(username, password);
         }
@@ -47,11 +49,13 @@ module gs {
 
             this.socket.addEventListener('message', (event) => {
                 const message: Message = JSON.parse(event.data);
+                this.messageHandler.emit(message);
                 if (message.type === 'authentication') {
                     if (message.payload.code == ErrorCodes.SUCCESS) {
                         this.sessionId = message.payload.sessionId; // 存储sessionId
-                        this.authentication.handleAuthenticationMessage(message);
                     }
+
+                    this.authentication.handleAuthenticationMessage(message);
                 } else if (message.type === 'sessionId') {
                     this.sessionId = message.payload;
                 } else if (message.type === 'stateUpdate') {
