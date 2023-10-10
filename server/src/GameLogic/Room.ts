@@ -18,9 +18,10 @@ export class Room {
     /**
      * 创建一个新的房间实例。
      * @param id - 房间 ID。
+     * @param owner - 房间拥有者
      * @param maxPlayers - 房间最大玩家数。
      */
-    constructor(public id: string, public maxPlayers: number) {}
+    constructor(public id: string, public owner: string, public maxPlayers: number) {}
 
     /**
      * 添加玩家到房间。
@@ -44,6 +45,11 @@ export class Room {
         const index = this.players.findIndex((p) => p.id === player.id);
         if (index > -1) {
             this.players.splice(index, 1);
+
+            // 更换房主
+            if (this.owner == player.id && this.hasPlayers()) {
+                this.owner = this.players[0].id;
+            }
         } else {
             logger.error('[g-server]: 未在房间找到该玩家 %s', player.id);
         }
@@ -55,5 +61,12 @@ export class Room {
      */
     public getPlayerIds(): string[] {
         return this.players.map(player => player.id);
+    }
+
+    /**
+     * 房间内是否还有玩家
+     */
+    public hasPlayers(): boolean {
+        return this.players.length != 0;
     }
 }

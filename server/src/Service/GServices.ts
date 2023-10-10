@@ -17,6 +17,7 @@ import {UserNotExistError, WrongPasswordError} from "../ErrorAndLog/GError";
 import {Player} from "../GameLogic/Player"
 import {SessionManager} from "../Communication/SessionManager";
 import {ErrorCodes} from "../ErrorAndLog/ErrorCode";
+import {Room} from "../GameLogic/Room";
 
 /**
  * GServices 类，用于管理服务器的各种服务和功能。
@@ -181,7 +182,9 @@ export class GServices {
     private messageHandlers: Record<string, (connection: Connection, payload: any) => void> = {
         'stateUpdate': this.handleStateUpdate,
         'action': this.handleActionMessage,
+        'createRoom': this.handleCreateRoomMessage,
         'joinRoom': this.handleJoinRoomMessage,
+        'leaveRoom': this.handleLeaveRoomMessage,
         'startGame': this.handleStartGameMessage,
     };
 
@@ -290,13 +293,46 @@ export class GServices {
     }
 
     /**
+     * 处理创建房间消息。
+     * @param connection - 连接对象。
+     * @param payload - 加入房间消息的有效载荷数据。
+     */
+    private handleCreateRoomMessage(connection: Connection, payload: any): void {
+        if (payload == null) {
+            logger.error('[g-server]: 接收到一个 payload:[null] 的创建房间消息');
+            return;
+        }
+
+        const { maxPlayers } = payload;
+
+        // 在这里执行创建房间的逻辑
+        const newRoom = this.RoomManager.createRoom(connection, maxPlayers);
+        const player = Player.create(connection);
+        this.RoomManager.addPlayerToRoom(player, newRoom.id);
+
+        // 房间创建成功
+        logger.info(`[g-server]: 房间 %s 创建成功`, newRoom.id);
+        // 可以向创建者发送成功消息
+        const successMessage: Message = {
+            type: 'roomCreated',
+            payload: { roomId: newRoom.id },
+        };
+        WebSocketUtils.sendToConnection(connection, successMessage);
+    }
+
+    /**
      * 处理加入房间消息。
      * @param connection - 连接对象。
      * @param payload - 加入房间消息的有效载荷数据。
      */
     private handleJoinRoomMessage(connection: Connection, payload: any): void {
+        if (payload == null) {
+            logger.error('[g-server]: 接收到一个 payload:[null] 的加入房间消息');
+            return;
+        }
+
         const { roomId, playerId } = payload;
-        const player = new Player(playerId, connection);
+        const player = Player.create(connection);
         this.RoomManager.addPlayerToRoom(player, roomId);
 
         connection.roomId = roomId;
@@ -306,6 +342,40 @@ export class GServices {
             payload: { playerId },
         };
         this.RoomManager.broadcastToRoom(roomId, joinMessage);
+    }
+
+    /**
+     * 处理离开房间消息。
+     * @param connection - 连接对象。
+     * @param payload - 加入房间消息的有效载荷数据。
+     */
+    private handleLeaveRoomMessage(connection: Connection, payload: any): void {
+        if (payload == null) {
+            logger.error('[g-server]: 接收到一个 payload:[null] 的离开房间消息');
+            return;
+        }
+
+        if (!connection.roomId) {
+            logger.warn('[g-server]: 该连接没有加入房间 %s', connection.id);
+            return;
+        }
+
+        const { playerId } = payload;
+        const roomId = connection.roomId;
+        const player = Player.create(connection);
+
+        // 从房间中移除玩家
+        this.RoomManager.removePlayerFromRoom(player, roomId);
+
+        // 清除玩家的房间信息
+        connection.roomId = undefined;
+
+        // 需要向房间内的所有其他玩家广播一条消息，告诉他们有玩家离开
+        const leaveMessage: Message = {
+            type: 'playerLeft',
+            payload: { playerId },
+        };
+        this.RoomManager.broadcastToRoom(roomId, leaveMessage);
     }
 
     /**

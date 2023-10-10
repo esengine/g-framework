@@ -125,9 +125,27 @@ core.entityManager.getNetworkManager().getNetworkAdapter().onServerUpdate(functi
         document.getElementById('player-session').textContent = "SESSION:" + serverState.payload;
     }
     if (serverState.type != 'heartbeat') {
-        document.getElementById('loggerArea').append("[".concat(serverState.type, "]: ").concat(JSON.stringify(serverState.payload), "\n"));
+        document.getElementById('loggerArea').textContent += ("[".concat(serverState.type, "]: ").concat(JSON.stringify(serverState.payload), "\n"));
         console.warn('更新游戏状态', serverState);
     }
+});
+document.addEventListener("DOMContentLoaded", function () {
+    // 获取加入房间按钮
+    var joinRoomButton = document.getElementById("join-room-btn");
+    var createRoomButton = document.getElementById("create-room-btn");
+    var leaveRoomButton = document.getElementById('leave-room-btn');
+    joinRoomButton.onclick = function (ev) {
+        console.log("发送加入房间指令");
+    };
+    createRoomButton.onclick = function (ev) {
+        console.log("发送创建房间指令");
+        networkAdapter.RoomAPI.createRoom(10, function (roomId) {
+            document.getElementById('room-id').textContent = "ID: " + roomId;
+        });
+    };
+    leaveRoomButton.onclick = function (ev) {
+        console.log("发送退出房间指令");
+    };
 });
 var lastTimestamp = performance.now();
 var timestamp = 0;

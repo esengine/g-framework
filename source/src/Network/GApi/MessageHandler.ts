@@ -11,6 +11,7 @@ module gs {
         }
 
         private handleMessage(message: Message) {
+            if (!this.messageHandlers) return;
             const handler = this.messageHandlers[message.type];
             if (handler) {
                 handler(message);

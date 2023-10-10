@@ -29,21 +29,36 @@ core.entityManager.getNetworkManager().getNetworkAdapter().onServerUpdate((serve
     }
 
     if (serverState.type != 'heartbeat') {
-        document.getElementById('loggerArea').append(`[${serverState.type}]: ${JSON.stringify(serverState.payload)}\n`);
+        document.getElementById('loggerArea').textContent += (`[${serverState.type}]: ${JSON.stringify(serverState.payload)}\n`);
 
         console.warn('更新游戏状态', serverState);
     }
 });
 
-document.getElementById('join-room-btn').onclick = ( ev: MouseEvent)=> {
-    const joinMessage: gs.Message = {
-        type: 'joinRoom',
-        payload: null
+document.addEventListener("DOMContentLoaded", function() {
+    // 获取加入房间按钮
+    const joinRoomButton = document.getElementById("join-room-btn");
+    const createRoomButton = document.getElementById("create-room-btn");
+    const leaveRoomButton = document.getElementById('leave-room-btn');
+
+    joinRoomButton.onclick = ( ev: MouseEvent)=> {
+        console.log("发送加入房间指令");
+    }
+
+    createRoomButton.onclick = (ev: MouseEvent) => {
+        console.log("发送创建房间指令");
+
+        networkAdapter.RoomAPI.createRoom(10, roomId => {
+            document.getElementById('room-id').textContent = "ID: " + roomId;
+        });
     };
 
-    networkAdapter.send(joinMessage)
-}
+    leaveRoomButton.onclick = (ev: MouseEvent) => {
+        console.log("发送退出房间指令");
 
+        networkAdapter.RoomAPI.leaveRoom();
+    };
+});
 
 let lastTimestamp = performance.now();
 let timestamp = 0;

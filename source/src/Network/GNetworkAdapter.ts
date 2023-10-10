@@ -8,11 +8,13 @@ module gs {
         private sessionId: string | null = null;
         private lastKnownState: any = null;
         private messageHandler: MessageHandler;
+        private roomAPI: RoomApi;
 
         constructor(private serverUrl: string, username: string, password: string) {
             this.connection = new Connection(serverUrl);
             this.messageHandler = new MessageHandler();
             this.authentication = new Authentication(this.connection);
+            this.roomAPI = new RoomApi(this);
             this.connect(username, password);
         }
 
@@ -62,6 +64,11 @@ module gs {
                     this.lastKnownState = message.payload; // 更新lastKnownState
                 } else if(message.type == 'heartbeat') {
                     // 心跳包
+                } else if(message.type == 'roomCreated') {
+                    // 房间创建
+                    this.roomAPI.onRoomCreated(message.payload.roomId);
+                } else if(message.type == 'playerLeft') {
+                    // 房间玩家离开
                 } else {
                     console.warn(`[g-client]: 未知的消息类型: ${message.type}`);
                 }

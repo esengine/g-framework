@@ -9,5 +9,9 @@ export class Player {
      * @param id - 玩家的唯一标识符。
      * @param connection - 玩家的连接对象。
      */
-    constructor(public id: string, public connection: Connection) {}
+    private constructor(public id: string, public connection: Connection) {}
+
+    static create(connection: Connection): Player {
+        return new Player(connection.id, connection);
+    }
 }

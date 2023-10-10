@@ -1887,8 +1887,6 @@ var gs;
 (function (gs) {
     var Authentication = /** @class */ (function () {
         function Authentication(connection) {
-            this.token = null;
-            this.verificationCode = null;
             this.connection = connection;
         }
         /**
@@ -1911,10 +1909,8 @@ var gs;
          * @param message - 身份验证消息对象。
          */
         Authentication.prototype.handleAuthenticationMessage = function (message) {
-            switch (message.type) {
-                case 'authentication':
-                    this.afterAuthenticated();
-                    break;
+            if (message.payload.code == gs.ErrorCodes.SUCCESS) {
+                this.afterAuthenticated();
             }
         };
         /**
@@ -1953,6 +1949,16 @@ var gs;
 })(gs || (gs = {}));
 var gs;
 (function (gs) {
+    gs.ErrorCodes = {
+        SUCCESS: 'SUCCESS',
+        AUTH_FAIL: 'AUTH_FAIL',
+        WRONG_PASSWORD: 'WRONG_PASSWORD',
+        REGISTRATION_FAILED: 'REGISTRATION_FAILED',
+        RECONNECT_FAIL: 'RECONNECT_FAIL',
+    };
+})(gs || (gs = {}));
+var gs;
+(function (gs) {
     var GNetworkAdapter = /** @class */ (function () {
         function GNetworkAdapter(serverUrl, username, password) {
             this.serverUrl = serverUrl;
@@ -1961,9 +1967,18 @@ var gs;
             this.sessionId = null;
             this.lastKnownState = null;
             this.connection = new gs.Connection(serverUrl);
+            this.messageHandler = new gs.MessageHandler();
             this.authentication = new gs.Authentication(this.connection);
+            this.roomAPI = new gs.RoomApi(this);
             this.connect(username, password);
         }
+        Object.defineProperty(GNetworkAdapter.prototype, "RoomAPI", {
+            get: function () {
+                return this.roomAPI;
+            },
+            enumerable: true,
+            configurable: true
+        });
         GNetworkAdapter.prototype.connect = function (username, password) {
             var _this = this;
             this.socket = this.connection.Socket;
@@ -1995,8 +2010,11 @@ var gs;
             });
             this.socket.addEventListener('message', function (event) {
                 var message = JSON.parse(event.data);
+                _this.messageHandler.emit(message);
                 if (message.type === 'authentication') {
-                    _this.sessionId = message.payload.sessionId; // 存储sessionId
+                    if (message.payload.code == gs.ErrorCodes.SUCCESS) {
+                        _this.sessionId = message.payload.sessionId; // 存储sessionId
+                    }
                     _this.authentication.handleAuthenticationMessage(message);
                 }
                 else if (message.type === 'sessionId') {
@@ -2007,6 +2025,10 @@ var gs;
                 }
                 else if (message.type == 'heartbeat') {
                     // 心跳包
+                }
+                else if (message.type == 'roomCreated') {
+                    // 房间创建
+                    _this.roomAPI.onRoomCreated(message.payload.roomId);
                 }
                 else {
                     console.warn("[g-client]: \u672A\u77E5\u7684\u6D88\u606F\u7C7B\u578B: " + message.type);
@@ -2080,6 +2102,66 @@ var gs;
         return WebSocketUtils;
     }());
     gs.WebSocketUtils = WebSocketUtils;
+})(gs || (gs = {}));
+var gs;
+(function (gs) {
+    var MessageHandler = /** @class */ (function () {
+        function MessageHandler() {
+        }
+        MessageHandler.prototype.emit = function (message) {
+            this.handleMessage(message);
+        };
+        MessageHandler.prototype.on = function (type, handler) {
+            this.messageHandlers[type] = handler;
+        };
+        MessageHandler.prototype.handleMessage = function (message) {
+            if (!this.messageHandlers)
+                return;
+            var handler = this.messageHandlers[message.type];
+            if (handler) {
+                handler(message);
+            }
+        };
+        return MessageHandler;
+    }());
+    gs.MessageHandler = MessageHandler;
+})(gs || (gs = {}));
+var gs;
+(function (gs) {
+    var RoomApi = /** @class */ (function () {
+        function RoomApi(adapter) {
+            this.adapter = adapter;
+            this.createRoomCallback = null;
+        }
+        RoomApi.prototype.createRoom = function (maxPlayers, callback) {
+            this.createRoomCallback = callback;
+            var message = {
+                type: 'createRoom',
+                payload: { 'maxPlayers': maxPlayers }
+            };
+            this.adapter.send(message);
+        };
+        RoomApi.prototype.joinRoom = function (roomId, playerId) {
+            var message = {
+                type: 'joinRoom',
+                payload: { 'roomId': roomId, 'playerId': playerId }
+            };
+            this.adapter.send(message);
+        };
+        RoomApi.prototype.leaveRoom = function () {
+        };
+        /**
+         * 当房间创建成功时被调用
+         * @param roomId - 房间ID
+         */
+        RoomApi.prototype.onRoomCreated = function (roomId) {
+            if (this.createRoomCallback) {
+                this.createRoomCallback(roomId);
+            }
+        };
+        return RoomApi;
+    }());
+    gs.RoomApi = RoomApi;
 })(gs || (gs = {}));
 var gs;
 (function (gs) {

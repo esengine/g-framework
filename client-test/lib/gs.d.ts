@@ -698,8 +698,6 @@ declare module gs {
 declare module gs {
     class Authentication {
         private connection;
-        private token;
-        private verificationCode;
         constructor(connection: Connection);
         /**
          * 启动身份验证过程。
@@ -730,6 +728,15 @@ declare module gs {
     }
 }
 declare module gs {
+    const ErrorCodes: {
+        SUCCESS: string;
+        AUTH_FAIL: string;
+        WRONG_PASSWORD: string;
+        REGISTRATION_FAILED: string;
+        RECONNECT_FAIL: string;
+    };
+}
+declare module gs {
     class GNetworkAdapter implements NetworkAdapter {
         private serverUrl;
         private socket;
@@ -739,6 +746,9 @@ declare module gs {
         private authentication;
         private sessionId;
         private lastKnownState;
+        private messageHandler;
+        private roomAPI;
+        readonly RoomAPI: RoomApi;
         constructor(serverUrl: string, username: string, password: string);
         private connect;
         sendInput(frameNumber: number, inputData: any): void;
@@ -756,6 +766,7 @@ declare module gs {
 }
 declare module gs {
     interface NetworkAdapter {
+        send(message: Message): void;
         /**
          * 将输入数据发送到服务器
          * @param frameNumber 客户端帧编号
@@ -788,6 +799,29 @@ declare module gs {
     class WebSocketUtils {
         static hashPassword(password: string): string;
         static sendToConnection(connection: Connection, message: Message): void;
+    }
+}
+declare module gs {
+    class MessageHandler {
+        private messageHandlers;
+        emit(message: Message): void;
+        on(type: string, handler: (msg: Message) => void): void;
+        private handleMessage;
+    }
+}
+declare module gs {
+    class RoomApi {
+        adapter: NetworkAdapter;
+        private createRoomCallback;
+        constructor(adapter: NetworkAdapter);
+        createRoom(maxPlayers: number, callback: (roomId: string) => void): void;
+        joinRoom(roomId: string, playerId: string): void;
+        leaveRoom(): void;
+        /**
+         * 当房间创建成功时被调用
+         * @param roomId - 房间ID
+         */
+        onRoomCreated(roomId: string): void;
     }
 }
 declare module gs {

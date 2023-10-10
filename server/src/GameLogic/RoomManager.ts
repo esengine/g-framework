@@ -5,18 +5,20 @@ import {Message} from "../Communication/Message";
 import {GServices} from "../Service/GServices";
 import {WebSocketUtils} from "../Communication/WebSocketUtils";
 import logger from "../ErrorAndLog/Logger";
+import {Connection} from "../Communication/Connection";
 
 export class RoomManager {
     private rooms: { [id: string]: Room } = {};
 
     /**
      * 创建一个新的房间。
+     * @param connection - 链接
      * @param maxPlayers - 房间的最大玩家数量。
      * @returns 新创建的房间。
      */
-    public createRoom(maxPlayers: number): Room {
+    public createRoom(connection: Connection, maxPlayers: number): Room {
         const roomId = uuidv4();
-        const room = new Room(roomId, maxPlayers);
+        const room = new Room(roomId, connection.id, maxPlayers);
         this.rooms[roomId] = room;
         return room;
     }
@@ -55,6 +57,11 @@ export class RoomManager {
         } else {
             logger.error('[g-server]: 房间未找到');
         }
+
+        // 如果房间内没有玩家则把房间删除
+        if (!room.hasPlayers()) {
+            this.deleteRoom(roomId);
+        }
     }
 
     /**
@@ -83,6 +90,9 @@ export class RoomManager {
         return this.rooms[id] || null;
     }
 
+    /**
+     * 获取所有房间
+     */
     public getRooms() {
         return this.rooms;
     }
