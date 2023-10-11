@@ -158,6 +158,10 @@ export class Authentication {
      */
     private generateVerificationCode(): string {
         // 生成验证码
-        return Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+        const randomCode = Math.floor(Math.random() * 10000).toString();
+        if (randomCode.length < 4) {
+            return '0'.repeat(4 - randomCode.length) + randomCode;
+        }
+        return randomCode;
     }
 }

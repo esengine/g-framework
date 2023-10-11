@@ -29,6 +29,9 @@ export class RoomManager {
      */
     public deleteRoom(roomId: string): void {
         delete this.rooms[roomId];
+
+        // 房间删除的时候停止帧同步
+        GServices.I().FrameSyncManager.stopRoomFrameSync(roomId);
     }
 
     /**

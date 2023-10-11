@@ -65,8 +65,9 @@ module gs {
 
         /**
          * 添加组件
-         * @param componentType 
-         * @returns 
+         * @param componentType
+         * @param args
+         * @returns
          */
         public addComponent<T extends Component>(componentType: ComponentConstructor<T>, ...args: any[]): T {
             let manager = this.componentManagers.get(componentType);
@@ -85,8 +86,6 @@ module gs {
             if (this.entityManager.systemManager) {
                 this.entityManager.systemManager.notifyComponentAdded(this, component);
             }
-
-            this.entityManager.invalidateCache(componentType);
 
             return component;
         }
@@ -159,7 +158,6 @@ module gs {
 
             // 移除组件缓存
             this.componentCache.delete(componentType);
-            this.entityManager.invalidateCache(componentType);
         }
 
         /**
@@ -185,7 +183,7 @@ module gs {
          */
         addTag(tag: string): void {
             this.tags.add(tag);
-            this.entityManager.invalidateCache(undefined, tag);
+            this.entityManager.addToTagCache(tag, this);
         }
 
         /**
@@ -202,7 +200,7 @@ module gs {
          */
         removeTag(tag: string): void {
             this.tags.delete(tag);
-            this.entityManager.invalidateCache(undefined, tag);
+            this.entityManager.removeFromTagCache(tag, this);
         }
 
         /**

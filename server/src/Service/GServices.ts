@@ -60,6 +60,10 @@ export class GServices {
         return this.roomManager;
     }
 
+    public get FrameSyncManager() {
+        return this.frameSyncManager;
+    }
+
     private constructor() { }
 
     /**
@@ -186,6 +190,8 @@ export class GServices {
         'joinRoom': this.handleJoinRoomMessage,
         'leaveRoom': this.handleLeaveRoomMessage,
         'startGame': this.handleStartGameMessage,
+        'endGame': this.handleEndGameMessage,
+        'snapshot': this.handleSnapShot
     };
 
     /**
@@ -310,12 +316,13 @@ export class GServices {
         const player = Player.create(connection);
         this.RoomManager.addPlayerToRoom(player, newRoom.id);
 
+        connection.roomId = newRoom.id;
         // 房间创建成功
         logger.info(`[g-server]: 房间 %s 创建成功`, newRoom.id);
         // 可以向创建者发送成功消息
         const successMessage: Message = {
             type: 'roomCreated',
-            payload: { roomId: newRoom.id },
+            payload: { 'room': this.roomManager.getRoomById(newRoom.id) },
         };
         WebSocketUtils.sendToConnection(connection, successMessage);
     }
@@ -331,7 +338,7 @@ export class GServices {
             return;
         }
 
-        const { roomId, playerId } = payload;
+        const { roomId } = payload;
         const player = Player.create(connection);
         this.RoomManager.addPlayerToRoom(player, roomId);
 
@@ -339,7 +346,7 @@ export class GServices {
         // 需要向房间内的所有其他玩家广播一条消息，告诉他们有新玩家加入
         const joinMessage: Message = {
             type: 'playerJoined',
-            payload: { playerId },
+            payload: { 'playerId': connection.id, 'room': this.roomManager.getRoomById(roomId) },
         };
         this.RoomManager.broadcastToRoom(roomId, joinMessage);
     }
@@ -360,22 +367,21 @@ export class GServices {
             return;
         }
 
-        const { playerId } = payload;
         const roomId = connection.roomId;
         const player = Player.create(connection);
+
+        // 需要向房间内的所有其他玩家广播一条消息，告诉他们有玩家离开
+        const leaveMessage: Message = {
+            type: 'playerLeft',
+            payload: { 'playerId': connection.id },
+        };
+        this.RoomManager.broadcastToRoom(roomId, leaveMessage);
 
         // 从房间中移除玩家
         this.RoomManager.removePlayerFromRoom(player, roomId);
 
         // 清除玩家的房间信息
         connection.roomId = undefined;
-
-        // 需要向房间内的所有其他玩家广播一条消息，告诉他们有玩家离开
-        const leaveMessage: Message = {
-            type: 'playerLeft',
-            payload: { playerId },
-        };
-        this.RoomManager.broadcastToRoom(roomId, leaveMessage);
     }
 
     /**
@@ -387,6 +393,28 @@ export class GServices {
         const {roomId} = payload;
 
         this.frameSyncManager.startRoomFrameSync(roomId);
+    }
+
+    /**
+     * 处理结束游戏消息。
+     * @param connection - 连接对象。
+     * @param payload - 开始游戏消息的有效载荷数据。
+     * @private
+     */
+    private handleEndGameMessage(connection: Connection, payload: any): void {
+        const {roomId} = payload;
+
+        this.frameSyncManager.stopRoomFrameSync(roomId);
+    }
+
+    private handleSnapShot(connection: Connection, payload: any): void {
+        const {roomId, snapshot, lastSnapVersion} = payload;
+
+        const snapshotMessage: Message = {
+            type: 'snapshot',
+            payload: { 'snapshot': snapshot, 'lastSnapVersion': lastSnapVersion + 1 },
+        };
+        this.RoomManager.broadcastToRoom(roomId, snapshotMessage);
     }
 
     private handleActionMessage(connection: Connection, payload: any) {

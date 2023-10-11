@@ -19,13 +19,19 @@
         <h2>房间信息</h2>
         <p id="room-id">ID: </p>
         <button id="create-room-btn">创建房间</button>
+        <input type="text" id="room-input" placeholder="输入房间号">
         <button id="join-room-btn">加入房间</button>
         <button id="leave-room-btn">退出房间</button>
+
+        <button id="start-frame">房间开始帧同步</button>
+        <button id="end-frame">房间结束帧同步</button>
     </div>
 
     <div id="logger">
         <h2>日志信息</h2>
         <label for="loggerArea"></label><textarea id="loggerArea"></textarea>
     </div>
+
+    <canvas id="game-canvas" width="400" height="400"></canvas>
 </body>
 </html>

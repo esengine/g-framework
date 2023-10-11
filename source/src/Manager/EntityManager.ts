@@ -280,6 +280,7 @@ module gs {
                 if (!entity) {
                     entity = new Entity(entityId, this, this.componentManagers);
                     entity.onCreate();
+                    this.entities.set(entityId, entity);
                 }
 
                 entity.deserialize(entityData);
@@ -301,22 +302,6 @@ module gs {
                         (component as Interpolatable).applyInterpolation(factor);
                     }
                 }
-            }
-        }
-
-        /**
-         * 清除指定组件或标签的缓存
-         * @param componentClass 
-         * @param tag 
-         */
-        public invalidateCache(componentClass?: ComponentConstructor<Component>, tag?: string): void {
-            if (componentClass) {
-                const key = componentClass.name;
-                this.queryCache.delete(key);
-            }
-
-            if (tag) {
-                this.tagToEntities.delete(tag);
             }
         }
 
@@ -351,7 +336,7 @@ module gs {
          * @param tag 
          * @param entity 
          */
-        private addToTagCache(tag: string, entity: Entity): void {
+        public addToTagCache(tag: string, entity: Entity): void {
             if (!this.tagToEntities.has(tag)) {
                 this.tagToEntities.set(tag, []);
             }
@@ -363,7 +348,7 @@ module gs {
          * @param tag 
          * @param entity 
          */
-        private removeFromTagCache(tag: string, entity: Entity): void {
+        public removeFromTagCache(tag: string, entity: Entity): void {
             const entitiesWithTag = this.tagToEntities.get(tag);
             if (entitiesWithTag) {
                 const index = entitiesWithTag.indexOf(entity);
@@ -371,6 +356,10 @@ module gs {
                     entitiesWithTag.splice(index, 1);
                 }
             }
+        }
+
+        toJSON() {
+            return { };
         }
     }
 }

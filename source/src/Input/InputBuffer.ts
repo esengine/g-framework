@@ -25,10 +25,8 @@ module gs {
             if (this.buffer.length === 0) {
                 return null;
             }
-    
-            const event = this.buffer[0];
-            this.buffer.shift();
-            return event;
+
+            return this.buffer.shift();
         }
 
         clear(): void {

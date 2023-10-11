@@ -30,8 +30,8 @@ module gs {
          * 标记组件已更新的方法
          * 通过增加 _version 的值来表示组件已更新
          */
-        markUpdated(): void {
-            this._version++;
+        markUpdated(version: number): void {
+            this._version = version;
         }
 
         /**

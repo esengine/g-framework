@@ -10,6 +10,10 @@ module gs {
         private messageHandler: MessageHandler;
         private roomAPI: RoomApi;
 
+        public get RoomAPI(): RoomApi {
+            return this.roomAPI;
+        }
+
         constructor(private serverUrl: string, username: string, password: string) {
             this.connection = new Connection(serverUrl);
             this.messageHandler = new MessageHandler();
@@ -66,9 +70,18 @@ module gs {
                     // 心跳包
                 } else if(message.type == 'roomCreated') {
                     // 房间创建
-                    this.roomAPI.onRoomCreated(message.payload.roomId);
+                    this.roomAPI.onRoomCreated(message.payload.room);
                 } else if(message.type == 'playerLeft') {
                     // 房间玩家离开
+                    this.roomAPI.onPlayerLeft(message.payload.playerId);
+                } else if(message.type == 'playerJoined') {
+                    // 房间玩家加入
+                    this.roomAPI.onPlayerJoined(message.payload.playerId, message.payload.room);
+                } else if(message.type == 'frameSync') {
+                    // 开始帧同步消息
+                    this.roomAPI.onFrameSync(message.payload);
+                } else if(message.type == 'snapshot') {
+                    this.roomAPI.onSnapShot(message.payload);
                 } else {
                     console.warn(`[g-client]: 未知的消息类型: ${message.type}`);
                 }

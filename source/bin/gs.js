@@ -267,8 +267,8 @@ var gs;
          * 标记组件已更新的方法
          * 通过增加 _version 的值来表示组件已更新
          */
-        Component.prototype.markUpdated = function () {
-            this._version++;
+        Component.prototype.markUpdated = function (version) {
+            this._version = version;
         };
         /**
          * 重置组件的状态并进行必要的初始化
@@ -443,6 +443,7 @@ var gs;
         /**
          * 添加组件
          * @param componentType
+         * @param args
          * @returns
          */
         Entity.prototype.addComponent = function (componentType) {
@@ -474,7 +475,6 @@ var gs;
             if (this.entityManager.systemManager) {
                 this.entityManager.systemManager.notifyComponentAdded(this, component);
             }
-            this.entityManager.invalidateCache(componentType);
             return component;
         };
         /**
@@ -580,7 +580,6 @@ var gs;
             }
             // 移除组件缓存
             this.componentCache.delete(componentType);
-            this.entityManager.invalidateCache(componentType);
         };
         /**
          * 是否有组件
@@ -603,7 +602,7 @@ var gs;
          */
         Entity.prototype.addTag = function (tag) {
             this.tags.add(tag);
-            this.entityManager.invalidateCache(undefined, tag);
+            this.entityManager.addToTagCache(tag, this);
         };
         /**
          * 获取标签
@@ -618,7 +617,7 @@ var gs;
          */
         Entity.prototype.removeTag = function (tag) {
             this.tags.delete(tag);
-            this.entityManager.invalidateCache(undefined, tag);
+            this.entityManager.removeFromTagCache(tag, this);
         };
         /**
          * 检查是否具有指定标签
@@ -965,9 +964,7 @@ var gs;
             if (this.buffer.length === 0) {
                 return null;
             }
-            var event = this.buffer[0];
-            this.buffer.shift();
-            return event;
+            return this.buffer.shift();
         };
         InputBuffer.prototype.clear = function () {
             this.buffer = [];
@@ -1463,6 +1460,7 @@ var gs;
                     if (!entity) {
                         entity = new gs.Entity(entityId, this, this.componentManagers);
                         entity.onCreate();
+                        this.entities.set(entityId, entity);
                     }
                     entity.deserialize(entityData);
                     newEntityMap.set(entityId, entity);
@@ -1510,20 +1508,6 @@ var gs;
                     if (_d && !_d.done && (_a = _c.return)) _a.call(_c);
                 }
                 finally { if (e_19) throw e_19.error; }
-            }
-        };
-        /**
-         * 清除指定组件或标签的缓存
-         * @param componentClass
-         * @param tag
-         */
-        EntityManager.prototype.invalidateCache = function (componentClass, tag) {
-            if (componentClass) {
-                var key = componentClass.name;
-                this.queryCache.delete(key);
-            }
-            if (tag) {
-                this.tagToEntities.delete(tag);
             }
         };
         /**
@@ -1594,6 +1578,9 @@ var gs;
                     entitiesWithTag.splice(index, 1);
                 }
             }
+        };
+        EntityManager.prototype.toJSON = function () {
+            return {};
         };
         return EntityManager;
     }());
@@ -2028,7 +2015,22 @@ var gs;
                 }
                 else if (message.type == 'roomCreated') {
                     // 房间创建
-                    _this.roomAPI.onRoomCreated(message.payload.roomId);
+                    _this.roomAPI.onRoomCreated(message.payload.room);
+                }
+                else if (message.type == 'playerLeft') {
+                    // 房间玩家离开
+                    _this.roomAPI.onPlayerLeft(message.payload.playerId);
+                }
+                else if (message.type == 'playerJoined') {
+                    // 房间玩家加入
+                    _this.roomAPI.onPlayerJoined(message.payload.playerId, message.payload.room);
+                }
+                else if (message.type == 'frameSync') {
+                    // 开始帧同步消息
+                    _this.roomAPI.onFrameSync(message.payload);
+                }
+                else if (message.type == 'snapshot') {
+                    _this.roomAPI.onSnapShot(message.payload);
                 }
                 else {
                     console.warn("[g-client]: \u672A\u77E5\u7684\u6D88\u606F\u7C7B\u578B: " + message.type);
@@ -2132,6 +2134,10 @@ var gs;
         function RoomApi(adapter) {
             this.adapter = adapter;
             this.createRoomCallback = null;
+            this.playerLeftCallback = null;
+            this.playerJoinedCallback = null;
+            this.frameSyncCallback = null;
+            this.snapshotCallback = null;
         }
         RoomApi.prototype.createRoom = function (maxPlayers, callback) {
             this.createRoomCallback = callback;
@@ -2141,23 +2147,123 @@ var gs;
             };
             this.adapter.send(message);
         };
-        RoomApi.prototype.joinRoom = function (roomId, playerId) {
+        RoomApi.prototype.joinRoom = function (roomId) {
             var message = {
                 type: 'joinRoom',
-                payload: { 'roomId': roomId, 'playerId': playerId }
+                payload: { 'roomId': roomId }
             };
             this.adapter.send(message);
         };
-        RoomApi.prototype.leaveRoom = function () {
+        /**
+         * 离开房间
+         * @param roomId - 房间ID
+         */
+        RoomApi.prototype.leaveRoom = function (roomId) {
+            var message = {
+                type: 'leaveRoom',
+                payload: { 'roomId': roomId }
+            };
+            this.adapter.send(message);
+        };
+        /**
+         * 开始房间帧同步
+         * @param roomId - 房间ID
+         */
+        RoomApi.prototype.startGame = function (roomId) {
+            var message = {
+                type: 'startGame',
+                payload: { 'roomId': roomId }
+            };
+            this.adapter.send(message);
+        };
+        /**
+         * 结束房间帧同步
+         * @param roomId
+         */
+        RoomApi.prototype.endGame = function (roomId) {
+            var message = {
+                type: 'endGame',
+                payload: { 'roomId': roomId }
+            };
+            this.adapter.send(message);
+        };
+        RoomApi.prototype.action = function (act) {
+            var message = {
+                type: 'action',
+                payload: act
+            };
+            this.adapter.send(message);
+        };
+        RoomApi.prototype.snapShot = function (roomId, snapshot, lastSnapVersion) {
+            var message = {
+                type: 'snapshot',
+                payload: { 'roomId': roomId, 'snapshot': snapshot, 'lastSnapVersion': lastSnapVersion }
+            };
+            this.adapter.send(message);
+        };
+        /**
+         * 设置玩家离开回调
+         * @param callback
+         */
+        RoomApi.prototype.setPlayerLeftCallback = function (callback) {
+            this.playerLeftCallback = callback;
+        };
+        /**
+         *
+         * @param callback
+         */
+        RoomApi.prototype.setFrameSync = function (callback) {
+            this.frameSyncCallback = callback;
+        };
+        /**
+         * 设置玩家加入回调
+         * @param callback
+         */
+        RoomApi.prototype.setPlayerJoinedCallback = function (callback) {
+            this.playerJoinedCallback = callback;
+        };
+        RoomApi.prototype.setSnapshotCallback = function (callback) {
+            this.snapshotCallback = callback;
         };
         /**
          * 当房间创建成功时被调用
-         * @param roomId - 房间ID
+         * @param room - 房间信息
          */
-        RoomApi.prototype.onRoomCreated = function (roomId) {
+        RoomApi.prototype.onRoomCreated = function (room) {
             if (this.createRoomCallback) {
-                this.createRoomCallback(roomId);
+                this.createRoomCallback(room);
             }
+        };
+        /**
+         * 当有玩家离开房间时调用
+         * @param playerId
+         */
+        RoomApi.prototype.onPlayerLeft = function (playerId) {
+            if (this.playerLeftCallback) {
+                this.playerLeftCallback(playerId);
+            }
+        };
+        /**
+         *
+         * @param playerId
+         * @param room
+         */
+        RoomApi.prototype.onPlayerJoined = function (playerId, room) {
+            if (this.playerJoinedCallback)
+                this.playerJoinedCallback(playerId, room);
+        };
+        /**
+         *
+         * @param payload
+         */
+        RoomApi.prototype.onFrameSync = function (payload) {
+            if (this.frameSyncCallback) {
+                this.frameSyncCallback(payload);
+            }
+        };
+        RoomApi.prototype.onSnapShot = function (snapshot) {
+            if (this.snapshotCallback)
+                this.snapshotCallback(snapshot);
         };
         return RoomApi;
     }());

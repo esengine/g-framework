@@ -10,8 +10,13 @@ class MoveSystem extends gs.System {
             const position = entity.getComponent(PositionComponent);
             const velocity = entity.getComponent(VelocityComponent);
 
-            position.x += velocity.x * deltaTime;
-            position.y += velocity.y * deltaTime;
+            const xIn = velocity.x * deltaTime;
+            const yIn = velocity.y * deltaTime;
+            position.x += xIn;
+            position.y += yIn;
+
+            if (xIn != 0 || yIn != 0)
+                position.markUpdated(lastSnapshotVersion + 1);
         }
     }
 }

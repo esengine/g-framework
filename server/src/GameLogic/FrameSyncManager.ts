@@ -1,5 +1,6 @@
 import {Message} from "../Communication/Message";
 import {GServices} from "../Service/GServices";
+import Logger from "../ErrorAndLog/Logger";
 
 /**
  * 帧同步管理器类，用于管理游戏帧同步。
@@ -21,7 +22,11 @@ export class FrameSyncManager {
      * @returns 当前帧数，如果房间不存在则返回 undefined。
      */
     public getRoomCurrentFrame(roomId: string): number | undefined {
-        this.checkRoomExists(roomId);
+        if (this.roomFrames[roomId] === undefined) {
+            Logger.error(`[g-server]: 房间ID ${roomId} 不存在.`);
+            return;
+        }
+
         return this.roomFrames[roomId];
     }
 
@@ -36,6 +41,7 @@ export class FrameSyncManager {
         // 设置房间的新的帧同步定时器
         this.roomFrames[roomId] = 0;
         this.roomActions[roomId] = {};
+        this.pendingActions[roomId] = {};
         this.roomTimers[roomId] = setInterval(() => {
             this.sendRoomFrameSync(roomId);
         }, this.frameInterval);
@@ -47,22 +53,29 @@ export class FrameSyncManager {
      * @param roomId - 房间 ID。
      */
     public sendRoomFrameSync(roomId: string): void {
-        this.checkRoomExists(roomId);
-        this.roomActions[roomId][this.roomFrames[roomId]] = this.pendingActions[roomId][this.roomFrames[roomId]];
-        const actions = this.roomActions[roomId][this.roomFrames[roomId]];
+        if (this.roomFrames[roomId] === undefined) {
+            Logger.error(`[g-server]: 房间ID ${roomId} 不存在.`);
+            return;
+        }
+
+        const frame = this.roomFrames[roomId];
+        this.roomActions[roomId][frame] = this.pendingActions[roomId][frame];
+        const actions = this.roomActions[roomId][frame];
+
         const frameSyncMessage: Message = {
             type: 'frameSync',
             payload: {
-                frame: this.roomFrames[roomId],
+                frame: frame,
                 actions: actions,
             },
         };
 
         GServices.I().RoomManager.broadcastToRoom(roomId, frameSyncMessage);
+
         this.roomFrames[roomId]++;
+
         delete this.roomActions[roomId][this.roomFrames[roomId]];
         delete this.pendingActions[roomId][this.roomFrames[roomId]];
-        this.roomFrames[roomId]++;
     }
 
     /**
@@ -86,7 +99,11 @@ export class FrameSyncManager {
      * @param action - 客户端操作。
      */
     public collectClientAction(roomId: string, frame: number, action: any): void {
-        this.checkRoomExists(roomId);
+        if (this.roomFrames[roomId] === undefined) {
+            Logger.error(`[g-server]: 房间ID ${roomId} 不存在.`);
+            return;
+        }
+
         if (!this.pendingActions[roomId]) {
             this.pendingActions[roomId] = {};
         }
@@ -94,11 +111,5 @@ export class FrameSyncManager {
             this.pendingActions[roomId][frame] = [];
         }
         this.pendingActions[roomId][frame].push(action);
-    }
-
-    private checkRoomExists(roomId: string): void {
-        if (this.roomFrames[roomId] === undefined) {
-            throw new Error(`[g-server]: 房间ID ${roomId} 不存在.`);
-        }
     }
 }

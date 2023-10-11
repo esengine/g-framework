@@ -80,7 +80,7 @@ declare module gs {
          * 标记组件已更新的方法
          * 通过增加 _version 的值来表示组件已更新
          */
-        markUpdated(): void;
+        markUpdated(version: number): void;
         /**
          * 重置组件的状态并进行必要的初始化
          * @param entity
@@ -149,6 +149,7 @@ declare module gs {
         /**
          * 添加组件
          * @param componentType
+         * @param args
          * @returns
          */
         addComponent<T extends Component>(componentType: ComponentConstructor<T>, ...args: any[]): T;
@@ -576,12 +577,6 @@ declare module gs {
          */
         applyInterpolation(factor: number): void;
         /**
-         * 清除指定组件或标签的缓存
-         * @param componentClass
-         * @param tag
-         */
-        invalidateCache(componentClass?: ComponentConstructor<Component>, tag?: string): void;
-        /**
          * 克隆实体并返回新创建的实体
          * @param entity 要克隆的实体
          * @param deepCopy 是否使用深拷贝
@@ -593,13 +588,14 @@ declare module gs {
          * @param tag
          * @param entity
          */
-        private addToTagCache;
+        addToTagCache(tag: string, entity: Entity): void;
         /**
          * 将实体从指定标签的缓存中删除
          * @param tag
          * @param entity
          */
-        private removeFromTagCache;
+        removeFromTagCache(tag: string, entity: Entity): void;
+        toJSON(): {};
     }
 }
 declare module gs {
@@ -810,18 +806,84 @@ declare module gs {
     }
 }
 declare module gs {
+    interface Player {
+        id: string;
+    }
+}
+declare module gs {
+    interface Room {
+        id: string;
+        owner: string;
+        maxPlayers: number;
+        players: Player[];
+    }
+}
+declare module gs {
     class RoomApi {
         adapter: NetworkAdapter;
         private createRoomCallback;
+        private playerLeftCallback;
+        private playerJoinedCallback;
+        private frameSyncCallback;
+        private snapshotCallback;
         constructor(adapter: NetworkAdapter);
-        createRoom(maxPlayers: number, callback: (roomId: string) => void): void;
-        joinRoom(roomId: string, playerId: string): void;
-        leaveRoom(): void;
+        createRoom(maxPlayers: number, callback: (room: Room) => void): void;
+        joinRoom(roomId: string): void;
         /**
-         * 当房间创建成功时被调用
+         * 离开房间
          * @param roomId - 房间ID
          */
-        onRoomCreated(roomId: string): void;
+        leaveRoom(roomId: string): void;
+        /**
+         * 开始房间帧同步
+         * @param roomId - 房间ID
+         */
+        startGame(roomId: string): void;
+        /**
+         * 结束房间帧同步
+         * @param roomId
+         */
+        endGame(roomId: string): void;
+        action(act: any): void;
+        snapShot(roomId: string, snapshot: any, lastSnapVersion: number): void;
+        /**
+         * 设置玩家离开回调
+         * @param callback
+         */
+        setPlayerLeftCallback(callback: (playerId: string) => void): void;
+        /**
+         *
+         * @param callback
+         */
+        setFrameSync(callback: (payload: any) => void): void;
+        /**
+         * 设置玩家加入回调
+         * @param callback
+         */
+        setPlayerJoinedCallback(callback: (playerId: string, room: Room) => void): void;
+        setSnapshotCallback(callback: (snapshot: any) => void): void;
+        /**
+         * 当房间创建成功时被调用
+         * @param room - 房间信息
+         */
+        onRoomCreated(room: Room): void;
+        /**
+         * 当有玩家离开房间时调用
+         * @param playerId
+         */
+        onPlayerLeft(playerId: string): void;
+        /**
+         *
+         * @param playerId
+         * @param room
+         */
+        onPlayerJoined(playerId: string, room: Room): void;
+        /**
+         *
+         * @param payload
+         */
+        onFrameSync(payload: any): void;
+        onSnapShot(snapshot: any): void;
     }
 }
 declare module gs {
