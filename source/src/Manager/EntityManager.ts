@@ -265,6 +265,31 @@ module gs {
             return snapshot;
         }
 
+        /**
+         * 使用给定的增量状态快照更新游戏状态
+         * @param incrementalSnapshot 增量状态快照
+         */
+        public applyIncrementalSnapshot(incrementalSnapshot: any): void {
+            for (const entityData of incrementalSnapshot.entities) {
+                const entityId = entityData.id;
+                let entity = this.getEntity(entityId);
+
+                if (!entity) {
+                    // 如果实体不存在，可能需要创建一个新实体
+                    entity = new Entity(entityId, this, this.componentManagers);
+                    entity.onCreate();
+                    this.entities.set(entityId, entity);
+
+                    for (const tag of entity.getTags()) {
+                        this.addToTagCache(tag, entity);
+                    }
+                }
+
+                // 更新实体状态使用增量数据
+                entity.deserialize(entityData);
+            }
+        }
+
 
         /**
          * 使用给定的状态快照更新游戏状态
@@ -281,6 +306,10 @@ module gs {
                     entity = new Entity(entityId, this, this.componentManagers);
                     entity.onCreate();
                     this.entities.set(entityId, entity);
+
+                    for (const tag of entity.getTags()) {
+                        this.addToTagCache(tag, entity);
+                    }
                 }
 
                 entity.deserialize(entityData);

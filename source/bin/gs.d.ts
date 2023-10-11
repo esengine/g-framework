@@ -567,6 +567,11 @@ declare module gs {
          */
         createIncrementalStateSnapshot(lastSnapshotVersion: number): any;
         /**
+         * 使用给定的增量状态快照更新游戏状态
+         * @param incrementalSnapshot 增量状态快照
+         */
+        applyIncrementalSnapshot(incrementalSnapshot: any): void;
+        /**
          * 使用给定的状态快照更新游戏状态
          * @param stateSnapshot
          */
@@ -899,6 +904,7 @@ declare module gs {
      */
     class SnapshotInterpolationStrategy implements ISyncStrategy {
         private snapshotQueue;
+        private interpolationTime;
         onInterpolation: (prevSnapshot: any, nextSnapshot: any, progress: number) => void;
         /**
          * 发送游戏状态

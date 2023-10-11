@@ -408,11 +408,11 @@ export class GServices {
     }
 
     private handleSnapShot(connection: Connection, payload: any): void {
-        const {roomId, snapshot, lastSnapVersion} = payload;
+        const {roomId, snapshot, lastSnapVersion } = payload;
 
         const snapshotMessage: Message = {
             type: 'snapshot',
-            payload: { 'snapshot': snapshot, 'lastSnapVersion': lastSnapVersion + 1 },
+            payload: { 'snapshot': snapshot, 'lastSnapVersion': lastSnapVersion + 1, 'timestamp': Date.now() },
         };
         this.RoomManager.broadcastToRoom(roomId, snapshotMessage);
     }

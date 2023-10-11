@@ -318,6 +318,50 @@ function deleteAllPlayer() {
     playerNet = {};
     core.systemManager.invalidateEntityCacheForSystem(drawSystem);
 }
+var syncStrategy = new gs.SnapshotInterpolationStrategy();
+syncStrategy.onInterpolation = function (prevSnapshot, nextSnapshot, progress) {
+    var e_5, _a;
+    var _b, _c;
+    // 用户实现自定义实体插值逻辑
+    // 例如：根据实体的类型更新位置、旋转、缩放等属性
+    console.log("onInterpolation ".concat(progress));
+    var _loop_1 = function (serializedEntity) {
+        // 根据实体的唯一标识符查找对应的游戏实体
+        var entityId = serializedEntity.id;
+        var entity = core.entityManager.getEntity(entityId);
+        if (entity) {
+            // 使用插值进度来解析实体的位置
+            var positionComponent = entity.getComponent(PositionComponent);
+            if (positionComponent) {
+                // 使用插值进度来解析实体的位置
+                var prevPosition = (_b = prevSnapshot.snapshot.entities.find(function (e) { return e.id === entityId; })) === null || _b === void 0 ? void 0 : _b.components["PositionComponent"];
+                var nextPosition = (_c = nextSnapshot.snapshot.entities.find(function (e) { return e.id === entityId; })) === null || _c === void 0 ? void 0 : _c.components["PositionComponent"];
+                if (prevPosition && nextPosition) {
+                    // 使用线性插值来更新位置
+                    var interpolatedX = prevPosition.x + (nextPosition.x - prevPosition.x) * progress;
+                    var interpolatedY = prevPosition.y + (nextPosition.y - prevPosition.y) * progress;
+                    // 更新实体的位置属性
+                    positionComponent.x = interpolatedX;
+                    positionComponent.y = interpolatedY;
+                }
+            }
+        }
+    };
+    try {
+        for (var _d = __values(nextSnapshot.snapshot.entities), _e = _d.next(); !_e.done; _e = _d.next()) {
+            var serializedEntity = _e.value;
+            _loop_1(serializedEntity);
+        }
+    }
+    catch (e_5_1) { e_5 = { error: e_5_1 }; }
+    finally {
+        try {
+            if (_e && !_e.done && (_a = _d.return)) _a.call(_d);
+        }
+        finally { if (e_5) throw e_5.error; }
+    }
+};
+var strategyManager = new gs.SyncStrategyManager(syncStrategy); // 发送状态
 document.addEventListener("DOMContentLoaded", function () {
     // 获取加入房间按钮
     var joinRoomButton = document.getElementById("join-room-btn");
@@ -365,7 +409,7 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     });
     networkAdapter.RoomAPI.setPlayerJoinedCallback(function (joinPlayerId, room) {
-        var e_5, _a;
+        var e_6, _a;
         if (joinPlayerId == playerId) {
             roomId = room.id;
             // 自己加入房间
@@ -376,12 +420,12 @@ document.addEventListener("DOMContentLoaded", function () {
                     createPlayer(player.id);
                 }
             }
-            catch (e_5_1) { e_5 = { error: e_5_1 }; }
+            catch (e_6_1) { e_6 = { error: e_6_1 }; }
             finally {
                 try {
                     if (_c && !_c.done && (_a = _b.return)) _a.call(_b);
                 }
-                finally { if (e_5) throw e_5.error; }
+                finally { if (e_6) throw e_6.error; }
             }
         }
         else {
@@ -404,8 +448,9 @@ document.addEventListener("DOMContentLoaded", function () {
     });
     networkAdapter.RoomAPI.setSnapshotCallback(function (snapshot) {
         console.log("receive snapshot: ".concat(snapshot));
+        // strategyManager.receiveState(snapshot);
         lastSnapshotVersion = snapshot.lastSnapVersion;
-        core.entityManager.updateStateFromSnapshot(snapshot.snapshot);
+        core.entityManager.applyIncrementalSnapshot(snapshot.snapshot);
     });
     var inputAdapter = new MyInputAdapter(core.entityManager.getInputManager(), networkAdapter);
     document.addEventListener("keydown", function (event) {
@@ -416,11 +461,16 @@ document.addEventListener("DOMContentLoaded", function () {
     });
     core.systemManager.registerSystem(drawSystem);
 });
-function update() {
+var lastTime = 0;
+function update(timestamp) {
+    var deltaTime = (timestamp - lastTime) / 1000; // 将时间戳转换为秒
     // 这里写你的更新逻辑
-    core.update(0.33);
+    core.update(deltaTime);
+    lastTime = timestamp;
     // 请求下一帧
     requestAnimationFrame(update);
+    // 处理状态更新
+    strategyManager.handleStateUpdate(0.33);
 }
 // 开始更新循环
 requestAnimationFrame(update);

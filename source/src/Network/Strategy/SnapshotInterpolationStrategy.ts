@@ -4,6 +4,7 @@ module gs {
      */
     export class SnapshotInterpolationStrategy implements ISyncStrategy {
         private snapshotQueue: Array<any> = [];
+        private interpolationTime: number = 0;
         public onInterpolation: (prevSnapshot: any, nextSnapshot: any, progress: number) => void;
 
         /**
@@ -29,14 +30,27 @@ module gs {
 
             const prevSnapshot = this.snapshotQueue[0];
             const nextSnapshot = this.snapshotQueue[1];
-            const deltaTime = TimeManager.getInstance().deltaTime;
+            if (prevSnapshot.timestamp == nextSnapshot.timestamp) {
+                this.snapshotQueue.shift();
+                return;
+            }
 
-            const interpolationProgress = (deltaTime - prevSnapshot.timestamp) / (nextSnapshot.timestamp - prevSnapshot.timestamp);
+            const timeManager = TimeManager.getInstance();
+            const deltaTime = timeManager.deltaTime * timeManager.timeScale;
+            const timeBetweenSnapshots = (nextSnapshot.timestamp - prevSnapshot.timestamp) / 1000; // 将毫秒转换为秒
+
+            this.interpolationTime += deltaTime;
+
+            let interpolationProgress = this.interpolationTime / timeBetweenSnapshots;
+
+            // 确保插值进度在 0 到 1 之间
+            interpolationProgress = Math.min(1, interpolationProgress);
 
             this.interpolateAndUpdateGameState(prevSnapshot, nextSnapshot, interpolationProgress);
 
-            if (deltaTime >= nextSnapshot.timestamp) {
+            if (this.interpolationTime >= timeBetweenSnapshots) {
                 this.snapshotQueue.shift();
+                this.interpolationTime = 0; // 重置插值时间
             }
         }
 

@@ -75,6 +75,42 @@ function deleteAllPlayer() {
     core.systemManager.invalidateEntityCacheForSystem(drawSystem);
 }
 
+
+
+const syncStrategy = new gs.SnapshotInterpolationStrategy();
+syncStrategy.onInterpolation = (prevSnapshot, nextSnapshot, progress) => {
+    // 用户实现自定义实体插值逻辑
+    // 例如：根据实体的类型更新位置、旋转、缩放等属性
+    console.log(`onInterpolation ${progress}`);
+
+    for (const serializedEntity of nextSnapshot.snapshot.entities) {
+        // 根据实体的唯一标识符查找对应的游戏实体
+        const entityId = serializedEntity.id;
+        const entity = core.entityManager.getEntity(entityId);
+
+        if (entity) {
+            // 使用插值进度来解析实体的位置
+            const positionComponent = entity.getComponent(PositionComponent);
+            if (positionComponent) {
+                // 使用插值进度来解析实体的位置
+                const prevPosition = prevSnapshot.snapshot.entities.find((e) => e.id === entityId)?.components["PositionComponent"];
+                const nextPosition = nextSnapshot.snapshot.entities.find((e) => e.id === entityId)?.components["PositionComponent"];
+
+                if (prevPosition && nextPosition) {
+                    // 使用线性插值来更新位置
+                    const interpolatedX = prevPosition.x + (nextPosition.x - prevPosition.x) * progress;
+                    const interpolatedY = prevPosition.y + (nextPosition.y - prevPosition.y) * progress;
+
+                    // 更新实体的位置属性
+                    positionComponent.x = interpolatedX;
+                    positionComponent.y = interpolatedY;
+                }
+            }
+        }
+    }
+};
+const strategyManager = new gs.SyncStrategyManager(syncStrategy);// 发送状态
+
 document.addEventListener("DOMContentLoaded", function() {
     // 获取加入房间按钮
     const joinRoomButton = document.getElementById("join-room-btn");
@@ -169,8 +205,10 @@ document.addEventListener("DOMContentLoaded", function() {
     networkAdapter.RoomAPI.setSnapshotCallback((snapshot) => {
         console.log(`receive snapshot: ${snapshot}`);
 
+        // strategyManager.receiveState(snapshot);
+
         lastSnapshotVersion = snapshot.lastSnapVersion;
-        core.entityManager.updateStateFromSnapshot(snapshot.snapshot);
+        core.entityManager.applyIncrementalSnapshot(snapshot.snapshot);
     });
 
 
@@ -186,12 +224,22 @@ document.addEventListener("DOMContentLoaded", function() {
     core.systemManager.registerSystem(drawSystem);
 });
 
-function update() {
+let lastTime = 0;
+
+function update(timestamp) {
+    const deltaTime = (timestamp - lastTime) / 1000; // 将时间戳转换为秒
+
     // 这里写你的更新逻辑
-    core.update(0.33);
+    core.update(deltaTime);
+
+    lastTime = timestamp;
 
     // 请求下一帧
     requestAnimationFrame(update);
+
+    // 处理状态更新
+    strategyManager.handleStateUpdate(0.33);
+
 }
 
 // 开始更新循环

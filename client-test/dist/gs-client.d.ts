@@ -52,4 +52,7 @@ declare let lastSnapshotVersion: number;
 declare function createPlayer(id: string): void;
 declare function deletePlayer(id: string): void;
 declare function deleteAllPlayer(): void;
-declare function update(): void;
+declare const syncStrategy: gs.SnapshotInterpolationStrategy;
+declare const strategyManager: gs.SyncStrategyManager;
+declare let lastTime: number;
+declare function update(timestamp: any): void;
