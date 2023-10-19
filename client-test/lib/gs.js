@@ -2326,14 +2326,49 @@ var gs;
 })(gs || (gs = {}));
 var gs;
 (function (gs) {
+    var LinearInterpolationStrategy = /** @class */ (function () {
+        function LinearInterpolationStrategy() {
+        }
+        LinearInterpolationStrategy.prototype.interpolate = function (prevSnapshot, nextSnapshot, progress) {
+            if (prevSnapshot && nextSnapshot) {
+                var interpolatedState = {};
+                // 遍历快照中的所有属性
+                for (var key in prevSnapshot) {
+                    if (typeof prevSnapshot[key] === 'object' && typeof nextSnapshot[key] === 'object') {
+                        // 递归处理嵌套属性
+                        interpolatedState[key] = this.interpolate(prevSnapshot[key], nextSnapshot[key], progress);
+                    }
+                    else if (typeof prevSnapshot[key] === 'number' && typeof nextSnapshot[key] === 'number') {
+                        interpolatedState[key] = prevSnapshot[key] + (nextSnapshot[key] - prevSnapshot[key]) * progress;
+                    }
+                    else {
+                        // 非数值属性，直接复制
+                        interpolatedState[key] = nextSnapshot[key];
+                    }
+                }
+                return interpolatedState;
+            }
+            else {
+                // 如果无法插值，返回上一个快照
+                return prevSnapshot;
+            }
+        };
+        return LinearInterpolationStrategy;
+    }());
+    gs.LinearInterpolationStrategy = LinearInterpolationStrategy;
+})(gs || (gs = {}));
+var gs;
+(function (gs) {
     /**
      * 快照插值策略
      */
     var SnapshotInterpolationStrategy = /** @class */ (function () {
         function SnapshotInterpolationStrategy() {
             this.snapshotQueue = [];
-            this.interpolationTime = 0;
         }
+        SnapshotInterpolationStrategy.prototype.setInterpolationCallback = function (callback) {
+            this.onInterpolation = callback;
+        };
         /**
          * 发送游戏状态
          * @param state
@@ -2358,27 +2393,56 @@ var gs;
                 this.snapshotQueue.shift();
                 return;
             }
-            var timeManager = gs.TimeManager.getInstance();
-            var deltaTime = timeManager.deltaTime * timeManager.timeScale;
-            var timeBetweenSnapshots = (nextSnapshot.timestamp - prevSnapshot.timestamp) / 1000; // 将毫秒转换为秒
-            this.interpolationTime += deltaTime;
-            var interpolationProgress = this.interpolationTime / timeBetweenSnapshots;
-            // 确保插值进度在 0 到 1 之间
-            interpolationProgress = Math.min(1, interpolationProgress);
-            this.interpolateAndUpdateGameState(prevSnapshot, nextSnapshot, interpolationProgress);
-            if (this.interpolationTime >= timeBetweenSnapshots) {
-                this.snapshotQueue.shift();
-                this.interpolationTime = 0; // 重置插值时间
-            }
-        };
-        SnapshotInterpolationStrategy.prototype.interpolateAndUpdateGameState = function (prevSnapshot, nextSnapshot, progress) {
+            // 调用用户自定义的插值回调方法
             if (this.onInterpolation) {
-                this.onInterpolation(prevSnapshot, nextSnapshot, progress);
+                this.onInterpolation(prevSnapshot, nextSnapshot);
             }
+            this.snapshotQueue.shift();
         };
         return SnapshotInterpolationStrategy;
     }());
     gs.SnapshotInterpolationStrategy = SnapshotInterpolationStrategy;
+})(gs || (gs = {}));
+var gs;
+(function (gs) {
+    var SplineInterpolationStrategy = /** @class */ (function () {
+        function SplineInterpolationStrategy() {
+        }
+        SplineInterpolationStrategy.prototype.interpolate = function (prevSnapshot, nextSnapshot, progress) {
+            if (prevSnapshot && nextSnapshot) {
+                var interpolatedState = {};
+                // 遍历快照中的所有属性
+                for (var key in prevSnapshot) {
+                    if (typeof prevSnapshot[key] === 'object' && typeof nextSnapshot[key] === 'object') {
+                        // 递归处理嵌套属性
+                        interpolatedState[key] = this.interpolate(prevSnapshot[key], nextSnapshot[key], progress);
+                    }
+                    else if (typeof prevSnapshot[key] === 'number' && typeof nextSnapshot[key] === 'number') {
+                        // 使用三次样条插值计算插值后的值
+                        var p0 = prevSnapshot[key];
+                        var p1 = nextSnapshot[key];
+                        var t = progress;
+                        var a = p1 - p0;
+                        var b = p0;
+                        var c = (-3 * p0 + 3 * p1 - 2 * a) / t;
+                        var d = (2 * p0 - 2 * p1 + a) / (t * t);
+                        interpolatedState[key] = a * t * t * t + b * t * t + c * t + d;
+                    }
+                    else {
+                        // 非数值属性，直接复制
+                        interpolatedState[key] = nextSnapshot[key];
+                    }
+                }
+                return interpolatedState;
+            }
+            else {
+                // 如果无法插值，返回上一个快照
+                return prevSnapshot;
+            }
+        };
+        return SplineInterpolationStrategy;
+    }());
+    gs.SplineInterpolationStrategy = SplineInterpolationStrategy;
 })(gs || (gs = {}));
 var gs;
 (function (gs) {

@@ -4,9 +4,12 @@ module gs {
      */
     export class SnapshotInterpolationStrategy implements ISyncStrategy {
         private snapshotQueue: Array<any> = [];
-        private interpolationTime: number = 0;
-        public onInterpolation: (prevSnapshot: any, nextSnapshot: any, progress: number) => void;
 
+        private onInterpolation: (prevSnapshot: any, nextSnapshot: any) => void;
+
+        setInterpolationCallback(callback: (prevSnapshot: any, nextSnapshot: any) => void): void {
+            this.onInterpolation = callback;
+        }
         /**
          * 发送游戏状态
          * @param state 
@@ -35,29 +38,12 @@ module gs {
                 return;
             }
 
-            const timeManager = TimeManager.getInstance();
-            const deltaTime = timeManager.deltaTime * timeManager.timeScale;
-            const timeBetweenSnapshots = (nextSnapshot.timestamp - prevSnapshot.timestamp) / 1000; // 将毫秒转换为秒
-
-            this.interpolationTime += deltaTime;
-
-            let interpolationProgress = this.interpolationTime / timeBetweenSnapshots;
-
-            // 确保插值进度在 0 到 1 之间
-            interpolationProgress = Math.min(1, interpolationProgress);
-
-            this.interpolateAndUpdateGameState(prevSnapshot, nextSnapshot, interpolationProgress);
-
-            if (this.interpolationTime >= timeBetweenSnapshots) {
-                this.snapshotQueue.shift();
-                this.interpolationTime = 0; // 重置插值时间
-            }
-        }
-
-        private interpolateAndUpdateGameState(prevSnapshot: any, nextSnapshot: any, progress: number): void {
+            // 调用用户自定义的插值回调方法
             if (this.onInterpolation) {
-                this.onInterpolation(prevSnapshot, nextSnapshot, progress);
+                this.onInterpolation(prevSnapshot, nextSnapshot);
             }
+
+            this.snapshotQueue.shift();
         }
     }
 }

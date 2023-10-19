@@ -1,4 +1,5 @@
 class InputSystem extends gs.System {
+
     entityFilter(entity: gs.Entity): boolean {
         return entity.hasTag("player");
     }
@@ -28,16 +29,16 @@ class InputSystem extends gs.System {
             if (inputEvent.data.isKeyDown) {
                 switch (inputEvent.data.key.toLowerCase()) {
                     case 'w':
-                        velocity.y = -10;
+                        velocity.y = -100;
                         break;
                     case 's':
-                        velocity.y = 10;
+                        velocity.y = 100;
                         break;
                     case 'a':
-                        velocity.x = -10;
+                        velocity.x = -100;
                         break;
                     case 'd':
-                        velocity.x = 10;
+                        velocity.x = 100;
                         break;
                 }
             }

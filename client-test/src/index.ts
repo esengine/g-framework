@@ -75,40 +75,11 @@ function deleteAllPlayer() {
     core.systemManager.invalidateEntityCacheForSystem(drawSystem);
 }
 
-
-
 const syncStrategy = new gs.SnapshotInterpolationStrategy();
-syncStrategy.onInterpolation = (prevSnapshot, nextSnapshot, progress) => {
-    // 用户实现自定义实体插值逻辑
-    // 例如：根据实体的类型更新位置、旋转、缩放等属性
-    console.log(`onInterpolation ${progress}`);
+syncStrategy.setInterpolationCallback((prevSnapshot, nextSnapshot)=>{
 
-    for (const serializedEntity of nextSnapshot.snapshot.entities) {
-        // 根据实体的唯一标识符查找对应的游戏实体
-        const entityId = serializedEntity.id;
-        const entity = core.entityManager.getEntity(entityId);
-
-        if (entity) {
-            // 使用插值进度来解析实体的位置
-            const positionComponent = entity.getComponent(PositionComponent);
-            if (positionComponent) {
-                // 使用插值进度来解析实体的位置
-                const prevPosition = prevSnapshot.snapshot.entities.find((e) => e.id === entityId)?.components["PositionComponent"];
-                const nextPosition = nextSnapshot.snapshot.entities.find((e) => e.id === entityId)?.components["PositionComponent"];
-
-                if (prevPosition && nextPosition) {
-                    // 使用线性插值来更新位置
-                    const interpolatedX = prevPosition.x + (nextPosition.x - prevPosition.x) * progress;
-                    const interpolatedY = prevPosition.y + (nextPosition.y - prevPosition.y) * progress;
-
-                    // 更新实体的位置属性
-                    positionComponent.x = interpolatedX;
-                    positionComponent.y = interpolatedY;
-                }
-            }
-        }
-    }
-};
+    console.log(`${prevSnapshot} ${nextSnapshot}`);
+});
 const strategyManager = new gs.SyncStrategyManager(syncStrategy);// 发送状态
 
 document.addEventListener("DOMContentLoaded", function() {
@@ -119,6 +90,8 @@ document.addEventListener("DOMContentLoaded", function() {
 
     const startFrameBtn = document.getElementById('start-frame');
     const endFrameBtn = document.getElementById('end-frame');
+
+    const clearLogBtn = document.getElementById('clear-log');
 
     joinRoomButton.onclick = ( ev: MouseEvent)=> {
         console.log("发送加入房间指令");
@@ -139,6 +112,10 @@ document.addEventListener("DOMContentLoaded", function() {
 
             createPlayer(playerId);
         });
+    };
+
+    clearLogBtn.onclick = (ev: MouseEvent) => {
+        document.getElementById('loggerArea').textContent = '';
     };
 
     leaveRoomButton.onclick = (ev: MouseEvent) => {
@@ -191,6 +168,8 @@ document.addEventListener("DOMContentLoaded", function() {
             console.log(payload.frame, payload.actions);
         }
 
+        document.getElementById('frame').textContent = `帧: ${payload.frame}`;
+
         const snapshot = core.entityManager.createIncrementalStateSnapshot(lastSnapshotVersion);
 
         // 如果有增量数据
@@ -205,10 +184,10 @@ document.addEventListener("DOMContentLoaded", function() {
     networkAdapter.RoomAPI.setSnapshotCallback((snapshot) => {
         console.log(`receive snapshot: ${snapshot}`);
 
-        // strategyManager.receiveState(snapshot);
 
         lastSnapshotVersion = snapshot.lastSnapVersion;
-        core.entityManager.applyIncrementalSnapshot(snapshot.snapshot);
+        strategyManager.receiveState(snapshot);
+        // core.entityManager.applyIncrementalSnapshot(snapshot.snapshot);
     });
 
 
@@ -238,7 +217,7 @@ function update(timestamp) {
     requestAnimationFrame(update);
 
     // 处理状态更新
-    strategyManager.handleStateUpdate(0.33);
+    strategyManager.handleStateUpdate(deltaTime);
 
 }
 

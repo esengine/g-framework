@@ -899,13 +899,23 @@ declare module gs {
     }
 }
 declare module gs {
+    interface InterpolationStrategy {
+        interpolate(prevSnapshot: any, nextSnapshot: any, progress: number): any;
+    }
+}
+declare module gs {
+    class LinearInterpolationStrategy implements InterpolationStrategy {
+        interpolate(prevSnapshot: any, nextSnapshot: any, progress: number): any;
+    }
+}
+declare module gs {
     /**
      * 快照插值策略
      */
     class SnapshotInterpolationStrategy implements ISyncStrategy {
         private snapshotQueue;
-        private interpolationTime;
-        onInterpolation: (prevSnapshot: any, nextSnapshot: any, progress: number) => void;
+        private onInterpolation;
+        setInterpolationCallback(callback: (prevSnapshot: any, nextSnapshot: any) => void): void;
         /**
          * 发送游戏状态
          * @param state
@@ -917,7 +927,11 @@ declare module gs {
          */
         receiveState(state: any): void;
         handleStateUpdate(state: any): void;
-        private interpolateAndUpdateGameState;
+    }
+}
+declare module gs {
+    class SplineInterpolationStrategy implements InterpolationStrategy {
+        interpolate(prevSnapshot: any, nextSnapshot: any, progress: number): any;
     }
 }
 declare module gs {

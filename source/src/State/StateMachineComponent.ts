@@ -1,4 +1,4 @@
-///<reference path="../Core/Component.ts" />
+///<reference path="../../../server/src/ECS/Core/Component.ts" />
 module gs {
     export class StateMachineComponent extends Component {
         stateMachine: StateMachine;

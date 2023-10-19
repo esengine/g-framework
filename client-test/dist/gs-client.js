@@ -117,16 +117,16 @@ var InputSystem = /** @class */ (function (_super) {
             if (inputEvent.data.isKeyDown) {
                 switch (inputEvent.data.key.toLowerCase()) {
                     case 'w':
-                        velocity.y = -10;
+                        velocity.y = -100;
                         break;
                     case 's':
-                        velocity.y = 10;
+                        velocity.y = 100;
                         break;
                     case 'a':
-                        velocity.x = -10;
+                        velocity.x = -100;
                         break;
                     case 'd':
-                        velocity.x = 10;
+                        velocity.x = 100;
                         break;
                 }
             }
@@ -319,48 +319,9 @@ function deleteAllPlayer() {
     core.systemManager.invalidateEntityCacheForSystem(drawSystem);
 }
 var syncStrategy = new gs.SnapshotInterpolationStrategy();
-syncStrategy.onInterpolation = function (prevSnapshot, nextSnapshot, progress) {
-    var e_5, _a;
-    var _b, _c;
-    // 用户实现自定义实体插值逻辑
-    // 例如：根据实体的类型更新位置、旋转、缩放等属性
-    console.log("onInterpolation ".concat(progress));
-    var _loop_1 = function (serializedEntity) {
-        // 根据实体的唯一标识符查找对应的游戏实体
-        var entityId = serializedEntity.id;
-        var entity = core.entityManager.getEntity(entityId);
-        if (entity) {
-            // 使用插值进度来解析实体的位置
-            var positionComponent = entity.getComponent(PositionComponent);
-            if (positionComponent) {
-                // 使用插值进度来解析实体的位置
-                var prevPosition = (_b = prevSnapshot.snapshot.entities.find(function (e) { return e.id === entityId; })) === null || _b === void 0 ? void 0 : _b.components["PositionComponent"];
-                var nextPosition = (_c = nextSnapshot.snapshot.entities.find(function (e) { return e.id === entityId; })) === null || _c === void 0 ? void 0 : _c.components["PositionComponent"];
-                if (prevPosition && nextPosition) {
-                    // 使用线性插值来更新位置
-                    var interpolatedX = prevPosition.x + (nextPosition.x - prevPosition.x) * progress;
-                    var interpolatedY = prevPosition.y + (nextPosition.y - prevPosition.y) * progress;
-                    // 更新实体的位置属性
-                    positionComponent.x = interpolatedX;
-                    positionComponent.y = interpolatedY;
-                }
-            }
-        }
-    };
-    try {
-        for (var _d = __values(nextSnapshot.snapshot.entities), _e = _d.next(); !_e.done; _e = _d.next()) {
-            var serializedEntity = _e.value;
-            _loop_1(serializedEntity);
-        }
-    }
-    catch (e_5_1) { e_5 = { error: e_5_1 }; }
-    finally {
-        try {
-            if (_e && !_e.done && (_a = _d.return)) _a.call(_d);
-        }
-        finally { if (e_5) throw e_5.error; }
-    }
-};
+syncStrategy.setInterpolationCallback(function (prevSnapshot, nextSnapshot, progress) {
+    console.log("".concat(prevSnapshot, " ").concat(nextSnapshot, " ").concat(progress));
+});
 var strategyManager = new gs.SyncStrategyManager(syncStrategy); // 发送状态
 document.addEventListener("DOMContentLoaded", function () {
     // 获取加入房间按钮
@@ -369,6 +330,7 @@ document.addEventListener("DOMContentLoaded", function () {
     var leaveRoomButton = document.getElementById('leave-room-btn');
     var startFrameBtn = document.getElementById('start-frame');
     var endFrameBtn = document.getElementById('end-frame');
+    var clearLogBtn = document.getElementById('clear-log');
     joinRoomButton.onclick = function (ev) {
         console.log("发送加入房间指令");
         // 获取输入框元素
@@ -384,6 +346,9 @@ document.addEventListener("DOMContentLoaded", function () {
             document.getElementById('room-id').textContent = "ID: " + roomId;
             createPlayer(playerId);
         });
+    };
+    clearLogBtn.onclick = function (ev) {
+        document.getElementById('loggerArea').textContent = '';
     };
     leaveRoomButton.onclick = function (ev) {
         console.log("发送退出房间指令");
@@ -409,7 +374,7 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     });
     networkAdapter.RoomAPI.setPlayerJoinedCallback(function (joinPlayerId, room) {
-        var e_6, _a;
+        var e_5, _a;
         if (joinPlayerId == playerId) {
             roomId = room.id;
             // 自己加入房间
@@ -420,12 +385,12 @@ document.addEventListener("DOMContentLoaded", function () {
                     createPlayer(player.id);
                 }
             }
-            catch (e_6_1) { e_6 = { error: e_6_1 }; }
+            catch (e_5_1) { e_5 = { error: e_5_1 }; }
             finally {
                 try {
                     if (_c && !_c.done && (_a = _b.return)) _a.call(_b);
                 }
-                finally { if (e_6) throw e_6.error; }
+                finally { if (e_5) throw e_5.error; }
             }
         }
         else {
@@ -437,6 +402,7 @@ document.addEventListener("DOMContentLoaded", function () {
         if (payload.actions) {
             console.log(payload.frame, payload.actions);
         }
+        document.getElementById('frame').textContent = "\u5E27: ".concat(payload.frame);
         var snapshot = core.entityManager.createIncrementalStateSnapshot(lastSnapshotVersion);
         // 如果有增量数据
         if (snapshot.entities.length > 0) {
@@ -448,9 +414,9 @@ document.addEventListener("DOMContentLoaded", function () {
     });
     networkAdapter.RoomAPI.setSnapshotCallback(function (snapshot) {
         console.log("receive snapshot: ".concat(snapshot));
-        // strategyManager.receiveState(snapshot);
         lastSnapshotVersion = snapshot.lastSnapVersion;
-        core.entityManager.applyIncrementalSnapshot(snapshot.snapshot);
+        strategyManager.receiveState(snapshot);
+        // core.entityManager.applyIncrementalSnapshot(snapshot.snapshot);
     });
     var inputAdapter = new MyInputAdapter(core.entityManager.getInputManager(), networkAdapter);
     document.addEventListener("keydown", function (event) {
@@ -470,7 +436,7 @@ function update(timestamp) {
     // 请求下一帧
     requestAnimationFrame(update);
     // 处理状态更新
-    strategyManager.handleStateUpdate(0.33);
+    strategyManager.handleStateUpdate(deltaTime);
 }
 // 开始更新循环
 requestAnimationFrame(update);

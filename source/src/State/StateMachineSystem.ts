@@ -1,4 +1,4 @@
-///<reference path="../Core/System.ts" />
+///<reference path="../../../server/src/ECS/Core/System.ts" />
 module gs {
     export class StateMachineSystem extends System {
         constructor(entityManager: EntityManager) {
