@@ -1,4 +1,3 @@
-window.gs = {};
 "use strict";
 var __values = (this && this.__values) || function (o) {
     var m = typeof Symbol === "function" && o[Symbol.iterator], i = 0;
@@ -10,7 +9,7 @@ var __values = (this && this.__values) || function (o) {
         }
     };
 };
-window.__extends = (this && this.__extends) || (function () {
+var __extends = (this && this.__extends) || (function () {
     var extendStatics = Object.setPrototypeOf ||
         ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
         function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
@@ -40,7 +39,7 @@ var __spread = (this && this.__spread) || function () {
     for (var ar = [], i = 0; i < arguments.length; i++) ar = ar.concat(__read(arguments[i]));
     return ar;
 };
-
+var gs;
 (function (gs) {
     var Core = /** @class */ (function () {
         function Core() {
@@ -106,7 +105,7 @@ var __spread = (this && this.__spread) || function () {
     }());
     gs.Core = Core;
 })(gs || (gs = {}));
-
+var gs;
 (function (gs) {
     var ObjectPool = /** @class */ (function () {
         function ObjectPool(createFn, resetFn) {
@@ -132,7 +131,7 @@ var __spread = (this && this.__spread) || function () {
     gs.ObjectPool = ObjectPool;
 })(gs || (gs = {}));
 ///<reference path="./ObjectPool.ts" />
-
+var gs;
 ///<reference path="./ObjectPool.ts" />
 (function (gs) {
     var EventPool = /** @class */ (function (_super) {
@@ -145,7 +144,7 @@ var __spread = (this && this.__spread) || function () {
     gs.EventPool = EventPool;
 })(gs || (gs = {}));
 ///<reference path="../Pool/EventPool.ts" />
-
+var gs;
 ///<reference path="../Pool/EventPool.ts" />
 (function (gs) {
     var EventEmitter = /** @class */ (function () {
@@ -224,12 +223,12 @@ var __spread = (this && this.__spread) || function () {
     gs.EventEmitter = EventEmitter;
 })(gs || (gs = {}));
 ///<reference path="./Event/EventEmitter.ts" />
-
+var gs;
 ///<reference path="./Event/EventEmitter.ts" />
 (function (gs) {
     gs.GlobalEventEmitter = new gs.EventEmitter();
 })(gs || (gs = {}));
-
+var gs;
 (function (gs) {
     /**
      * 组件
@@ -387,7 +386,7 @@ var __spread = (this && this.__spread) || function () {
     }());
     gs.Component = Component;
 })(gs || (gs = {}));
-
+var gs;
 (function (gs) {
     /**
      * 实体类，用于管理实体的组件和标签。
@@ -757,7 +756,7 @@ var __spread = (this && this.__spread) || function () {
     }());
     gs.Entity = Entity;
 })(gs || (gs = {}));
-
+var gs;
 (function (gs) {
     /**
      * 系统基类
@@ -845,7 +844,7 @@ var __spread = (this && this.__spread) || function () {
     }());
     gs.System = System;
 })(gs || (gs = {}));
-
+var gs;
 (function (gs) {
     var Debug = /** @class */ (function () {
         function Debug() {
@@ -861,7 +860,7 @@ var __spread = (this && this.__spread) || function () {
     }());
     gs.Debug = Debug;
 })(gs || (gs = {}));
-
+var gs;
 (function (gs) {
     var PerformanceProfiler = /** @class */ (function () {
         function PerformanceProfiler() {
@@ -909,7 +908,7 @@ var __spread = (this && this.__spread) || function () {
     }());
     gs.PerformanceProfiler = PerformanceProfiler;
 })(gs || (gs = {}));
-
+var gs;
 (function (gs) {
     var GEvent = /** @class */ (function () {
         function GEvent(type, data) {
@@ -930,7 +929,7 @@ var __spread = (this && this.__spread) || function () {
     }());
     gs.GEvent = GEvent;
 })(gs || (gs = {}));
-
+var gs;
 (function (gs) {
     var InputAdapter = /** @class */ (function () {
         function InputAdapter(inputManager) {
@@ -943,7 +942,7 @@ var __spread = (this && this.__spread) || function () {
     }());
     gs.InputAdapter = InputAdapter;
 })(gs || (gs = {}));
-
+var gs;
 (function (gs) {
     /**
      * 输入缓冲区
@@ -974,7 +973,7 @@ var __spread = (this && this.__spread) || function () {
     }());
     gs.InputBuffer = InputBuffer;
 })(gs || (gs = {}));
-
+var gs;
 (function (gs) {
     var InputManager = /** @class */ (function () {
         function InputManager(entityManager) {
@@ -1025,7 +1024,7 @@ var __spread = (this && this.__spread) || function () {
     }());
     gs.InputManager = InputManager;
 })(gs || (gs = {}));
-
+var gs;
 (function (gs) {
     /**
      * 组件管理器
@@ -1122,7 +1121,7 @@ var __spread = (this && this.__spread) || function () {
     }());
     gs.ComponentManager = ComponentManager;
 })(gs || (gs = {}));
-
+var gs;
 (function (gs) {
     var ComponentTypeInfo = /** @class */ (function () {
         function ComponentTypeInfo(index, type) {
@@ -1144,7 +1143,7 @@ var __spread = (this && this.__spread) || function () {
     }());
     gs.ComponentTypeInfo = ComponentTypeInfo;
 })(gs || (gs = {}));
-
+var gs;
 (function (gs) {
     var ComponentTypeManager = /** @class */ (function () {
         function ComponentTypeManager() {
@@ -1168,7 +1167,7 @@ var __spread = (this && this.__spread) || function () {
     }());
     gs.ComponentTypeManager = ComponentTypeManager;
 })(gs || (gs = {}));
-
+var gs;
 (function (gs) {
     var EntityManager = /** @class */ (function () {
         function EntityManager(systemManager) {
@@ -1642,7 +1641,7 @@ var __spread = (this && this.__spread) || function () {
     }());
     gs.EntityManager = EntityManager;
 })(gs || (gs = {}));
-
+var gs;
 (function (gs) {
     /**
      * ECS 框架中的系统管理器类，负责管理系统的注册、注销以及更新。
@@ -1862,7 +1861,7 @@ var __spread = (this && this.__spread) || function () {
     }());
     gs.SystemManager = SystemManager;
 })(gs || (gs = {}));
-
+var gs;
 (function (gs) {
     /**
      * 时间管理器
@@ -1926,7 +1925,7 @@ var __spread = (this && this.__spread) || function () {
     }());
     gs.TimeManager = TimeManager;
 })(gs || (gs = {}));
-
+var gs;
 (function (gs) {
     var Authentication = /** @class */ (function () {
         function Authentication(connection) {
@@ -1967,7 +1966,7 @@ var __spread = (this && this.__spread) || function () {
     }());
     gs.Authentication = Authentication;
 })(gs || (gs = {}));
-
+var gs;
 (function (gs) {
     var Connection = /** @class */ (function () {
         function Connection(url) {
@@ -1990,7 +1989,7 @@ var __spread = (this && this.__spread) || function () {
     }());
     gs.Connection = Connection;
 })(gs || (gs = {}));
-
+var gs;
 (function (gs) {
     gs.ErrorCodes = {
         SUCCESS: 'SUCCESS',
@@ -2000,7 +1999,7 @@ var __spread = (this && this.__spread) || function () {
         RECONNECT_FAIL: 'RECONNECT_FAIL',
     };
 })(gs || (gs = {}));
-
+var gs;
 (function (gs) {
     var GNetworkAdapter = /** @class */ (function () {
         function GNetworkAdapter(serverUrl, username, password) {
@@ -2116,7 +2115,7 @@ var __spread = (this && this.__spread) || function () {
     }());
     gs.GNetworkAdapter = GNetworkAdapter;
 })(gs || (gs = {}));
-
+var gs;
 (function (gs) {
     var NetworkManager = /** @class */ (function () {
         function NetworkManager() {
@@ -2140,7 +2139,7 @@ var __spread = (this && this.__spread) || function () {
     }());
     gs.NetworkManager = NetworkManager;
 })(gs || (gs = {}));
-
+var gs;
 (function (gs) {
     var WebSocketUtils = /** @class */ (function () {
         function WebSocketUtils() {
@@ -2161,7 +2160,7 @@ var __spread = (this && this.__spread) || function () {
     }());
     gs.WebSocketUtils = WebSocketUtils;
 })(gs || (gs = {}));
-
+var gs;
 (function (gs) {
     var MessageHandler = /** @class */ (function () {
         function MessageHandler() {
@@ -2184,7 +2183,7 @@ var __spread = (this && this.__spread) || function () {
     }());
     gs.MessageHandler = MessageHandler;
 })(gs || (gs = {}));
-
+var gs;
 (function (gs) {
     var RoomApi = /** @class */ (function () {
         function RoomApi(adapter) {
@@ -2325,7 +2324,7 @@ var __spread = (this && this.__spread) || function () {
     }());
     gs.RoomApi = RoomApi;
 })(gs || (gs = {}));
-
+var gs;
 (function (gs) {
     var LinearInterpolationStrategy = /** @class */ (function () {
         function LinearInterpolationStrategy() {
@@ -2358,7 +2357,7 @@ var __spread = (this && this.__spread) || function () {
     }());
     gs.LinearInterpolationStrategy = LinearInterpolationStrategy;
 })(gs || (gs = {}));
-
+var gs;
 (function (gs) {
     /**
      * 快照插值策略
@@ -2404,7 +2403,7 @@ var __spread = (this && this.__spread) || function () {
     }());
     gs.SnapshotInterpolationStrategy = SnapshotInterpolationStrategy;
 })(gs || (gs = {}));
-
+var gs;
 (function (gs) {
     var SplineInterpolationStrategy = /** @class */ (function () {
         function SplineInterpolationStrategy() {
@@ -2445,7 +2444,7 @@ var __spread = (this && this.__spread) || function () {
     }());
     gs.SplineInterpolationStrategy = SplineInterpolationStrategy;
 })(gs || (gs = {}));
-
+var gs;
 (function (gs) {
     /**
      * 状态压缩策略
@@ -2484,7 +2483,7 @@ var __spread = (this && this.__spread) || function () {
     }());
     gs.StateCompressionStrategy = StateCompressionStrategy;
 })(gs || (gs = {}));
-
+var gs;
 (function (gs) {
     /**
      * 同步策略管理器类
@@ -2530,7 +2529,7 @@ var __spread = (this && this.__spread) || function () {
     }());
     gs.SyncStrategyManager = SyncStrategyManager;
 })(gs || (gs = {}));
-
+var gs;
 (function (gs) {
     var StateMachine = /** @class */ (function () {
         function StateMachine() {
@@ -2563,9 +2562,9 @@ var __spread = (this && this.__spread) || function () {
     }());
     gs.StateMachine = StateMachine;
 })(gs || (gs = {}));
-///<reference path="../../../server/src/ECS/Core/Component.ts" />
-
-///<reference path="../../../server/src/ECS/Core/Component.ts" />
+///<reference path="../Core/Component.ts"/>
+var gs;
+///<reference path="../Core/Component.ts"/>
 (function (gs) {
     var StateMachineComponent = /** @class */ (function (_super) {
         __extends(StateMachineComponent, _super);
@@ -2581,9 +2580,9 @@ var __spread = (this && this.__spread) || function () {
     }(gs.Component));
     gs.StateMachineComponent = StateMachineComponent;
 })(gs || (gs = {}));
-///<reference path="../../../server/src/ECS/Core/System.ts" />
-
-///<reference path="../../../server/src/ECS/Core/System.ts" />
+///<reference path="../Core/System.ts"/>
+var gs;
+///<reference path="../Core/System.ts"/>
 (function (gs) {
     var StateMachineSystem = /** @class */ (function (_super) {
         __extends(StateMachineSystem, _super);
@@ -2614,7 +2613,7 @@ var __spread = (this && this.__spread) || function () {
     }(gs.System));
     gs.StateMachineSystem = StateMachineSystem;
 })(gs || (gs = {}));
-
+var gs;
 (function (gs) {
     var Bits = /** @class */ (function () {
         function Bits(size) {
@@ -2645,7 +2644,7 @@ var __spread = (this && this.__spread) || function () {
     }());
     gs.Bits = Bits;
 })(gs || (gs = {}));
-
+var gs;
 (function (gs) {
     var EntityIdAllocator = /** @class */ (function () {
         function EntityIdAllocator() {
@@ -2660,7 +2659,7 @@ var __spread = (this && this.__spread) || function () {
     }());
     gs.EntityIdAllocator = EntityIdAllocator;
 })(gs || (gs = {}));
-
+var gs;
 (function (gs) {
     var Node = /** @class */ (function () {
         function Node(value) {
@@ -2721,7 +2720,7 @@ var __spread = (this && this.__spread) || function () {
     }());
     gs.LinkedList = LinkedList;
 })(gs || (gs = {}));
-
+var gs;
 (function (gs) {
     /**
      * 定义一个实体匹配器类。
@@ -2858,7 +2857,7 @@ var __spread = (this && this.__spread) || function () {
     }());
     gs.Matcher = Matcher;
 })(gs || (gs = {}));
-
+var gs;
 (function (gs) {
     var Random = /** @class */ (function () {
         function Random(seed) {
@@ -2903,7 +2902,7 @@ var __spread = (this && this.__spread) || function () {
     }());
     gs.Random = Random;
 })(gs || (gs = {}));
-
+var gs;
 (function (gs) {
     /**
      * SparseSet数据结构

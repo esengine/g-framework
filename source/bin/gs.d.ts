@@ -1014,6 +1014,7 @@ declare module gs {
     class StateMachineComponent extends Component {
         stateMachine: StateMachine;
         constructor();
+        gu: any;
         reset(): void;
     }
 }

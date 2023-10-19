@@ -1,4 +1,4 @@
-///<reference path="../../../server/src/ECS/Core/Component.ts" />
+///<reference path="../Core/Component.ts"/>
 module gs {
     export class StateMachineComponent extends Component {
         stateMachine: StateMachine;
@@ -6,7 +6,7 @@ module gs {
         constructor() {
             super();
             this.stateMachine = new StateMachine();
-        }
+        }gu
 
         public reset(): void {
             this.stateMachine = new StateMachine();
